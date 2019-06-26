@@ -12,7 +12,7 @@ vector<TString> Split(TString s,TString del){
 
 TString Dirname(TString s){
   if(s.Last('/')!=-1) return s(0,s.Last('/'));
-  else return s;
+  else return ".";
 }
 TString Basename(TString s){
   if(s.Last('/')!=-1) return s(s.Last('/')+1,s.Length());

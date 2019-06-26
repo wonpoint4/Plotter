@@ -13,6 +13,7 @@ public:
   map<TString,Plot> plots;
   static TDirectory *pdir;
   TString plotfile;
+  TString plotdir;
 
   //Print
   void PrintSampleFrags(TRegexp regexp=".*");
@@ -56,7 +57,7 @@ public:
   static vector<TH1*> VectorTH1(vector<tuple<TH1*,TH1*>>& hists);
   tuple<double,double> GetMinMax(const vector<TH1*>& hists);
   void RebinXminXmax(TH1* hist,int rebin,double xmin,double xmax);
-  static void Normalize(vector<TH1*> hists,double val=1.);
+  void Normalize(vector<TH1*>& hists,double val=1.);
   static TLegend* GetLegend(const vector<TH1*>& hists,TString option);
   static TLegend* GetLegend(const vector<tuple<TH1*,TH1*>>& hists,TString option);
   
@@ -405,11 +406,13 @@ int Plotter::AddError(TH1* hist,TH1* sys){
 TCanvas* Plotter::GetCompare(vector<tuple<TH1*,TH1*>> tu_hists,TString option){
   if(DEBUG>3) cout<<"###DEBUG### [Plotter::GetCompare(vector<tuple<TH1*,TH1*>> tu_hists,TString option)]"<<endl;
   vector<TH1*> hists=VectorTH1(tu_hists);
+  cout<<hists.size()<<endl;
   if(hists.size()==0){
     cout<<"###ERROR### [Plotter::GetCompare] hists is zero length"<<endl;
     return NULL;
   }
   if(option.Contains("norm")) Normalize(hists);
+  cout<<hists.size()<<endl;
   TH1* axisowner=get<1>(tu_hists[0]);
   if(!axisowner) axisowner=get<0>(tu_hists[0]);
 
@@ -649,8 +652,8 @@ void Plotter::SaveCanvas(TString plotkey){
   if(DEBUG>3) cout<<"###DEBUG### [Plotter::SaveCanvas(TString plotkey)]"<<endl;
   pdir=new TDirectory;
   TCanvas* c=GetCanvas(plotkey);
-  gSystem->Exec("mkdir -p "+Dirname(plotkey));
-  c->SaveAs(plotkey+".png");
+  gSystem->Exec("mkdir -p "+plotdir+Dirname(plotkey));
+  c->SaveAs(plotdir+plotkey+".png");
   delete c;
   pdir->Delete();
 }
@@ -711,6 +714,7 @@ vector<TH1*> Plotter::VectorTH1(vector<tuple<TH1*,TH1*>>& hists){
     if(hist1) hists_out.push_back(hist1);
     if(hist0) hists_out.push_back(hist0);
   }
+  cout<<hists_out.size()<<endl;
   return hists_out;
 }
 tuple<double,double> Plotter::GetMinMax(const vector<TH1*>& hists){
@@ -738,9 +742,12 @@ void Plotter::RebinXminXmax(TH1* hist,int rebin,double xmin,double xmax){
     }
   }
 }
-void Plotter::Normalize(vector<TH1*> hists,double val=1.){
+void Plotter::Normalize(vector<TH1*>& hists,double val=1.){
   if(DEBUG>3) cout<<"###DEBUG### [Plotter::Normalize(vector<TH1*> hists,double val=1.)]"<<endl;
+  cout<<hists.size()<<endl;
   for(auto hist:hists){
+    cout<<hist<<endl;
+    cout<<hist->GetName()<<endl;
     if(strstr(hist->ClassName(),"THStack")){
       TH1* hsim=GetTH1(hist);
       double scale=val/hsim->Integral();
@@ -793,7 +800,7 @@ void Plotter::LoadPlots(TString filename){
 }
 void Plotter::UpdatePlots(bool overwrite=false,set<TString> excludes={}){
   if(DEBUG>3) cout<<"###DEBUG### [Plotter::UpdatePlots(set<TString> excludes)]"<<endl;
-  set<TString> histkeys=GetHistKeys("data");
+  set<TString> histkeys=GetHistKeys(samples.begin()->first);
   set<TString> sys_fixes,sample_fixes;
 
   for(const auto& [sysname,sys]:systematics)
@@ -826,7 +833,9 @@ set<TString> Plotter::GetHistKeys(TList* keys,TRegexp regexp=".*"){
       histkeys.insert(this_histkeys.begin(),this_histkeys.end());
     }else{
       TString path=key->GetMotherDir()->GetPath();
-      path=path(path.Index(":")+2,path.Length())+"/"+key->GetName();
+      path=path(path.Index(":")+2,path.Length());
+      if(path!="") path+="/";
+      path+=key->GetName();
       if(path.Contains(regexp)) histkeys.insert(path);
     }
   }
