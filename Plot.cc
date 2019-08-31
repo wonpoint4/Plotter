@@ -7,7 +7,7 @@ public:
   TString name;
   TString histname;
   TString sysname;
-  Type type;
+  Type type=Type::CompareAndRatio;
   int rebin=0;
   double xmin=0,xmax=0;
   TString option;
@@ -16,14 +16,48 @@ public:
   Plot(TString line=""):Plot(Split(line," ")){};
   ~Plot();
   void Print(std::ostream& out=cout) const;
+  void SetOption(TString option_);
+  void RemoveOption(TString option_);
 };
+void Plot::SetOption(TString option_){
+  for(const auto& opt:Split(option_," ")){
+    if(opt.Contains(TRegexp("^name:"))) name=opt(5,999);
+    else if(opt.Contains(TRegexp("^histname:"))) histname=opt(9,999);
+    else if(opt.Contains(TRegexp("^sysname:"))) sysname=opt(8,999);
+    else if(opt.Contains(TRegexp("^type:"))) type=(Type)TString(opt(5,999)).Atoi();
+    else if(opt.Contains(TRegexp("^rebin:"))) rebin=TString(opt(6,999)).Atoi();
+    else if(opt.Contains(TRegexp("^xmin:"))) xmin=TString(opt(5,999)).Atof();
+    else if(opt.Contains(TRegexp("^xmax:"))) xmax=TString(opt(5,999)).Atof();
+    else option+=" "+opt;
+  }
+}   
+void Plot::RemoveOption(TString option_){
+  vector<TString> options=Split(option," ");
+  vector<TString> options_remove=Split(option_," ");
+  for(const auto& remove:options_remove){
+    if(remove=="rebin") rebin=0;
+    else if(remove=="xmin") xmin=0;
+    else if(remove=="xmax") xmax=0;
+    else{
+      for(int i=0;i<options.size();i++){
+        if(options[i].Contains(TRegexp("^"+remove))){
+          options.erase(options.begin()+i);
+          i--;
+        }
+      }
+    }
+  }
+  TString newoption;
+  for(const auto& opt:options) newoption+=opt+" ";
+  option=newoption;
+}
 void Plot::Print(std::ostream& out) const{
   if(DEBUG>3) cout<<"###DEBUG### [void Plot::Print(std::ostream& out) const]"<<endl;
   out<<"<Plot> ";
-  out<<"name: "<<name<<" histname: "<<histname;
-  if(sysname!="") out<<" sysname: "<<sysname;
-  if(type!=Type::UNDEFINE) out<<" type: "<<type;
-  out<<" rebin: "<<rebin<<" xmin: "<<xmin<<" xmax: "<<xmax<<" "<<option<<"</Plot>"<<endl;
+  out<<"name:"<<name<<" histname:"<<histname;
+  if(sysname!="") out<<" sysname:"<<sysname;
+  if(type!=Type::UNDEFINE) out<<" type:"<<type;
+  out<<" rebin:"<<rebin<<" xmin:"<<xmin<<" xmax:"<<xmax<<" "<<option<<" </Plot>"<<endl;
 }
 Plot::~Plot(){
   if(DEBUG>3) cout<<"###DEBUG### [Plot::~Plot()]"<<endl;
@@ -37,17 +71,10 @@ Plot::Plot(vector<TString> words){
   for(int i=1;i<imax;i++){
     if(words[i]=="<Plot>") subplots.push_back(Plot(vector<TString>(words.begin()+i,words.end())));
     else if(words[i]=="</Plot>") depth--;
-    else if(words[i]=="name:") name=words[++i];
-    else if(words[i]=="histname:") histname=words[++i];
-    else if(words[i]=="sysname:") sysname=words[++i];
-    else if(words[i]=="type:") type=(Type)words[++i].Atoi();
-    else if(words[i]=="rebin:") rebin=words[++i].Atoi();
-    else if(words[i]=="xmin:") xmin=words[++i].Atof();
-    else if(words[i]=="xmax:") xmax=words[++i].Atof();
-    else option+=" "+words[i];
-    this->Print();
+    else SetOption(words[i]);
     if(depth==0) break;
   }
+  this->Print();
 }  
 Plot::Plot(TString line="") : Plot(Split(line," ")){
   if(DEBUG>3) cout<<"###DEBUG### [Plot::Plot(TString line="")]"<<endl;

@@ -4,6 +4,7 @@
 #include"Sample.cc"
 #include"Plot.cc"
 #include"Utils.h"
+#include"Systematic.cc"
 class Plotter{
 public:
   Plotter();
@@ -19,7 +20,8 @@ public:
   void PrintSampleFrags(TRegexp regexp=".*");
   void PrintSamples(bool detail=false,TRegexp regexp=".*");
   void PrintHistKeys(TString samplename,TRegexp regexp=".*");
-  void PrintPlots(TRegexp reg);
+  void PrintPlots(TRegexp reg=".*");
+  void PrintSystematics();
 
   //Hist
   TH1* GetHistRaw(TString filename,TString histname);  
@@ -46,6 +48,8 @@ public:
   TCanvas* GetCanvas(TCanvas* (Plotter::*func)(vector<tuple<TH1*,TH1*>>,TString),TString histname,TString sysname,int rebin,double xmin,double xmax,TString option);
   TCanvas* GetCanvas(TCanvas* (Plotter::*func)(vector<tuple<TH1*,TH1*>>,TString),TString histname,TString suffix,int varibit,int rebin,double xmin,double xmax,TString option);
   TCanvas* GetCanvas(TString plotkey);
+  vector<TCanvas*> GetCanvases(TRegexp plotkey);
+  void SaveCanvases(TString plotkey);
   void SaveCanvas(TString plotkey);
   void SaveCanvasAll();
 
@@ -62,18 +66,30 @@ public:
   static TLegend* GetLegend(const vector<tuple<TH1*,TH1*>>& hists,TString option);
   
   //Plot
-  void LoadPlots(TString filename);
-  void UpdatePlots(bool overwrite=false,set<TString> excludes={});
+  void SetupPlots(TString filename);
+  set<TString> GetParsedHistKeys(set<TString> excludes={});
+  void AddPlot(TString plotkey,TString plotoption="");
+  void AddPlots(TRegexp regexp=".*",TString plotoption="");
+  void RemovePlot(TString plotkey);
+  void RemovePlots(TRegexp regexp=".*");
   set<TString> GetHistKeys(TList* keys,TRegexp regexp=".*");
   set<TString> GetHistKeys(TString samplename,TRegexp regexp=".*");
   set<TString> ParseHistKeys(set<TString> histkeys,set<TString> fixes,set<TString> excludes={});
   void SetPlotRebinXminXmaxAuto(TString plotkey);
   void SetPlotsRebinXminXmaxAuto();
+  void SetPlotOption(TString plotname,TString option);
+  void SetPlotsOption(TRegexp plotname,TString option);
+  void RemovePlotOption(TString plotname,TString option);
+  void RemovePlotsOption(TRegexp plotname,TString option);
+  void SavePlotFile();
 
   //MakeSystematic
-  Systematic MakeSystematic(TString name_,SystematicType type_,vector<TString> includes,int varibit);
-  Systematic MakeSystematic(TString name_,SystematicType type_,TString includes_,int varibit);
+  Systematic MakeSystematic(TString name,Systematic::Type type,int varibit,vector<TString> includes);
+  Systematic MakeSystematic(TString name,Systematic::Type type,int varibit,TString includes);
 
+  //etc
+  void Reset();
+  
   //working
 
   //TCanvas* GetCompareAFBAll(vector<TString> histnames,int sysbit=0,TString option="");
@@ -88,13 +104,8 @@ Plotter::Plotter(){
 }
 Plotter::~Plotter(){
   if(DEBUG>3) cout<<"###DEBUG### [Plotter::~Plotter()]"<<endl;
-  if(plotfile!=""&&plots.size()>0){
-    ofstream f(plotfile);
-    for(const auto& [plotname,plot]:plots) plot.Print(f);
-  }
+  SavePlotFile();
 }
-
-
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -129,6 +140,11 @@ void Plotter::PrintPlots(TRegexp reg){
   if(DEBUG>3) cout<<"###DEBUG### [Plotter::PrintPlots(TRegexp reg)]"<<endl;
   for(auto it=plots.begin();it!=plots.end();it++){
     if(it->first.Contains(reg)) it->second.Print();
+  }
+}
+void Plotter::PrintSystematics(){
+  for(const auto& [key,sys]:systematics){
+    sys.Print();
   }
 }
 
@@ -240,23 +256,23 @@ tuple<TH1*,TH1*> Plotter::GetHistWithTotal(TString samplekey,TString histname,TS
   vector<TH1*> syss;
   for(const auto& sysmap:systematics){
     const Systematic& systematic=sysmap.second;
-    if(systematic.type==SystematicType::MULTI) continue;
+    if(systematic.type==Systematic::Type::MULTI) continue;
     if(sysbit&systematic.sysbit){
-      if(DEBUG>1) std::cout<<"###INFO### [Plotter::GetHistWithTotal] sysname="<<systematic.name<<" systype="<<GetStringSystematicType(systematic.type)<<endl;
+      if(DEBUG>1) std::cout<<"###INFO### [Plotter::GetHistWithTotal] sysname="<<systematic.name<<" systype="<<systematic.GetTypeString()<<endl;
       vector<TH1*> variations;
       for(const auto& suffix:systematic.suffixes){
 	TH1* this_hist=GetHist(samplekey,histname,suffix,systematic.varibit);
 	variations.push_back(GetTH1(this_hist));
 	delete this_hist;
       }
-      if(systematic.type==SystematicType::ENVELOPE){
+      if(systematic.type==Systematic::Type::ENVELOPE){
 	syss.push_back(GetEnvelope(central,variations));
-      }else if(systematic.type==SystematicType::GAUSSIAN){
+      }else if(systematic.type==Systematic::Type::GAUSSIAN){
 	syss.push_back(GetRMSError(central,variations));
-      }else if(systematic.type==SystematicType::HESSIAN){
+      }else if(systematic.type==Systematic::Type::HESSIAN){
 	syss.push_back(GetHessianError(central,variations));
       }else{
-	cout<<"###ERROR### [Plotter::GetHistWithTotal] Wrong SystematicType "<<systematic.type<<endl;
+	cout<<"###ERROR### [Plotter::GetHistWithTotal] Wrong Systematic::Type "<<systematic.type<<endl;
       }
       if(DEBUG>1) std::cout<<"###INFO### [Plotter::GetHistWithTotal] "<<systematic.name+": "<<variations.size()<<" variations"<<endl;
       for(unsigned int j=0;j<variations.size();j++){
@@ -277,6 +293,7 @@ tuple<TH1*,TH1*> Plotter::GetHistWithTotal(TString samplekey,TString histname,TS
     delete central;
     central=(TH1*)hstack;
   }
+  central->SetLineWidth(2);
   return make_tuple(central,total);
 }
 
@@ -406,19 +423,18 @@ int Plotter::AddError(TH1* hist,TH1* sys){
 TCanvas* Plotter::GetCompare(vector<tuple<TH1*,TH1*>> tu_hists,TString option){
   if(DEBUG>3) cout<<"###DEBUG### [Plotter::GetCompare(vector<tuple<TH1*,TH1*>> tu_hists,TString option)]"<<endl;
   vector<TH1*> hists=VectorTH1(tu_hists);
-  cout<<hists.size()<<endl;
   if(hists.size()==0){
     cout<<"###ERROR### [Plotter::GetCompare] hists is zero length"<<endl;
     return NULL;
   }
   if(option.Contains("norm")) Normalize(hists);
-  cout<<hists.size()<<endl;
   TH1* axisowner=get<1>(tu_hists[0]);
   if(!axisowner) axisowner=get<0>(tu_hists[0]);
 
   TCanvas* c=new TCanvas;
   axisowner->SetStats(0);
   axisowner->Draw();
+  if(c->GetPrimitive("title")) ((TPaveText*)c->GetPrimitive("title"))->SetTextSize(0.075);
 
   for(const auto& hist:hists)
     if(strstr(hist->ClassName(),"THStack")){
@@ -437,6 +453,7 @@ TCanvas* Plotter::GetCompare(vector<tuple<TH1*,TH1*>> tu_hists,TString option){
 
   TLegend* legend=GetLegend(tu_hists,option);
   if(!option.Contains("noleg")) legend->Draw();
+
   if(option.Contains("logy")) c->SetLogy();
   else{
     tuple<double,double> minmax=GetMinMax(hists);
@@ -488,21 +505,21 @@ TCanvas* Plotter::GetRatio(vector<tuple<TH1*,TH1*>> hists,TString option){
   }
   return c;
 }
-TCanvas* Plotter::GetDiff(vector<tuple<TH1*,TH1*>> hists,TString option){
-  if(DEBUG>3) cout<<"###DEBUG### [Plotter::GetDiff(vector<tuple<TH1*,TH1*>> hists,TString option)]"<<endl;
-  vector<tuple<TH1*,TH1*>> hists_new;
+TCanvas* Plotter::GetDiff(vector<tuple<TH1*,TH1*>> tu_hists,TString option){
+  if(DEBUG>3) cout<<"###DEBUG### [Plotter::GetDiff(vector<tuple<TH1*,TH1*>> tu_hists,TString option)]"<<endl;
+  vector<tuple<TH1*,TH1*>> tu_hists_new;
   TH1* base=NULL;
   TString baseopt=option("base:[0-9]*");
-  if(baseopt!="") base=GetTH1(get<0>(hists[((TString)baseopt(5,100)).Atoi()]));
-  else if(strstr(get<0>(hists[0])->GetName(),"data")&&!strstr(get<0>(hists[1])->GetName(),"data"))
-    base=GetTH1(get<0>(hists[1]));
+  if(baseopt!="") base=GetTH1(get<0>(tu_hists[((TString)baseopt(5,100)).Atoi()]));
+  else if(strstr(get<0>(tu_hists[0])->GetName(),"data")&&!strstr(get<0>(tu_hists[1])->GetName(),"data"))
+    base=GetTH1(get<0>(tu_hists[1]));
   else 
-    base=GetTH1(get<0>(hists[0]));
+    base=GetTH1(get<0>(tu_hists[0]));
   
   for(int i=0;i<base->GetNbinsX()+2;i++){
     base->SetBinError(i,0);
   }
-  for(const auto& histtuple:hists){
+  for(const auto& histtuple:tu_hists){
     TH1 *hist0=NULL,*hist1=NULL;
     if(get<0>(histtuple)){
       hist0=GetTH1(get<0>(histtuple));
@@ -513,16 +530,19 @@ TCanvas* Plotter::GetDiff(vector<tuple<TH1*,TH1*>> hists,TString option){
       hist1->SetDirectory(pdir);
       hist1->Add(base,-1);
     }
-    hists_new.push_back(make_tuple(hist0,hist1));
+    tu_hists_new.push_back(make_tuple(hist0,hist1));
   }  
   delete base;
-  TCanvas* c=GetCompare(hists_new,option);
+  TCanvas* c=GetCompare(tu_hists_new,option);
   TH1* axisowner=GetAxisParent(c);
   
   axisowner->GetYaxis()->SetTitle("Diff");
-  //axisowner->GetYaxis()->SetRangeUser(-0.067,0.067);
-  axisowner->GetYaxis()->UnZoom();
   axisowner->GetYaxis()->SetLabelSize(0.06);
+
+  tuple<double,double> minmax=GetMinMax(VectorTH1(tu_hists_new));
+  double minimum=get<0>(minmax),maximum=get<1>(minmax);
+  double range=fabs(maximum-minimum);
+  axisowner->GetYaxis()->SetRangeUser(minimum/range<-0.01?minimum-0.1*range:0,maximum+0.1*range);
   return c;
 }
 TCanvas* Plotter::GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,TString option){
@@ -543,6 +563,7 @@ TCanvas* Plotter::GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,TString opti
   c->cd(1);
   c1temp->DrawClonePad();
   delete c1temp;
+  if(c->GetPad(1)->GetPrimitive("title")) ((TPaveText*)c->GetPad(1)->GetPrimitive("title"))->SetTextSize(0.075);
   gPad->SetPad(0,0.35,1,1);
   gPad->SetBottomMargin(0.02);
   TH1* axisparent=GetAxisParent(gPad);
@@ -578,6 +599,10 @@ TCanvas* Plotter::GetCompareAndDiff(vector<tuple<TH1*,TH1*>> hists,TString optio
     TString opt=((TObjString*)optionelement)->String();
     if(opt.Contains("1:")) option1+=opt(2,100)+" ";
     if(opt.Contains("2:")) option2+=opt(2,100)+" ";
+    else{
+      option1+=opt+" ";
+      option2+=opt+" ";
+    }
   } 
     
   TCanvas* c=new TCanvas;
@@ -637,26 +662,35 @@ TCanvas* Plotter::GetCanvas(TCanvas* (Plotter::*func)(vector<tuple<TH1*,TH1*>>,T
   }
   return (this->*func)(hists,option);
 }
-
-
 TCanvas* Plotter::GetCanvas(TString plotkey){
   if(DEBUG>3) cout<<"###DEBUG### [Plotter::GetCanvas(TString plotkey)]"<<endl;
   Plot& plot=plots[plotkey];
   TCanvas* c=NULL;
   if(plot.type==Plot::Type::CompareAndRatio) c=GetCanvas(&Plotter::GetCompareAndRatio,plot.histname,plot.sysname,plot.rebin,plot.xmin,plot.xmax,plot.option);
+  else if(plot.type==Plot::Type::CompareAndDiff) c=GetCanvas(&Plotter::GetCompareAndDiff,plot.histname,plot.sysname,plot.rebin,plot.xmin,plot.xmax,plot.option);
   //  if(plot.type==Plot::Type::DoubleRatio){
     
   return c;
-}  
+}
+vector<TCanvas*> Plotter::GetCanvases(TRegexp plotkey){
+  vector<TCanvas*> canvases;
+  for(const auto& [key,plot]:plots)
+    if(key.Contains(plotkey)) canvases.push_back(GetCanvas(key));
+  return canvases;
+}
 void Plotter::SaveCanvas(TString plotkey){
   if(DEBUG>3) cout<<"###DEBUG### [Plotter::SaveCanvas(TString plotkey)]"<<endl;
   pdir=new TDirectory;
   TCanvas* c=GetCanvas(plotkey);
-  gSystem->Exec("mkdir -p "+plotdir+Dirname(plotkey));
-  c->SaveAs(plotdir+plotkey+".png");
+  gSystem->Exec("mkdir -p "+plotdir+"/"+Dirname(plotkey));
+  c->SaveAs(plotdir+"/"+plotkey+".png");
   delete c;
   pdir->Delete();
 }
+void Plotter::SaveCanvases(TString plotkey){
+  for(const auto& [key,plot]:plots)
+    if(key.Contains(plotkey)) SaveCanvas(key);
+}  
 void Plotter::SaveCanvasAll(){
   if(DEBUG>3) cout<<"###DEBUG### [Plotter::SaveCanvasAll(TString plotkey)]"<<endl;
   for(const auto& [key,plot]:plots) SaveCanvas(key);
@@ -762,18 +796,28 @@ void Plotter::Normalize(vector<TH1*>& hists,double val=1.){
 }
 TLegend* Plotter::GetLegend(const vector<TH1*>& hists,TString option){
   if(DEBUG>3) cout<<"###DEBUG### [Plotter::GetLegend(const vector<TH1*>& hists,TString option)]"<<endl;
-  double horizontalshift=0;
-  if(option.Contains("leftleg")) horizontalshift=-0.53;
-  TLegend* legend=new TLegend(0.67+horizontalshift,0.88-0.07,0.89+horizontalshift,0.88);
+  vector<TH1*> hists_th1;
   for(const auto& hist:hists){
     if(strstr(hist->ClassName(),"THStack")){
       TIter next(((THStack*)hist)->GetHists(),kIterBackward);
       while(TObject *obj = next()){
-	legend->AddEntry(obj,obj->GetName());
+	hists_th1.push_back((TH1*)obj);
       }
-    }else legend->AddEntry(hist,hist->GetName());
+    }else hists_th1.push_back(hist);
   }
-  legend->SetY1(0.88-legend->GetNRows()*0.07);
+  int maxlen=0;
+  for(const auto& hist:hists_th1)
+    if(strlen(hist->GetName())>maxlen) maxlen=strlen(hist->GetName());
+
+  vector<double> coordinates;
+  double char_unit=0.013,entry_unit=0.065;
+  if(option.Contains("leftleg")) coordinates={0.11,0.89,0.11+maxlen*char_unit,0.89-hists_th1.size()*entry_unit};
+  else if(option.Contains("middlebottomleg")) coordinates={0.5-0.5*maxlen*char_unit,0.05,0.5+0.5*maxlen*char_unit,0.05+hists_th1.size()*entry_unit};
+  else if(option.Contains("bottomleg")) coordinates={0.89,0.05,0.89-maxlen*char_unit,0.05+hists_th1.size()*entry_unit};
+  else coordinates={0.89,0.89,0.89-maxlen*char_unit,0.89-hists_th1.size()*entry_unit};
+  TLegend* legend=new TLegend(coordinates[0],coordinates[1],coordinates[2],coordinates[3]);
+
+  for(const auto& hist:hists_th1) legend->AddEntry(hist,hist->GetName());
   legend->SetBorderSize(0);
   return legend;
 }
@@ -789,25 +833,33 @@ TLegend* Plotter::GetLegend(const vector<tuple<TH1*,TH1*>>& hists,TString option
 /////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// Plot /////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-void Plotter::LoadPlots(TString filename){
-  plotfile=filename;
+void Plotter::SetupPlots(TString filename){
+  plotdir=Dirname(filename);
+  plotfile=Basename(filename);
+  gSystem->Exec("mkdir -p "+plotdir);
   ifstream f(filename.Data());
-  TString str;
-  while(str.ReadLine(f)){
-    Plot plot(str);
-    plots[plot.name]=plot;
+  if(f.fail()){
+    //UpdatePlots();
+  }else{
+    TString str;
+    while(str.ReadLine(f)){
+      Plot plot(str);
+      plots[plot.name]=plot;
+    }
   }
 }
-void Plotter::UpdatePlots(bool overwrite=false,set<TString> excludes={}){
-  if(DEBUG>3) cout<<"###DEBUG### [Plotter::UpdatePlots(set<TString> excludes)]"<<endl;
-  set<TString> histkeys=GetHistKeys(samples.begin()->first);
+set<TString> Plotter::GetParsedHistKeys(set<TString> excludes={}){
+  if(DEBUG>3) cout<<"###DEBUG### [Plotter::GetParsedHistKeys(set<TString> excludes)]"<<endl;
+  set<TString> histkeys;
+  if(samples.find("data")!=samples.end()) histkeys=GetHistKeys("data");
+  else histkeys=GetHistKeys(samples.begin()->first);
   set<TString> sys_fixes,sample_fixes;
-
+  
   for(const auto& [sysname,sys]:systematics)
     for(const auto& suf:sys.suffixes)
       sys_fixes.insert(suf+"$");
   histkeys=ParseHistKeys(histkeys,sys_fixes,excludes);
-
+  
   for(const auto& [samplename,sample]:samples)
     for(const auto& [frag,weight]:sample.frags)
       for(const auto& [filename,weight,prefix,suffix]:frag.files){
@@ -815,14 +867,31 @@ void Plotter::UpdatePlots(bool overwrite=false,set<TString> excludes={}){
 	if(suffix!="") sample_fixes.insert(suffix+"$");
       }
   histkeys=ParseHistKeys(histkeys,sample_fixes);
-  
+  return histkeys;
+}
+void Plotter::AddPlot(TString plotkey,TString plotoption){
+  Plot plot;
+  plot.name=plotkey;plot.histname=plotkey;
+  plot.SetOption(plotoption);
+  plots[plotkey]=plot;
+  //SetPlotRebinXminXmaxAuto(key);
+} 
+void Plotter::AddPlots(TRegexp regexp,TString plotoption){
+  set<TString> histkeys=GetParsedHistKeys();
   for(const auto& key:histkeys){
-    if(!overwrite&&plots.find(key)!=plots.end()) continue;
-    Plot plot;
-    plot.name=key;plot.histname=key;plot.type=Plot::Type::CompareAndRatio;plot.rebin=0;plot.xmin=0;plot.xmax=0;
-    plots[key]=plot;
+    if(key.Contains(regexp)) AddPlot(key,plotoption);
   }
 }
+void Plotter::RemovePlot(TString plotkey){
+  plots.erase(plotkey);
+}
+void Plotter::RemovePlots(TRegexp regexp){
+  set<TString> to_remove;
+  for(const auto& [key,plot]:plots)
+    if(key.Contains(regexp)) to_remove.insert(key);
+  for(const auto& key:to_remove)
+    RemovePlot(key);
+}   
 set<TString> Plotter::GetHistKeys(TList* keys,TRegexp regexp=".*"){
   if(DEBUG>3) cout<<"###DEBUG### [Plotter::GetHistKeys(TList* keys,TRegexp regexp=\".*\")]"<<endl;
   set<TString> histkeys;
@@ -906,43 +975,68 @@ void Plotter::SetPlotsRebinXminXmaxAuto(){
   if(DEBUG>3) cout<<"###DEBUG### [Plotter::SetPlotsRebinXminXmaxAuto()]"<<endl;
   for(auto& [plotname,plot]:plots) SetPlotRebinXminXmaxAuto(plotname);
 }
+void Plotter::SetPlotOption(TString plotname,TString option){
+  if(DEBUG>3) cout<<"###DEBUG### [Plotter::SetPlotOption(TString plotname,TString option)]"<<endl;
+  plots[plotname].SetOption(option);
+}
+void Plotter::SetPlotsOption(TRegexp plotname_,TString option){
+  for(auto& [plotname,plot]:plots){
+    if(plotname.Contains(plotname_)) SetPlotOption(plotname,option);
+  }
+}
+void Plotter::RemovePlotOption(TString plotname,TString option){
+  if(DEBUG>3) cout<<"###DEBUG### [Plotter::RemovePlotOption(TString plotname,TString option)]"<<endl;
+  plots[plotname].RemoveOption(option);
+}
+void Plotter::RemovePlotsOption(TRegexp plotname_,TString option){
+  for(auto& [plotname,plot]:plots){
+    if(plotname.Contains(plotname_)) RemovePlotOption(plotname,option);
+  }
+}
+void Plotter::SavePlotFile(){
+  if(plotfile!=""&&plots.size()>0){
+    ofstream f(plotdir+"/"+plotfile);
+    for(const auto& [plotname,plot]:plots) plot.Print(f);
+  }
+  plotfile="";
+}  
+
 ///////////////////////////////////////////////////////////////////////
-///////////////////// MakeSystematic //////////////////////////////////
+///////////////////// MakeSysteamtic //////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
-Systematic Plotter::MakeSystematic(TString name_,SystematicType type_,vector<TString> includes,int varibit_){
-  if(DEBUG>3) cout<<"###DEBUG### [Plotter::MakeSystematic(TString name_,SystematicType type_,vector<TString> includes,int varibit_)]"<<endl;
-  Systematic systematic;
-  systematic.name=name_;
-  systematic.type=type_;
-  if(systematic.type==SystematicType::MULTI){
-    systematic.sysbit=0;
-    for(int i=0;i<systematics.size();i++)
+Systematic Plotter::MakeSystematic(TString name,Systematic::Type type,int varibit,vector<TString> includes){
+  Systematic this_sys=Systematic(name,type,varibit);
+  if(this_sys.type==Systematic::Type::MULTI){
+    this_sys.sysbit=0;
+    for(const auto& [syskey,sys]:systematics)
       for(int j=0;j<includes.size();j++)
-	if(systematics[i].name==includes[j]){
-	  systematic.sysbit|=systematics[i].sysbit;
-	  break;
-	}
+        if(syskey==includes[j]){
+          this_sys.sysbit|=sys.sysbit;
+          break;
+        }
   }else{
-    systematic.sysbit=1<<systematics.size();
-    systematic.suffixes=includes;
-  }    
-  systematic.varibit=varibit_;
-  if(DEBUG){
-    cout<<" [AddSystematic] "<<systematic.name<<" "<<GetStringSystematicType(systematic.type)<<" sysbit:"<<systematic.sysbit<<" varibit:"<<systematic.varibit<<endl;
-    cout<<"  INCLUDE=";for(int i=0;i<includes.size();i++) cout<<includes[i]<<" ";
-    cout<<endl;
+    this_sys.sysbit=1<<systematics.size();
+    this_sys.suffixes=includes;
   }
-  return systematic;
+  if(DEBUG>0) this_sys.Print();
+  return this_sys;
 }
-Systematic Plotter::MakeSystematic(TString name_,SystematicType type_,TString includes_,int varibit_){
-  if(DEBUG>3) cout<<"###DEBUG### [Plotter::MakeSystematic(TString name_,SystematicType type_,TString includes_,int varibit_)]"<<endl;
-  TObjArray* arr=includes_.Tokenize(" ");
-  vector<TString> includes;
-  for(int i=0;i<arr->GetEntries();i++){
-    includes.push_back(((TObjString*)arr->At(i))->String());
-  }
-  return MakeSystematic(name_,type_,includes,varibit_);
+Systematic Plotter::MakeSystematic(TString name,Systematic::Type type,int varibit,TString includes){
+  return MakeSystematic(name,type,varibit,Split(includes," "));
 }
+
+
+///////////////////////////////////////////////////////////////////////
+///////////////////// etc /////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+void Plotter::Reset(){
+  samples.clear();
+  systematics.clear();
+  SavePlotFile();
+  plots.clear();
+  plotdir="";
+}
+
 
 //////////////////////working/////////////////////////
   
