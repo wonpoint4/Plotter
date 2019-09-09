@@ -96,6 +96,7 @@ void SampleFrag::SetColor(int color){
     markerstyle=20;
     markersize=0.7;
     drawoption="e";
+    fillcolor=0;
   }else{
     fillcolor=color;
     linecolor=color;

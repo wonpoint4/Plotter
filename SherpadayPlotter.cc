@@ -15,10 +15,14 @@ SherpadayPlotter::SherpadayPlotter(){
   for(const auto& file:files){
     vector<TString> names=Split(file,"/");
     TString key=names.at(names.size()-4)+"_"+names.at(names.size()-2);
-    samplefrags[key]=MakeSampleFrag(key,SampleFrag::Type::SIGNAL,2,make_tuple(file,1.,"",""));
-    samplefrags[key+"_EW"]=MakeSampleFrag(key,SampleFrag::Type::SIGNAL,2,make_tuple(file,1.,"","_weight116"));
+    if(file.Contains("Sherpa")){
+      samplefrags[key]=MakeSampleFrag(key,SampleFrag::Type::SIGNAL,2,make_tuple(file,1.,"",""));
+      samplefrags[key+"_EW"]=MakeSampleFrag(key,SampleFrag::Type::SYS,2,make_tuple(file,1.,"","_weight116"));
+    }else{
+      samplefrags[key]=MakeSampleFrag(key,SampleFrag::Type::SYS,2,make_tuple(file,1.,"",""));
+    }      
   }  
-  samplefrags["TTW_old"]=MakeSampleFrag("TTW_old",SampleFrag::Type::BG,2,make_tuple("/data9/Users/hsseo/mg/ttW/hists.root",1.,"",""));
+  samplefrags["TTW_old"]=MakeSampleFrag("TTW_old",SampleFrag::Type::SYS,2,make_tuple("/data9/Users/hsseo/mg/ttW/hists.root",1.,"",""));
 }
 
 int SherpadayPlotter::Setup(int mode_){
@@ -26,11 +30,9 @@ int SherpadayPlotter::Setup(int mode_){
   systematics.clear();
   mode=mode_;
   
-  LoadPlots(Form("SherpadayPlotter_mode%d.dat",mode));
-  plotdir=Form("SherpadayPlotter_mode%d/",mode);
-
   SetupSamples();
   SetupSystematics();
+  SetupPlots(Form("plot_Sherpaday/SherpadayPlotter_mode%d.dat",mode));
 
   if(DEBUG) cout<<"[Setup] nsample: "<<samples.size()<<endl;
   if(DEBUG) cout<<"[Setup] nsys: "<<systematics.size()<<endl;
@@ -44,7 +46,11 @@ void SherpadayPlotter::SetupSamples(){
     samples["1Sherpa_ttW_NLO0"]=MakeSample("Sherpa NLO",Sample::Type::SUM,kRed,make_tuple("Sherpa_ttW_NLO0",1.));
     samples["2Sherpa_ttW_NLO0_EW"]=MakeSample("Sherpa NLO + EW",Sample::Type::SUM,kBlue,make_tuple("Sherpa_ttW_NLO0_EW",1.));
     samples["3MG_ttW_NLO0"]=MakeSample("MG NLO",Sample::Type::SUM,kGreen,make_tuple("MG_ttW_NLO0",1.));
-  }
+  }else if(mode==1){
+    samples["1Sherpa_ttW_NLO0"]=MakeSample("Sherpa NLO (leptonic)",Sample::Type::SUM,kRed,make_tuple("Sherpa_ttW_leptonic_NLO0",1.));
+    samples["2Sherpa_ttW_NLO0_EW"]=MakeSample("Sherpa NLO + EW (leptonic)",Sample::Type::SUM,kBlue,make_tuple("Sherpa_ttW_leptonic_NLO0_EW",1.));
+    samples["3MG_ttW_NLO0"]=MakeSample("MG NLO (leptonic)",Sample::Type::SUM,kGreen,make_tuple("MG_ttW_leptonic_NLO0",1.));
+  }    
   /*
   if(mode==0){
     samples["1sherpa_NLO1_LO2"]=MakeSample("sherpa 0,1j NLO + 2j LO",Sample::Type::SUM,kRed,make_tuple("ttW",1/1.14942e+08));
@@ -68,10 +74,10 @@ void SherpadayPlotter::SetupSamples(){
 }
 void SherpadayPlotter::SetupSystematics(){
   if(DEBUG)  cout<<"[SetupSystematics]"<<endl;
-  systematics["scale"]=MakeSystematic("scale",SystematicType::ENVELOPE,"_weight4 _weight5 _weight6 _weight7 _weight8 _weight9 _weight10",2);
+  systematics["scale"]=MakeSystematic("scale",Systematic::Type::ENVELOPE,1<<SampleFrag::Type::SIGNAL,"_weight4 _weight5 _weight6 _weight7 _weight8 _weight9 _weight10");
   vector<TString> suffixes;
   for(int i=11;i<111;i++) suffixes.push_back(Form("_weight%d",i));
-  systematics["pdf"]=MakeSystematic("pdf",SystematicType::GAUSSIAN,suffixes,2);
+  systematics["pdf"]=MakeSystematic("pdf",Systematic::Type::GAUSSIAN,1<<SampleFrag::Type::SIGNAL,suffixes);
 
 }
 double SherpadayPlotter::GetChi2(TH1* h1,TH1* h2){

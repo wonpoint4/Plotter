@@ -854,11 +854,15 @@ set<TString> Plotter::GetParsedHistKeys(set<TString> excludes={}){
   if(samples.find("data")!=samples.end()) histkeys=GetHistKeys("data");
   else histkeys=GetHistKeys(samples.begin()->first);
   set<TString> sys_fixes,sample_fixes;
+
+  for(auto b:histkeys) if(b.Contains("./")) cout<<b<<endl;
   
   for(const auto& [sysname,sys]:systematics)
     for(const auto& suf:sys.suffixes)
       sys_fixes.insert(suf+"$");
   histkeys=ParseHistKeys(histkeys,sys_fixes,excludes);
+
+  for(auto b:histkeys) if(b.Contains("./")) cout<<b<<endl;
   
   for(const auto& [samplename,sample]:samples)
     for(const auto& [frag,weight]:sample.frags)
@@ -867,6 +871,9 @@ set<TString> Plotter::GetParsedHistKeys(set<TString> excludes={}){
 	if(suffix!="") sample_fixes.insert(suffix+"$");
       }
   histkeys=ParseHistKeys(histkeys,sample_fixes);
+
+  for(auto b:histkeys) if(b.Contains("./")) cout<<b<<endl;
+
   return histkeys;
 }
 void Plotter::AddPlot(TString plotkey,TString plotoption){
@@ -938,6 +945,7 @@ set<TString> Plotter::ParseHistKeys(set<TString> histkeys,set<TString> fixes,set
       TString basename=Basename(key);
       if(basename.Contains(TRegexp(fix))){
 	key=dirname+"/"+Replace(basename,TRegexp(fix),"");
+	key=Replace(key,"^[.]/","");
       }
     }
     key.ReplaceAll("forward","AFB");
