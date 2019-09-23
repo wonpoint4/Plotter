@@ -1,207 +1,186 @@
 #ifndef __SAMPLE_CC__
 #define __SAMPLE_CC__
 #include"Global.h"
-class SampleFrag{
+#include"Style.cc"
+class Sample{
 public:
-  enum Type{DATA,SIGNAL,BG,GEN,SUM,STACK,SYS,UNDEFINE};
+  enum Type{UNDEFINE,DATA,SIGNAL,BG,GEN,STACK,SUM,A,B,C,D};
   TString GetTypeString() const{
     switch(type){
+    case UNDEFINE: return "UNDEFINE";
     case DATA: return "DATA";
     case SIGNAL: return "SIGNAL";
     case BG: return "BG";
     case GEN: return "GEN";
-    case SUM: return "SUM";
     case STACK: return "STACK";
-    case SYS: return "SYS";
-    case UNDEFINE: return "UNDEFINE";
-    default: return "###ERROR### Bad SampleFrag::Type";
+    case SUM: return "SUM";
+    case A: return "A";
+    case B: return "B";
+    case C: return "C";
+    case D: return "D";
+    default: return "###ERROR### Bad Sample::Type";
     }
   }
   TString title;
   Type type;
-  int fillcolor;
-  int fillstyle;
-  int linecolor;
-  int linestyle;
-  int linewidth;
-  int markercolor;
-  int markerstyle;
-  double markersize;
-  TString drawoption;
-  vector<tuple<TString,double,TString,TString>> files; //filename,weight,prefix,suffix
+  Style style;
+  Style styletotal;
+  vector<tuple<TString,double,TString,TString>> files; //filename,type,weight,prefix,suffix
+  vector<Sample> subs;
 
-  SampleFrag();
-  void SetColor(int color);
-  virtual void Add(TString samplefragkey,double weight=1.,TString prefix="",TString suffix="");
-  virtual void Add(TRegexp samplefragkeyexp,double weight=1.,TString prefix="",TString suffix="");
-  void ApplyHistStyle(TH1* hist) const ;
-  virtual void Print() const;
+  Sample();
+  Sample(TString title_,Sample::Type type_,int color_);
+  Sample operator+(const Sample& sam);
+  Sample operator+(const char* key);
+  Sample operator+(const TString key);
+  Sample operator+(const TRegexp reg);
+  friend Sample operator%(const char* prefix,const Sample& sam);
+  friend Sample operator%(const TString prefix,const Sample& sam);
+  friend Sample operator%(const Sample& sam,const char* suffix);
+  friend Sample operator%(const Sample& sam,const TString suffix);
+
+  Sample operator*(double w);
+  friend Sample operator*(double w,const Sample& sam);
+  void SetStyle(int color);
+  void Add(TRegexp sampleregexp,double weight=1.,TString prefix="",TString suffix="");
+  void ApplyStyle(TH1* hist) const ;
+  void Print(bool detail=false) const;
 };
-map<TString,SampleFrag> samplefrags;
+map<TString,Sample> samples;
 
-SampleFrag::SampleFrag(){
-  fillcolor=-1;
-  fillstyle=-1;
-  linecolor=-1;
-  linestyle=-1;
-  linewidth=-1.;
-  markercolor=-1;
-  markerstyle=-1;
-  markersize=-1.;
-  type=(SampleFrag::Type)UNDEFINE;
+Sample::Sample(){
+  type=(Sample::Type)UNDEFINE;
 }
-SampleFrag MakeSampleFrag(TString title,SampleFrag::Type type,int color,vector<tuple<TString,double,TString,TString>> files){
-  SampleFrag samplefrag;
-  samplefrag.title=title;samplefrag.type=type;
-  samplefrag.SetColor(color);
-  samplefrag.files=files;
-  return samplefrag;
+Sample::Sample(TString title_,Sample::Type type_,int color_){
+  title=title_;
+  type=type_;
+  SetStyle(color_);
 }
-SampleFrag MakeSampleFrag(TString title,SampleFrag::Type type,int color,tuple<TString,double,TString,TString> file1=make_tuple("",0.,"",""),tuple<TString,double,TString,TString> file2=make_tuple("",0.,"",""),tuple<TString,double,TString,TString> file3=make_tuple("",0.,"",""),tuple<TString,double,TString,TString> file4=make_tuple("",0.,"",""),tuple<TString,double,TString,TString> file5=make_tuple("",0.,"",""),tuple<TString,double,TString,TString> file6=make_tuple("",0.,"",""),tuple<TString,double,TString,TString> file7=make_tuple("",0.,"","")){
-  vector<tuple<TString,double,TString,TString>> files;
-  if(get<0>(file1)!="") files.push_back(file1);
-  if(get<0>(file2)!="") files.push_back(file2);
-  if(get<0>(file3)!="") files.push_back(file3);
-  if(get<0>(file4)!="") files.push_back(file4);
-  if(get<0>(file5)!="") files.push_back(file5);
-  if(get<0>(file6)!="") files.push_back(file6);
-  if(get<0>(file7)!="") files.push_back(file7);
-  return MakeSampleFrag(title,type,color,files);
+Sample Sample::operator+(const Sample& sam){
+  Sample temp(*this);
+  if(temp.type==Sample::Type::STACK||temp.type==Sample::Type::SUM)
+    temp.subs.push_back(sam);
+  else
+    temp.files.insert(temp.files.end(),sam.files.begin(),sam.files.end());
+  return temp;
 }
-SampleFrag MakeSampleFrag(TString title,SampleFrag::Type type,int color,tuple<TString,double> frag1,tuple<TString,double> frag2=make_tuple("",0.),tuple<TString,double> frag3=make_tuple("",0.),tuple<TString,double> frag4=make_tuple("",0.),tuple<TString,double> frag5=make_tuple("",0.),tuple<TString,double> frag6=make_tuple("",0.),tuple<TString,double> frag7=make_tuple("",0.)){
-  SampleFrag frag=MakeSampleFrag(title,type,color);
-  if(get<0>(frag1)!="") frag.Add(get<0>(frag1),get<1>(frag1),"","");
-  if(get<0>(frag2)!="") frag.Add(get<0>(frag2),get<1>(frag2),"","");
-  if(get<0>(frag3)!="") frag.Add(get<0>(frag3),get<1>(frag3),"","");
-  if(get<0>(frag4)!="") frag.Add(get<0>(frag4),get<1>(frag4),"","");
-  if(get<0>(frag5)!="") frag.Add(get<0>(frag5),get<1>(frag5),"","");
-  if(get<0>(frag6)!="") frag.Add(get<0>(frag6),get<1>(frag6),"","");
-  if(get<0>(frag7)!="") frag.Add(get<0>(frag7),get<1>(frag7),"","");
-  return frag;
-}
-SampleFrag MakeSampleFrag(TString title,SampleFrag::Type type,int color,TString subsamplefragkey,double weight=1.,TString prefix="",TString suffix=""){
-  SampleFrag samplefrag=MakeSampleFrag(title,type,color);
-  samplefrag.Add(subsamplefragkey,weight,prefix,suffix);
-  return samplefrag;
-}
-SampleFrag MakeSampleFrag(TString title,SampleFrag::Type type,int color,TRegexp subsamplefragregexp,double weight=1.,TString prefix="",TString suffix=""){
-  SampleFrag samplefrag=MakeSampleFrag(title,type,color);
-  samplefrag.Add(subsamplefragregexp,weight,prefix,suffix);
-  return samplefrag;
-}
-void SampleFrag::SetColor(int color){
-  if(color==kBlack){
-    linecolor=color;
-    markercolor=color;
-    markerstyle=20;
-    markersize=0.7;
-    drawoption="e";
-    fillcolor=0;
-  }else{
-    fillcolor=color;
-    linecolor=color;
-    markercolor=color;
-    drawoption="e";
+Sample Sample::operator+(const char* key){
+  for(const auto& [k,sample]:samples){
+    cout<<k<<" "<<key<<endl;
+    if(k==key) return (*this)+sample;
   }
+  if(DEBUG>0) cout<<"###ERROR### [Sample operator+(const char* key,const Sample& sam)] no sample with key "<<key<<endl;
+  exit(1);
+}  
+Sample Sample::operator+(const TString key){
+  return (*this)+key.Data();
+}
+Sample Sample::operator+(const TRegexp reg){
+  Sample temp(*this);
+  for(auto const& [key,sample]:samples)
+    if(key.Contains(reg)) temp=temp+sample;
+  return temp;
+}
+Sample operator%(const char* prefix,const Sample& sam){
+  Sample temp(sam);
+  if(temp.type==Sample::Type::STACK||temp.type==Sample::Type::SUM)
+    for(auto& sub:temp.subs) sub=prefix%sub;
+  else
+    for(auto& [file,w,pre,suf]:temp.files) pre=prefix+pre;
+  return temp;
+}  
+Sample operator%(const TString prefix,const Sample& sam){
+  return prefix.Data()%sam;
+}  
+Sample operator%(const Sample& sam,const char* suffix){
+  Sample temp(sam);
+  if(temp.type==Sample::Type::STACK||temp.type==Sample::Type::SUM)
+    for(auto& sub:temp.subs) sub=sub%suffix;
+  else
+    for(auto& [file,w,pre,suf]:temp.files) suf=suf+suffix;
+  return temp;
+}  
+Sample operator%(const Sample& sam,const TString suffix){
+  return sam%suffix.Data();
+}  
+Sample Sample::operator*(double f){
+  Sample temp(*this);
+  if(temp.type==Sample::Type::STACK||temp.type==Sample::Type::SUM)
+    for(auto& sub:temp.subs) sub=sub*f;
+  else
+    for(auto& [file,w,pre,suf]:temp.files) w*=f;
+  return temp;
+}
+Sample operator*(double f,const Sample& sam){
+  Sample temp(sam);
+  if(temp.type==Sample::Type::STACK||temp.type==Sample::Type::SUM)
+    for(auto& sub:temp.subs) sub=sub*f;
+  else
+    for(auto& [file,w,pre,suf]:temp.files) w*=f;
+  return temp;
+}
+void Sample::SetStyle(int color){
+  style=Style(color);
   if(type==Type::STACK){
-    fillstyle=3001;
-    drawoption="e2";
+    style.fillstyle=3001;
+    style.drawoption="e2";
   }
 }
-void SampleFrag::Add(TString samplefragkey,double weight,TString prefix,TString suffix){
-  auto it=samplefrags.find(samplefragkey);
-  if(it!=samplefrags.end()){
-    auto tempfiles=it->second.files;
-    for(unsigned int i=0;i<tempfiles.size();i++){
-      get<1>(tempfiles[i])=get<1>(tempfiles[i])*weight;
-      get<2>(tempfiles[i])=prefix+get<2>(tempfiles[i]);
-      get<3>(tempfiles[i])=get<3>(tempfiles[i])+suffix;
-    }
-    files.insert(files.end(),tempfiles.begin(),tempfiles.end());
-  }else{
-    if(DEBUG>0) cout<<"###WARNING### [SampleFrag::Add] no samplefrag "<<samplefragkey<<endl;
-  }
-  return;
-}
-void SampleFrag::Add(TRegexp samplefragkeyexp,double weight,TString prefix,TString suffix){
-  for(auto it=samplefrags.begin();it!=samplefrags.end();it++){
-    if(it->first.Contains(samplefragkeyexp)) Add(it->first,weight,prefix,suffix);
+void Sample::Add(TRegexp regexp,double weight,TString prefix,TString suffix){
+  for(auto it=samples.begin();it!=samples.end();it++){
+    if(it->first.Contains(regexp)) (*this)=(*this)+weight*(prefix%(it->second)%suffix);
   }
 }
-void SampleFrag::ApplyHistStyle(TH1* hist) const {
-  if(DEBUG>3) cout<<"###DEBUG### [SampleFrag::ApplyHistStyle(TH1* hist)]"<<endl;
+void Sample::ApplyStyle(TH1* hist) const {
+  if(DEBUG>3) cout<<"###DEBUG### [Sample::ApplyStyle(TH1* hist)]"<<endl;
+  style.Apply(hist);
   if(hist){
-    if(strstr(hist->ClassName(),"THStack")==NULL){
-      if(linecolor>=0) hist->SetLineColor(linecolor);
-      if(linestyle>=0) hist->SetLineStyle(linestyle);
-      if(linewidth>=0) hist->SetLineWidth(linewidth);
-      if(fillcolor>=0) hist->SetFillColor(fillcolor);
-      if(fillstyle>=0) hist->SetFillStyle(fillstyle);
-      if(markercolor>=0) hist->SetMarkerColor(markercolor);
-      if(markerstyle>=0) hist->SetMarkerStyle(markerstyle);
-      if(markersize>=0) hist->SetMarkerSize(markersize);
-      hist->SetOption(drawoption);
-    }      
     hist->SetNameTitle(title,title);
   }
 }
-void SampleFrag::Print() const{
+void Sample::Print(bool detail) const{
   cout<<"Title: "<<title<<" "<<"Type: "<<GetTypeString()<<endl;
-  cout<<"Style: "<<fillcolor<<" "<<fillstyle<<" "<<linecolor<<" "<<linestyle<<" "<<linewidth<<" "<<markercolor<<" "<<markerstyle<<" "<<markersize<<endl;
-  for(auto it=files.begin();it!=files.end();it++){
-    cout<<get<0>(*it)<<" "<<get<1>(*it)<<" "<<get<2>(*it)<<" "<<get<3>(*it)<<endl;
+  cout<<"Style: ";
+  style.Print();
+  for(const auto& [file,weight,prefix,suffix]:files){
+    cout<<file<<" "<<weight<<" "<<prefix<<" "<<suffix<<endl;
+  }
+  for(const auto& sub:subs){
+    sub.Print(detail);
   }
 }
 
-class Sample:public SampleFrag{
-public:
-  vector<tuple<SampleFrag,double>> frags;
-  Sample();
-  void Add(TString samplefragkey,double weight);
-  void Print(bool detail=false) const;
-};
-Sample::Sample(){
-}
-Sample MakeSample(TString title,Sample::Type type,int color){
-  Sample sample;
-  sample.title=title;sample.type=type;
-  sample.SetColor(color);
-  
+Sample MakeSample(TString title,Sample::Type type,int color,tuple<TString,double> subsample1,tuple<TString,double> subsample2=make_tuple("",0.),tuple<TString,double> subsample3=make_tuple("",0.),tuple<TString,double> subsample4=make_tuple("",0.),tuple<TString,double> subsample5=make_tuple("",0.),tuple<TString,double> subsample6=make_tuple("",0.),tuple<TString,double> subsample7=make_tuple("",0.)){
+  Sample sample(title,type,color);
+  if(get<0>(subsample1)!="") sample.Add(get<0>(subsample1),get<1>(subsample1),"","");
+  if(get<0>(subsample2)!="") sample.Add(get<0>(subsample2),get<1>(subsample2),"","");
+  if(get<0>(subsample3)!="") sample.Add(get<0>(subsample3),get<1>(subsample3),"","");
+  if(get<0>(subsample4)!="") sample.Add(get<0>(subsample4),get<1>(subsample4),"","");
+  if(get<0>(subsample5)!="") sample.Add(get<0>(subsample5),get<1>(subsample5),"","");
+  if(get<0>(subsample6)!="") sample.Add(get<0>(subsample6),get<1>(subsample6),"","");
+  if(get<0>(subsample7)!="") sample.Add(get<0>(subsample7),get<1>(subsample7),"","");
   return sample;
 }
-Sample MakeSample(TString title,Sample::Type type,int color,tuple<TString,double> frag1,tuple<TString,double> frag2=make_tuple("",0.),tuple<TString,double> frag3=make_tuple("",0.),tuple<TString,double> frag4=make_tuple("",0.),tuple<TString,double> frag5=make_tuple("",0.),tuple<TString,double> frag6=make_tuple("",0.),tuple<TString,double> frag7=make_tuple("",0.)){
-  Sample sample=MakeSample(title,type,color);
-  if(get<0>(frag1)!="") sample.Add(get<0>(frag1),get<1>(frag1));
-  if(get<0>(frag2)!="") sample.Add(get<0>(frag2),get<1>(frag2));
-  if(get<0>(frag3)!="") sample.Add(get<0>(frag3),get<1>(frag3));
-  if(get<0>(frag4)!="") sample.Add(get<0>(frag4),get<1>(frag4));
-  if(get<0>(frag5)!="") sample.Add(get<0>(frag5),get<1>(frag5));
-  if(get<0>(frag6)!="") sample.Add(get<0>(frag6),get<1>(frag6));
-  if(get<0>(frag7)!="") sample.Add(get<0>(frag7),get<1>(frag7));
-  if(type==Sample::Type::SYS){
-    for(auto& it:sample.frags){
-      get<0>(it).type=SampleFrag::Type::SYS;
-    }
-  }
+Sample MakeSample(TString title,Sample::Type type,int color,tuple<TString,double,TString,TString> subsample1=make_tuple("",0.,"",""),tuple<TString,double,TString,TString> subsample2=make_tuple("",0.,"",""),tuple<TString,double,TString,TString> subsample3=make_tuple("",0.,"",""),tuple<TString,double,TString,TString> subsample4=make_tuple("",0.,"",""),tuple<TString,double,TString,TString> subsample5=make_tuple("",0.,"",""),tuple<TString,double,TString,TString> subsample6=make_tuple("",0.,"",""),tuple<TString,double,TString,TString> subsample7=make_tuple("",0.,"","")){
+  Sample sample(title,type,color);
+  if(get<0>(subsample1)!="") sample.Add(get<0>(subsample1),get<1>(subsample1),get<2>(subsample1),get<3>(subsample1));
+  if(get<0>(subsample2)!="") sample.Add(get<0>(subsample2),get<1>(subsample2),get<2>(subsample2),get<3>(subsample2));
+  if(get<0>(subsample3)!="") sample.Add(get<0>(subsample3),get<1>(subsample3),get<2>(subsample3),get<3>(subsample3));
+  if(get<0>(subsample4)!="") sample.Add(get<0>(subsample4),get<1>(subsample4),get<2>(subsample4),get<3>(subsample4));
+  if(get<0>(subsample5)!="") sample.Add(get<0>(subsample5),get<1>(subsample5),get<2>(subsample5),get<3>(subsample5));
+  if(get<0>(subsample6)!="") sample.Add(get<0>(subsample6),get<1>(subsample6),get<2>(subsample6),get<3>(subsample6));
+  if(get<0>(subsample7)!="") sample.Add(get<0>(subsample7),get<1>(subsample7),get<2>(subsample7),get<3>(subsample7));
   return sample;
 }
-void Sample::Add(TString samplefragkey,double weight){
-  auto it=samplefrags.find(samplefragkey);
-  if(it!=samplefrags.end()){
-    frags.push_back(make_tuple(it->second,weight));
-    if(type==Type::STACK) get<0>(frags.back()).fillcolor=get<0>(frags.back()).linecolor;
-  }else{
-    if(DEBUG>0) cout<<"###WARNING### [Sample::Add] no samplefrag "<<samplefragkey<<endl;
-  }
-  return;
+Sample MakeSample(TString title,Sample::Type type,int color,TString key,double weight=1.,TString prefix="",TString suffix=""){
+  Sample sample(title,type,color);
+  sample.Add(key,weight,prefix,suffix);
+  return sample;
 }
-void Sample::Print(bool detail) const{
-  cout<<"Title: "<<title<<" "<<"Type: "<<GetTypeString()<<endl;
-  cout<<"Style: "<<fillcolor<<" "<<fillstyle<<" "<<linecolor<<" "<<linestyle<<" "<<linewidth<<" "<<markercolor<<" "<<markerstyle<<" "<<markersize<<endl;
-  for(auto it=frags.begin();it!=frags.end();it++){
-    cout<<get<0>(*it).title<<" "<<get<1>(*it)<<endl;
-    if(detail) get<0>(*it).Print();
-  }
+Sample MakeSample(TString title,Sample::Type type,int color,TRegexp regexp,double weight=1.,TString prefix="",TString suffix=""){
+  Sample sample(title,type,color);
+  sample.Add(regexp,weight,prefix,suffix);
+  return sample;
 }
 
 #endif

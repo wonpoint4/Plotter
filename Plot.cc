@@ -1,5 +1,6 @@
 #ifndef __PLOT_CC__
 #define __PLOT_CC__
+#include "Global.h"
 #include"Utils.h"
 class Plot{
 public:
