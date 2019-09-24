@@ -4,10 +4,10 @@
 #include"Style.cc"
 class Sample{
 public:
-  enum Type{UNDEFINE,DATA,SIGNAL,BG,GEN,STACK,SUM,A,B,C,D};
+  enum Type{UNDEF,DATA,SIGNAL,BG,GEN,STACK,SUM,A,B,C,D};
   TString GetTypeString() const{
     switch(type){
-    case UNDEFINE: return "UNDEFINE";
+    case UNDEF: return "UNDEF";
     case DATA: return "DATA";
     case SIGNAL: return "SIGNAL";
     case BG: return "BG";
@@ -49,7 +49,7 @@ public:
 map<TString,Sample> samples;
 
 Sample::Sample(){
-  type=(Sample::Type)UNDEFINE;
+  type=(Sample::Type)UNDEF;
 }
 Sample::Sample(TString title_,Sample::Type type_,int color_){
   title=title_;
@@ -66,7 +66,6 @@ Sample Sample::operator+(const Sample& sam){
 }
 Sample Sample::operator+(const char* key){
   for(const auto& [k,sample]:samples){
-    cout<<k<<" "<<key<<endl;
     if(k==key) return (*this)+sample;
   }
   if(DEBUG>0) cout<<"###ERROR### [Sample operator+(const char* key,const Sample& sam)] no sample with key "<<key<<endl;

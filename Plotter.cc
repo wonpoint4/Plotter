@@ -26,7 +26,7 @@ public:
   //Hist
   TH1* GetHistRaw(TString filename,TString histname);  
   TH1* GetHist(const Sample& sample,TString histname,TString suffix="",int varibit=0);
-  tuple<TH1*,TH1*> GetHistWithTotal(const Sample& sample,TString histname,TString sysname);
+  tuple<TH1*,TH1*> GetHistPair(const Sample& sample,TString histname,TString sysname);
   TH1* GetHistWeightedAFB(TH1* hist_forward_num,TH1* hist_forward_den,TH1* hist_backward_num,TH1* hist_backward_den);
   TH1* GetHistAFB(TH1* hist_forward,TH1* hist_backward);
 
@@ -38,11 +38,14 @@ public:
   int AddError(TH1* hist,TH1* sys);
 
   //Canvas
+  vector<tuple<TH1*,TH1*>> GetHistPairs(Plot& plot);
   TCanvas* GetCompare(vector<tuple<TH1*,TH1*>> hists,TString option);
+  vector<tuple<TH1*,TH1*>> GetRatioHistPairs(vector<tuple<TH1*,TH1*>> histpairs,TString option);
   TCanvas* GetRatio(vector<tuple<TH1*,TH1*>> hists,TString option);
   TCanvas* GetDiff(vector<tuple<TH1*,TH1*>> hists,TString option);
   TCanvas* GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,TString option);
   TCanvas* GetCompareAndDiff(vector<tuple<TH1*,TH1*>> hists,TString option);
+  TCanvas* GetDoubleRatio(Plot& plot);
   TCanvas* GetCanvas(TCanvas* (Plotter::*func)(vector<tuple<TH1*,TH1*>>,TString),TString histname,TString sysname,int rebin,double xmin,double xmax,TString option);
   TCanvas* GetCanvas(TCanvas* (Plotter::*func)(vector<tuple<TH1*,TH1*>>,TString),TString histname,TString suffix,int varibit,int rebin,double xmin,double xmax,TString option);
   TCanvas* GetCanvas(TString plotkey);
@@ -59,7 +62,7 @@ public:
   static vector<TH1*> VectorTH1(vector<tuple<TH1*,TH1*>>& hists);
   tuple<double,double> GetMinMax(const vector<TH1*>& hists);
   void RebinXminXmax(TH1* hist,int rebin,double xmin,double xmax);
-  void Normalize(vector<TH1*>& hists,double val=1.);
+  void Normalize(vector<TH1*> hists,double val=1.);
   static TLegend* GetLegend(const vector<TH1*>& hists,TString option);
   static TLegend* GetLegend(const vector<tuple<TH1*,TH1*>>& hists,TString option);
   
@@ -232,8 +235,8 @@ TH1* Plotter::GetHist(const Sample& sample,TString histname,TString suffix,int v
     return hist;
   }
 }
-tuple<TH1*,TH1*> Plotter::GetHistWithTotal(const Sample& sample,TString histname,TString sysname){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistWithTotal(const Sample& sample,TString histname,TString sysname)]"<<endl;
+tuple<TH1*,TH1*> Plotter::GetHistPair(const Sample& sample,TString histname,TString sysname){
+  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistPair(const Sample& sample,TString histname,TString sysname)]"<<endl;
   TH1* central=GetHist(sample,histname);
   THStack* hstack=NULL;
   if(strstr(central->ClassName(),"THStack")!=NULL){
@@ -246,7 +249,7 @@ tuple<TH1*,TH1*> Plotter::GetHistWithTotal(const Sample& sample,TString histname
     const Systematic& systematic=sysmap.second;
     if(systematic.type==Systematic::Type::MULTI) continue;
     if(sysbit&systematic.sysbit){
-      if(DEBUG>1) std::cout<<"###INFO### [Plotter::GetHistWithTotal] sysname="<<systematic.name<<" systype="<<systematic.GetTypeString()<<endl;
+      if(DEBUG>1) std::cout<<"###INFO### [Plotter::GetHistPair] sysname="<<systematic.name<<" systype="<<systematic.GetTypeString()<<endl;
       vector<TH1*> variations;
       for(const auto& suffix:systematic.suffixes){
 	TH1* this_hist=GetHist(sample,histname,suffix,systematic.varibit);
@@ -260,9 +263,9 @@ tuple<TH1*,TH1*> Plotter::GetHistWithTotal(const Sample& sample,TString histname
       }else if(systematic.type==Systematic::Type::HESSIAN){
 	syss.push_back(GetHessianError(central,variations));
       }else{
-	if(DEBUG>0) std::cout<<"###ERROR### [Plotter::GetHistWithTotal] Wrong Systematic::Type "<<systematic.type<<endl;
+	if(DEBUG>0) std::cout<<"###ERROR### [Plotter::GetHistPair] Wrong Systematic::Type "<<systematic.type<<endl;
       }
-      if(DEBUG>2) std::cout<<"###INFO### [Plotter::GetHistWithTotal] "<<systematic.name+": "<<variations.size()<<" variations"<<endl;
+      if(DEBUG>2) std::cout<<"###INFO### [Plotter::GetHistPair] "<<systematic.name+": "<<variations.size()<<" variations"<<endl;
       for(unsigned int j=0;j<variations.size();j++){
 	delete variations.at(j);
       }
@@ -410,16 +413,32 @@ int Plotter::AddError(TH1* hist,TH1* sys){
 /////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// Canvas ///////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-TCanvas* Plotter::GetCompare(vector<tuple<TH1*,TH1*>> tu_hists,TString option){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetCompare(vector<tuple<TH1*,TH1*>> tu_hists,TString option)]"<<endl;
-  vector<TH1*> hists=VectorTH1(tu_hists);
+vector<tuple<TH1*,TH1*>> Plotter::GetHistPairs(Plot& plot){
+  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistPairs(Plot& plot)]"<<endl;
+  vector<tuple<TH1*,TH1*>> histpairs;
+  for(const auto& entry:entries){
+    if(plot.varibit!=0){
+      histpairs.push_back(make_tuple(GetHist(entry,plot.histname,plot.suffix,plot.varibit),(TH1*)NULL));
+    }else if(plot.sysname!=""){
+      histpairs.push_back(GetHistPair(entry,plot.histname,plot.sysname));
+    }else{
+      histpairs.push_back(make_tuple(GetHist(entry,plot.histname),(TH1*)NULL));
+    }
+    RebinXminXmax(get<0>(histpairs.back()),plot.rebin,plot.xmin,plot.xmax);
+    RebinXminXmax(get<1>(histpairs.back()),plot.rebin,plot.xmin,plot.xmax);
+  }
+  if(plot.option.Contains("norm")) Normalize(VectorTH1(histpairs));
+  return histpairs;
+}  
+TCanvas* Plotter::GetCompare(vector<tuple<TH1*,TH1*>> histpairs,TString option){
+  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetCompare(vector<tuple<TH1*,TH1*>> histpairs,TString option)]"<<endl;
+  vector<TH1*> hists=VectorTH1(histpairs);
   if(hists.size()==0){
     if(DEBUG>0) std::cout<<"###ERROR### [Plotter::GetCompare] hists is zero length"<<endl;
     return NULL;
   }
-  if(option.Contains("norm")) Normalize(hists);
-  TH1* axisowner=get<1>(tu_hists[0]);
-  if(!axisowner) axisowner=get<0>(tu_hists[0]);
+  TH1* axisowner=get<1>(histpairs[0]);
+  if(!axisowner) axisowner=get<0>(histpairs[0]);
 
   TCanvas* c=new TCanvas;
   axisowner->SetStats(0);
@@ -441,7 +460,7 @@ TCanvas* Plotter::GetCompare(vector<tuple<TH1*,TH1*>> tu_hists,TString option){
     if(strstr(hist->ClassName(),"THStack")==NULL&&hist->GetFillColor()==0)
       hist->Draw(TString("same ")+hist->GetOption());
 
-  TLegend* legend=GetLegend(tu_hists,option);
+  TLegend* legend=GetLegend(histpairs,option);
   if(!option.Contains("noleg")) legend->Draw();
 
   if(option.Contains("logy")) c->SetLogy();
@@ -453,34 +472,36 @@ TCanvas* Plotter::GetCompare(vector<tuple<TH1*,TH1*>> tu_hists,TString option){
   }
   return c;
 }
-TCanvas* Plotter::GetRatio(vector<tuple<TH1*,TH1*>> hists,TString option){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetRatio(vector<tuple<TH1*,TH1*>> hists,TString option)]"<<endl;
-  vector<tuple<TH1*,TH1*>> hists_new;
+vector<tuple<TH1*,TH1*>> Plotter::GetRatioHistPairs(vector<tuple<TH1*,TH1*>> histpairs,TString option){
+  vector<tuple<TH1*,TH1*>> histpairs_new;
   TH1* base=NULL;
   TString baseopt=option("base:[0-9]*");
-  if(baseopt!="") base=GetTH1(get<0>(hists[((TString)baseopt(5,100)).Atoi()]));
-  else if(strstr(get<0>(hists[0])->GetName(),"data")&&!strstr(get<0>(hists[1])->GetName(),"data"))
-    base=GetTH1(get<0>(hists[1]));
-  else 
-    base=GetTH1(get<0>(hists[0]));
+  if(baseopt!="") base=GetTH1(get<0>(histpairs[((TString)baseopt(5,100)).Atoi()]));
+  else if(histpairs.size()>2) base=GetTH1(get<0>(histpairs[0]));
+  else base=GetTH1(get<0>(histpairs[1]));
   
   for(int i=0;i<base->GetNbinsX()+2;i++){
     base->SetBinError(i,0);
   }
-  for(const auto& histtuple:hists){
-    TH1 *hist0=NULL,*hist1=NULL;
-    if(get<0>(histtuple)){
-      hist0=GetTH1(get<0>(histtuple));
-      hist0->Divide(base);
+  for(const auto& [hist0,hist1]:histpairs){
+    TH1 *hist0_new=NULL,*hist1_new=NULL;
+    if(hist0){
+      hist0_new=GetTH1(hist0);
+      hist0_new->Divide(base);
     }
-    if(get<1>(histtuple)){
-      hist1=GetTH1(get<1>(histtuple));
-      hist1->Divide(base);
+    if(hist1){
+      hist1_new=GetTH1(hist1);
+      hist1_new->Divide(base);
     }
-    hists_new.push_back(make_tuple(hist0,hist1));
+    histpairs_new.push_back(make_tuple(hist0_new,hist1_new));
   }  
   delete base;
-  TCanvas* c=GetCompare(hists_new,option.ReplaceAll("norm",""));
+  return histpairs_new;
+}  
+TCanvas* Plotter::GetRatio(vector<tuple<TH1*,TH1*>> histpairs,TString option){
+  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetRatio(vector<tuple<TH1*,TH1*>> histpairs,TString option)]"<<endl;
+  vector<tuple<TH1*,TH1*>> histpairs_new=GetRatioHistPairs(histpairs,option);
+  TCanvas* c=GetCompare(histpairs_new,option.ReplaceAll("norm",""));
   TH1* axisowner=GetAxisParent(c);
   axisowner->GetYaxis()->SetTitle("Ratio");
   if(option.Contains("widewidey")){
@@ -501,10 +522,8 @@ TCanvas* Plotter::GetDiff(vector<tuple<TH1*,TH1*>> tu_hists,TString option){
   TH1* base=NULL;
   TString baseopt=option("base:[0-9]*");
   if(baseopt!="") base=GetTH1(get<0>(tu_hists[((TString)baseopt(5,100)).Atoi()]));
-  else if(strstr(get<0>(tu_hists[0])->GetName(),"data")&&!strstr(get<0>(tu_hists[1])->GetName(),"data"))
-    base=GetTH1(get<0>(tu_hists[1]));
-  else 
-    base=GetTH1(get<0>(tu_hists[0]));
+  else if(tu_hists.size()>2) base=GetTH1(get<0>(tu_hists[0]));
+  else base=GetTH1(get<0>(tu_hists[1]));
   
   for(int i=0;i<base->GetNbinsX()+2;i++){
     base->SetBinError(i,0);
@@ -628,13 +647,61 @@ TCanvas* Plotter::GetCompareAndDiff(vector<tuple<TH1*,TH1*>> hists,TString optio
   axisparent->GetXaxis()->SetLabelSize(0.09);
   return c;
 }
-
+TCanvas* Plotter::GetDoubleRatio(Plot& plot){
+  vector<vector<tuple<TH1*,TH1*>>> vec_histpairs;
+  for(auto& sub:plot.subplots){
+    vec_histpairs.push_back(GetRatioHistPairs(GetHistPairs(sub),plot.option));
+  }
+  int baseindex=0;
+  if(plot.subplots.size()==2){
+    baseindex=1;
+    for(int i=0;i<vec_histpairs[baseindex].size();i++){
+      TH1* hist=get<0>(vec_histpairs[baseindex][i]);
+      bool flag=false;
+      for(int j=1;j<hist->GetNbinsX()+1;j++) if(hist->GetBinContent(j)!=1.) flag=true;
+      if(!flag){
+	for(int j=0;j<vec_histpairs.size();j++){
+	  vec_histpairs[j].erase(vec_histpairs[j].begin()+i);
+	}
+      }
+    }
+    vector<tuple<TH1*,TH1*>> histpairs_new;
+    for(int i=0;i<vec_histpairs[baseindex].size();i++){
+      TH1* base=(TH1*)get<0>(vec_histpairs[baseindex][i])->Clone();
+      for(int j=0;j<base->GetNbinsX()+2;j++) base->SetBinError(j,0);
+      for(int j=0;j<vec_histpairs.size();j++){
+	if(get<0>(vec_histpairs[j][i])) get<0>(vec_histpairs[j][i])->Divide(base);
+	if(get<1>(vec_histpairs[j][i])) get<1>(vec_histpairs[j][i])->Divide(base);
+	histpairs_new.push_back(make_tuple(get<0>(vec_histpairs[j][i]),get<1>(vec_histpairs[j][i])));
+      }
+      delete base;
+    }
+    TCanvas* c=GetCompare(histpairs_new,plot.option.ReplaceAll("norm",""));
+    TH1* axisowner=GetAxisParent(c);
+    axisowner->GetYaxis()->SetTitle("DoubleRatio");
+    if(plot.option.Contains("widewidey")){
+      axisowner->GetYaxis()->SetRangeUser(0.01,1.99);
+      axisowner->GetYaxis()->SetNdivisions(506);
+    }else if(plot.option.Contains("widey")){
+      axisowner->GetYaxis()->SetRangeUser(0.501,1.499);
+      axisowner->GetYaxis()->SetNdivisions(506);
+    }else{
+      axisowner->GetYaxis()->SetRangeUser(0.801,1.199);
+      axisowner->GetYaxis()->SetNdivisions(504);
+    }
+    return c;
+  }else{
+    if(DEBUG>0) std::cout<<"###ERROR### not yet"<<endl;
+    exit(1);
+  }
+}
+  
 
 TCanvas* Plotter::GetCanvas(TCanvas* (Plotter::*func)(vector<tuple<TH1*,TH1*>>,TString),TString histname,TString sysname,int rebin,double xmin,double xmax,TString option){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetCanvas(TCanvas* (*func)(vector<tuple<TH1*,TH1*>>,TString),TString histname,TString sysname,int rebin,double xmin,double xmax,TString option)]"<<endl;
   vector<tuple<TH1*,TH1*>> hists;
   for(const auto& entry:entries){
-    hists.push_back(GetHistWithTotal(entry,histname,sysname));
+    hists.push_back(GetHistPair(entry,histname,sysname));
     RebinXminXmax(get<0>(hists.back()),rebin,xmin,xmax);
     RebinXminXmax(get<1>(hists.back()),rebin,xmin,xmax);
   }
@@ -654,10 +721,13 @@ TCanvas* Plotter::GetCanvas(TString plotkey){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetCanvas(TString plotkey)]"<<endl;
   Plot& plot=plots[plotkey];
   TCanvas* c=NULL;
-  if(plot.type==Plot::Type::CompareAndRatio) c=GetCanvas(&Plotter::GetCompareAndRatio,plot.histname,plot.sysname,plot.rebin,plot.xmin,plot.xmax,plot.option);
-  else if(plot.type==Plot::Type::CompareAndDiff) c=GetCanvas(&Plotter::GetCompareAndDiff,plot.histname,plot.sysname,plot.rebin,plot.xmin,plot.xmax,plot.option);
-  //  if(plot.type==Plot::Type::DoubleRatio){
-    
+  if(plot.type==Plot::Type::DoubleRatio){
+    c=GetDoubleRatio(plot);
+  }else{
+    vector<tuple<TH1*,TH1*>> histpairs=GetHistPairs(plot);
+    if(plot.type==Plot::Type::CompareAndRatio) c=GetCompareAndRatio(histpairs,plot.option);
+    else if(plot.type==Plot::Type::CompareAndDiff) c=GetCompareAndDiff(histpairs,plot.option);
+  }    
   return c;
 }
 vector<TCanvas*> Plotter::GetCanvases(TRegexp plotkey){
@@ -763,7 +833,7 @@ void Plotter::RebinXminXmax(TH1* hist,int rebin,double xmin,double xmax){
     }
   }
 }
-void Plotter::Normalize(vector<TH1*>& hists,double val=1.){
+void Plotter::Normalize(vector<TH1*> hists,double val=1.){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::Normalize(vector<TH1*> hists,double val=1.)]"<<endl;
   for(auto hist:hists){
     if(strstr(hist->ClassName(),"THStack")){
@@ -793,8 +863,10 @@ TLegend* Plotter::GetLegend(const vector<TH1*>& hists,TString option){
   for(const auto& hist:hists_th1)
     if(strlen(hist->GetName())>maxlen) maxlen=strlen(hist->GetName());
 
+  if(maxlen<10) maxlen=10;
+  
   vector<double> coordinates;
-  double char_unit=0.013,entry_unit=0.065;
+  double char_unit=0.013,entry_unit=0.07;
   if(option.Contains("leftleg")) coordinates={0.11,0.89,0.11+maxlen*char_unit,0.89-hists_th1.size()*entry_unit};
   else if(option.Contains("middlebottomleg")) coordinates={0.5-0.5*maxlen*char_unit,0.05,0.5+0.5*maxlen*char_unit,0.05+hists_th1.size()*entry_unit};
   else if(option.Contains("bottomleg")) coordinates={0.89,0.05,0.89-maxlen*char_unit,0.05+hists_th1.size()*entry_unit};

@@ -3,14 +3,14 @@
 #include "Utils.h"
 class Systematic{
 public:
-  enum Type{UNDEFINE,ENVELOPE,GAUSSIAN,HESSIAN,MULTI};
+  enum Type{UNDEF,ENVELOPE,GAUSSIAN,HESSIAN,MULTI};
   TString name;
-  Type type=Type::UNDEFINE;
+  Type type=Type::UNDEF;
   vector<TString> suffixes;
   int sysbit=0;
   int varibit=0;
 
-  Systematic(TString name_="",Type type_=Type::UNDEFINE,int varibit_=0);
+  Systematic(TString name_="",Type type_=Type::UNDEF,int varibit_=0);
   ~Systematic();
   TString GetTypeString() const;
   void Print() const;
@@ -24,7 +24,7 @@ Systematic::~Systematic(){}
 
 TString Systematic::GetTypeString() const{
   switch(type){
-  case UNDEFINE: return "UNDEFINE";
+  case UNDEF: return "UNDEF";
   case ENVELOPE: return "ENVELOPE";
   case GAUSSIAN: return "GAUSSIAN";
   case HESSIAN: return "HESSIAN";

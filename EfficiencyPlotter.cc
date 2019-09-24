@@ -40,7 +40,7 @@ EfficiencyPlotter::EfficiencyPlotter(){
 
   vector<TString> ids={"POGTight_PFIsoTight","POGTight_TrkIsoLoose","MediumID","MediumID_selective","MediumID_Q","MediumID_selective_Q","TightID_Q"};
   for(const auto& [key,sample]:samples){
-    if(sample.type!=Sample::Type::UNDEFINE&&key.Contains(TRegexp("201[0-9]$"))){
+    if(sample.type!=Sample::Type::UNDEF&&key.Contains(TRegexp("201[0-9]$"))){
       for(const auto& id:ids){
 	samples[key+"_"+id]=sample%("_"+id);
 	samples[key+"_"+id+"_noefficiencySF"]=(Sample(key+" (noSF)",Sample::Type::A,kMagenta)+sample)%("_"+id+"_noefficiencySF");
