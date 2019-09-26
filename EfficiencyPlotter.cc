@@ -1,5 +1,6 @@
 #include"Plotter.cc"
-
+#ifndef __EFFICIENCYPLOTTER_CC__
+#define __EFFICIENCYPLOTTER_CC__
 class EfficiencyPlotter:public Plotter{
 public:
   void SetupEntries();
@@ -12,7 +13,15 @@ public:
   TString analyzer;
   EfficiencyPlotter();
   double GetChi2(TH1* h1,TH1* h2=NULL);
+  TCanvas* GetCanvas(TString key);
 };
+TCanvas* EfficiencyPlotter::GetCanvas(TString key){
+  TCanvas* c=Plotter::GetCanvas(key);
+  c->cd(1);
+  TText t;
+  t.DrawTextNDC(0.11,0.86,mode);
+  return c;
+}
 EfficiencyPlotter::EfficiencyPlotter(){
   analyzer="EfficiencyValidation";
   TObjArray* arr=gSystem->GetFromPipe("find $SKFlatOutputDir$SKFlatV/"+analyzer+"/ -type f").Tokenize("\n");
@@ -90,7 +99,8 @@ void EfficiencyPlotter::SetupEntries(){
   for(const auto& avail:availables){
     if(make_tuple(channel,year,mode)==avail){
       entries.push_back(Sample("data",Sample::Type::DATA,kBlack)+(schannel+syear+"_"+mode));
-      entries.push_back(Sample("sim",Sample::Type::SUM,kRed)+("amc"+syear+"_"+mode)+("tau_amc"+syear+"_"+mode)+("vv"+syear+"_"+mode)+("wjets"+syear+"_"+mode)+("tt"+syear+"_"+mode));
+      entries.push_back(Sample("sim",Sample::Type::STACK,kRed)+("amc"+syear+"_"+mode)+("tau_amc"+syear+"_"+mode)+("vv"+syear+"_"+mode)+("wjets"+syear+"_"+mode)+("tt"+syear+"_"+mode));
+      
       if(withno){
 	entries.push_back((Sample("sim_noefficiencySF",Sample::Type::A,kBlue)+("amc"+syear+"_"+mode)+("tau_amc"+syear+"_"+mode)+("vv"+syear+"_"+mode)+("wjets"+syear+"_"+mode)+("tt"+syear+"_"+mode))%"_noefficiencySF");
 	//if(year==2018) samples["sim"]=MakeSample("sim",Sample::Type::SUM,kRed,make_tuple("mg"+syear+"_"+mode,1.),make_tuple("mgtt"+syear+"_"+mode,1.),make_tuple("vv"+syear+"_"+mode,1.),make_tuple("wjets"+syear+"_"+mode,1.),make_tuple("tt"+syear+"_"+mode,1.));
@@ -101,6 +111,7 @@ void EfficiencyPlotter::SetupEntries(){
     }
   }
   cout<<"###ERROR#### [EfficiencyPlotter::SetupSamples] Not available configuration"<<endl;
+  for(const auto& [ch,ye,mo]:availables) cout<<ch<<" "<<ye<<" "<<mo<<endl;
   return;
 }
 void EfficiencyPlotter::SetupSystematics(){
@@ -134,3 +145,4 @@ double EfficiencyPlotter::GetChi2(TH1* h1,TH1* h2){
   return chi2;
 }
   
+#endif

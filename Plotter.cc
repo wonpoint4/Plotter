@@ -48,9 +48,9 @@ public:
   TCanvas* GetDoubleRatio(Plot& plot);
   TCanvas* GetCanvas(TCanvas* (Plotter::*func)(vector<tuple<TH1*,TH1*>>,TString),TString histname,TString sysname,int rebin,double xmin,double xmax,TString option);
   TCanvas* GetCanvas(TCanvas* (Plotter::*func)(vector<tuple<TH1*,TH1*>>,TString),TString histname,TString suffix,int varibit,int rebin,double xmin,double xmax,TString option);
-  TCanvas* GetCanvas(TString plotkey);
+  virtual TCanvas* GetCanvas(TString plotkey);
   vector<TCanvas*> GetCanvases(TRegexp plotkey);
-  void SaveCanvases(TString plotkey);
+  void SaveCanvases(TRegexp plotkey);
   void SaveCanvas(TString plotkey);
   void SaveCanvasAll();
 
@@ -78,8 +78,8 @@ public:
   void RemovePlots(TRegexp regexp=".*");
   void SetPlotRebinXminXmaxAuto(TString plotkey);
   void SetPlotsRebinXminXmaxAuto();
-  void SetPlotOption(TString plotname,TString option);
-  void SetPlotsOption(TRegexp plotname,TString option);
+  void SetPlotOption(TString plotname,TString option,TString suffix="");
+  void SetPlotsOption(TRegexp plotname,TString option,TString suffix="");
   void RemovePlotOption(TString plotname,TString option);
   void RemovePlotsOption(TRegexp plotname,TString option);
   void SavePlotFile();
@@ -655,6 +655,8 @@ TCanvas* Plotter::GetDoubleRatio(Plot& plot){
   int baseindex=0;
   if(plot.subplots.size()==2){
     baseindex=1;
+    TString baseopt=plot.option("base:[0-9]*");
+    if(baseopt!="") baseindex=((TString)baseopt(5,100)).Atoi();
     for(int i=0;i<vec_histpairs[baseindex].size();i++){
       TH1* hist=get<0>(vec_histpairs[baseindex][i]);
       bool flag=false;
@@ -678,6 +680,8 @@ TCanvas* Plotter::GetDoubleRatio(Plot& plot){
     }
     TCanvas* c=GetCompare(histpairs_new,plot.option.ReplaceAll("norm",""));
     TH1* axisowner=GetAxisParent(c);
+    axisowner->SetTitle(plot.name);
+    c->SetGridy();
     axisowner->GetYaxis()->SetTitle("DoubleRatio");
     if(plot.option.Contains("widewidey")){
       axisowner->GetYaxis()->SetRangeUser(0.01,1.99);
@@ -728,6 +732,8 @@ TCanvas* Plotter::GetCanvas(TString plotkey){
     if(plot.type==Plot::Type::CompareAndRatio) c=GetCompareAndRatio(histpairs,plot.option);
     else if(plot.type==Plot::Type::CompareAndDiff) c=GetCompareAndDiff(histpairs,plot.option);
   }    
+  c->Update();
+  c->Modified();
   return c;
 }
 vector<TCanvas*> Plotter::GetCanvases(TRegexp plotkey){
@@ -745,7 +751,7 @@ void Plotter::SaveCanvas(TString plotkey){
   delete c;
   pdir->Delete();
 }
-void Plotter::SaveCanvases(TString plotkey){
+void Plotter::SaveCanvases(TRegexp plotkey){
   for(const auto& [key,plot]:plots)
     if(key.Contains(plotkey)) SaveCanvas(key);
 }  
@@ -949,7 +955,7 @@ set<TString> Plotter::ParseHistKeys(set<TString> histkeys,set<TString> fixes,set
       TString basename=Basename(key);
       if(basename.Contains(TRegexp(fix))){
 	key=dirname+"/"+Replace(basename,TRegexp(fix),"");
-	key=Replace(key,"^[.]/","");
+	if(key.Contains("^[.]/")) key=Replace(key,"^[.]/","");
       }
     }
     key.ReplaceAll("forward","AFB");
@@ -984,6 +990,16 @@ void Plotter::AddPlot(TString plotkey,TString plotoption){
   Plot plot;
   plot.name=plotkey;plot.histname=plotkey;
   plot.SetOption(plotoption);
+  if(plot.type==Plot::Type::DoubleRatio){
+    for(auto const& [k,p]:plots){
+      if(k.Contains(TRegexp(plotkey+"$"))) plot.subplots.push_back(p);
+    }
+    if(plot.subplots.size()!=2){
+      if(DEBUG>0) cout<<"###ERROR### DoubleRatio should have 2 subplots ("<<plot.subplots.size()<<"!=2"<<endl;
+      plot.Print();
+      exit(1);
+    }
+  }
   plots[plotkey]=plot;
   //SetPlotRebinXminXmaxAuto(key);
 } 
@@ -1003,6 +1019,7 @@ void Plotter::RemovePlots(TRegexp regexp){
   for(const auto& key:to_remove)
     RemovePlot(key);
 }   
+  
 void Plotter::SetPlotRebinXminXmaxAuto(TString plotkey){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::SetPlotRebinXminXmaxAuto()]"<<endl;
   Plot& plot=plots[plotkey];
@@ -1030,14 +1047,19 @@ void Plotter::SetPlotsRebinXminXmaxAuto(){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::SetPlotsRebinXminXmaxAuto()]"<<endl;
   for(auto& [plotname,plot]:plots) SetPlotRebinXminXmaxAuto(plotname);
 }
-void Plotter::SetPlotOption(TString plotname,TString option){
+void Plotter::SetPlotOption(TString plotname,TString option,TString suffix){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::SetPlotOption(TString plotname,TString option)]"<<endl;
-  plots[plotname].SetOption(option);
+  Plot temp(plots[plotname]);
+  temp.SetOption(option);
+  temp.SetOption(Form("name:%s",(temp.name+suffix).Data()));
+  plots[plotname+suffix]=temp;
 }
-void Plotter::SetPlotsOption(TRegexp plotname_,TString option){
+void Plotter::SetPlotsOption(TRegexp plotname_,TString option,TString suffix){
+  vector<TString> list;
   for(auto& [plotname,plot]:plots){
-    if(plotname.Contains(plotname_)) SetPlotOption(plotname,option);
+    if(plotname.Contains(plotname_)) list.push_back(plotname); 
   }
+  for(const auto& plotname:list) SetPlotOption(plotname,option,suffix);
 }
 void Plotter::RemovePlotOption(TString plotname,TString option){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::RemovePlotOption(TString plotname,TString option)]"<<endl;
@@ -1073,7 +1095,7 @@ Systematic Plotter::MakeSystematic(TString name,Systematic::Type type,int varibi
     this_sys.sysbit=1<<systematics.size();
     this_sys.suffixes=includes;
   }
-  if(DEBUG>0) this_sys.Print();
+  if(DEBUG>2) this_sys.Print();
   return this_sys;
 }
 Systematic Plotter::MakeSystematic(TString name,Systematic::Type type,int varibit,TString includes){
