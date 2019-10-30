@@ -25,6 +25,7 @@ public:
   Type type;
   Style style;
   Style styletotal;
+  TString prefix;
   vector<tuple<TString,double,TString,TString>> files; //filename,type,weight,prefix,suffix
   vector<Sample> subs;
 
@@ -120,9 +121,10 @@ Sample operator*(double f,const Sample& sam){
 }
 void Sample::SetStyle(int color){
   style=Style(color);
+  
   if(type==Type::STACK){
-    style.fillstyle=3001;
-    style.drawoption="e2";
+    style.fillcolor=0;
+    style.drawoption="e hist";
   }
 }
 void Sample::Add(TRegexp regexp,double weight,TString prefix,TString suffix){
