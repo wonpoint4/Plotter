@@ -23,10 +23,11 @@ Style::Style(int color){
     drawoption="e";
     fillcolor=0;
   }else{
-    fillcolor=color;
+    //fillcolor=color;
+    fillcolor=0;
     linecolor=color;
     markercolor=color;
-    drawoption="e";
+    drawoption="e hist";
   }
 }
     
@@ -47,7 +48,7 @@ void Style::Apply(TH1* hist) const {
   }
 }
 void Style::Print() const{
-  cout<<"fillcolor:"<<fillcolor<<" fillstyle:"<<fillstyle<<" linecolor:"<<linecolor<<" linestyle:"<<linestyle<<" linewidth:"<<linewidth<<" markercolor:"<<markercolor<<" markerstyle:"<<markerstyle<<" markersize:"<<markersize<<endl;
+  cout<<"fillcolor:"<<fillcolor<<" fillstyle:"<<fillstyle<<" linecolor:"<<linecolor<<" linestyle:"<<linestyle<<" linewidth:"<<linewidth<<" markercolor:"<<markercolor<<" markerstyle:"<<markerstyle<<" markersize:"<<markersize<<" drawoption:"<<drawoption<<endl;
 }
 
 #endif

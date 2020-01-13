@@ -27,8 +27,6 @@ public:
   virtual TH1* GetHistRaw(TString filename,TString histname);
   virtual TH1* GetHist(const Sample& sample,TString histname,TString suffix="",int varibit=0);
   tuple<TH1*,TH1*> GetHistPair(const Sample& sample,TString histname,TString sysname);
-  TH1* GetHistWeightedAFB(TH1* hist_forward_num,TH1* hist_forward_den,TH1* hist_backward_num,TH1* hist_backward_den);
-  TH1* GetHistAFB(TH1* hist_forward,TH1* hist_backward);
 
   //Uncertainty
   TH1* GetEnvelope(TH1* central,const vector<TH1*>& variations);
@@ -43,6 +41,7 @@ public:
   vector<tuple<TH1*,TH1*>> GetRatioHistPairs(vector<tuple<TH1*,TH1*>> histpairs,TString option);
   TCanvas* GetRatio(vector<tuple<TH1*,TH1*>> hists,TString option);
   TCanvas* GetDiff(vector<tuple<TH1*,TH1*>> hists,TString option);
+  TCanvas* GetSig(vector<tuple<TH1*,TH1*>> hists,TString option);
   TCanvas* GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,TString option);
   TCanvas* GetCompareAndDiff(vector<tuple<TH1*,TH1*>> hists,TString option);
   TCanvas* GetDoubleRatio(Plot& plot);
@@ -106,6 +105,7 @@ Plotter::Plotter(){
   TH1::SetDefaultSumw2(kTRUE);
   gStyle->SetCanvasDefH(600);
   gStyle->SetCanvasDefW(700);
+  gStyle->SetPadLeftMargin(0.15);
 }
 Plotter::~Plotter(){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::~Plotter()]"<<endl;
@@ -173,70 +173,48 @@ TH1* Plotter::GetHistRaw(TString filename,TString histname){
 TH1* Plotter::GetHist(const Sample& sample,TString histname,TString suffix,int varibit){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHist(const Sample& sample,TString histname,TString suffix,int varibit)]"<<endl;
   TH1* hist=NULL;
-  if(histname.Contains("weightedAFB")){
-    TString histname_forward_num=histname; histname_forward_num.ReplaceAll("weightedAFB","forward_num");
-    TString histname_forward_den=histname; histname_forward_den.ReplaceAll("weightedAFB","forward_den");
-    TString histname_backward_num=histname; histname_backward_num.ReplaceAll("weightedAFB","backward_num");
-    TString histname_backward_den=histname; histname_backward_den.ReplaceAll("weightedAFB","backward_den");
-    TH1* hist_forward_num=GetTH1(GetHist(sample,histname_forward_num,suffix,varibit));
-    TH1* hist_forward_den=GetTH1(GetHist(sample,histname_forward_den,suffix,varibit));
-    TH1* hist_backward_num=GetTH1(GetHist(sample,histname_backward_num,suffix,varibit));
-    TH1* hist_backward_den=GetTH1(GetHist(sample,histname_backward_den,suffix,varibit));
-    hist=GetHistWeightedAFB(hist_forward_num,hist_forward_den,hist_backward_num,hist_backward_den);
-    delete hist_forward_num; delete hist_forward_den; delete hist_backward_num; delete hist_backward_den;
-    return hist;
-  }else if(histname.Contains("AFB")){
-    TString histname_forward=histname; histname_forward.ReplaceAll("AFB","forward");
-    TString histname_backward=histname; histname_backward.ReplaceAll("AFB","backward");
-    TH1* hist_forward=GetTH1(GetHist(sample,histname_forward,suffix,varibit));
-    TH1* hist_backward=GetTH1(GetHist(sample,histname_backward,suffix,varibit));
-    hist=GetHistAFB(hist_forward,hist_backward);
-    delete hist_forward; delete hist_backward;
-    return hist;
-  }else{
-    if(sample.type==Sample::Type::STACK){
-      for(int i=sample.subs.size()-1;i>=0;i--){
-	TH1* this_hist=GetHist(sample.subs[i],histname,suffix,varibit);
-	if(this_hist){
-	  if(!hist){
-	    hist=(TH1*)new THStack(sample.title,sample.title);
-	  }
-	  ((THStack*)hist)->Add(this_hist,"HIST");
+  if(sample.type==Sample::Type::STACK){
+    for(int i=sample.subs.size()-1;i>=0;i--){
+      TH1* this_hist=GetHist(sample.subs[i],histname,suffix,varibit);
+      if(this_hist){
+	if(!hist){
+	  hist=(TH1*)new THStack(sample.title,sample.title);
 	}
-      }
-    }else if(sample.type==Sample::Type::SUM){
-      for(const auto& sub:sample.subs){
-	TH1* this_hist=GetHist(sub,histname,suffix,varibit);
-	if(this_hist){
-	  if(!hist){
-	    hist=(TH1*)this_hist->Clone();
-	    hist->SetDirectory(pdir);
-	    hist->Reset();
-	  }
-	  hist->Add(this_hist);
-	  delete this_hist;
-	}
-      }
-    }else{
-      for(const auto& [filepath,weight,pre,suf]:sample.files){
-	TString finalhistname=sample.prefix+GetHistNameWithPrefixAndSuffix(histname,pre,suf+((1<<sample.type)&varibit?suffix:""));
-	TH1* this_hist=GetHistRaw(filepath,finalhistname);
-	if(this_hist){
-	  this_hist->SetName(sample.title);
-	  if(!hist){
-	    hist=(TH1*)this_hist->Clone();
-	    hist->SetDirectory(pdir);
-	    hist->Reset();
-	  }
-	  hist->Add(this_hist,weight);
-	  delete this_hist;
-	}
+	((THStack*)hist)->Add(this_hist,"HIST");
       }
     }
-    sample.ApplyStyle(hist);
-    if(hist) hist->SetTitle(histname+suffix);
-    return hist;
+  }else if(sample.type==Sample::Type::SUM){
+    for(const auto& sub:sample.subs){
+      TH1* this_hist=GetHist(sub,histname,suffix,varibit);
+      if(this_hist){
+	if(!hist){
+	  hist=(TH1*)this_hist->Clone();
+	  hist->SetDirectory(pdir);
+	  hist->Reset();
+	}
+	hist->Add(this_hist);
+	delete this_hist;
+      }
+    }
+  }else{
+    for(const auto& [filepath,weight,pre,suf]:sample.files){
+      TString finalhistname=sample.prefix+GetHistNameWithPrefixAndSuffix(histname,pre,suf+((1<<sample.type)&varibit?suffix:""));
+      TH1* this_hist=GetHistRaw(filepath,finalhistname);
+      if(this_hist){
+	this_hist->SetName(sample.title);
+	if(!hist){
+	  hist=(TH1*)this_hist->Clone();
+	  hist->SetDirectory(pdir);
+	  hist->Reset();
+	}
+	hist->Add(this_hist,weight);
+	delete this_hist;
+      }
+    }
   }
+  sample.ApplyStyle(hist);
+  if(hist) hist->SetTitle(histname+suffix);
+  return hist;
 }
 tuple<TH1*,TH1*> Plotter::GetHistPair(const Sample& sample,TString histname,TString sysname){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistPair(const Sample& sample,TString histname,TString sysname)]"<<endl;
@@ -287,50 +265,11 @@ tuple<TH1*,TH1*> Plotter::GetHistPair(const Sample& sample,TString histname,TStr
     delete central;
     central=(TH1*)hstack;
   }
-  central->SetLineWidth(2);
+  //central->SetLineWidth(2);
+  central->SetOption(central->GetOption()+TString(" e1"));
   return make_tuple(central,total);
 }
 
-TH1* Plotter::GetHistWeightedAFB(TH1* hist_forward_num,TH1* hist_forward_den,TH1* hist_backward_num,TH1* hist_backward_den){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistWeightedAFB(TH1* hist_forward_num,TH1* hist_forward_den,TH1* hist_backward_num,TH1* hist_backward_den)]"<<endl;
-  TH1* hist=(TH1*)hist_forward_num->Clone();
-  hist->SetDirectory(pdir);
-  hist->Reset();
-  for(int i=0;i<hist->GetNbinsX()+2;i++){
-    double valfn=hist_forward_num->GetBinContent(i);
-    double valbn=hist_backward_num->GetBinContent(i);
-    double valfd=hist_forward_den->GetBinContent(i);
-    double efd=hist_forward_den->GetBinError(i);
-    double valbd=hist_backward_den->GetBinContent(i);
-    double ebd=hist_backward_den->GetBinError(i);
-    hist->SetBinContent(i,3./8.*(valfd-valbd)/(valfn+valbn));
-    hist->SetBinError(i,3./8.*(valbn*valfd+valfn*valbd)/pow(valfn+valbn,2)*sqrt(pow(efd/valfd,2)+pow(ebd/valbd,2)));
-  }
-  TString this_title=hist_forward_num->GetTitle();
-  hist->SetTitle(this_title.ReplaceAll("forward_num","weightedAFB"));
-  return hist;
-}
-TH1* Plotter::GetHistAFB(TH1* hist_forward,TH1* hist_backward){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistAFB(TH1* hist_forward,TH1* hist_backward)]"<<endl;
-  if(!hist_forward||!hist_backward){
-    if(DEBUG>1) std::cout<<"###WARING### [Plotter::GetHistAFB] It is null TH1*"<<endl;
-    return NULL;
-  }
-  TH1* hist=(TH1*)hist_forward->Clone();
-  hist->SetDirectory(pdir);
-  hist->Reset();
-  for(int i=0;i<hist->GetNbinsX()+2;i++){
-    double valf=hist_forward->GetBinContent(i);
-    double ef=hist_forward->GetBinError(i);
-    double valb=hist_backward->GetBinContent(i);
-    double eb=hist_backward->GetBinError(i);
-    hist->SetBinContent(i,(valf-valb)/(valf+valb));
-    hist->SetBinError(i,2*sqrt(ef*ef*valb*valb+eb*eb*valf*valf)/pow(valf+valb,2));
-  }
-  TString this_title=hist_forward->GetTitle();
-  hist->SetTitle(this_title.ReplaceAll("forward","AFB"));
-  return hist;
-}
 
 /////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// Uncertainty //////////////////////////////////
@@ -443,18 +382,18 @@ TCanvas* Plotter::GetCompare(vector<tuple<TH1*,TH1*>> histpairs,TString option){
   }
   TH1* axisowner=get<1>(histpairs[0]);
   if(!axisowner) axisowner=get<0>(histpairs[0]);
-
+  
   TCanvas* c=new TCanvas;
-  c->SetLeftMargin(0.15);
   axisowner->SetStats(0);
   axisowner->Draw();
   if(c->GetPrimitive("title")) ((TPaveText*)c->GetPrimitive("title"))->SetTextSize(0.075);
+  axisowner->GetYaxis()->SetTickLength(0.015);
 
   for(const auto& hist:hists)
     if(strstr(hist->ClassName(),"THStack")){
       hist->Draw("same");
       TH1* hist_sum=GetTH1(hist);
-      hist_sum->Draw(TString("same ")+hist_sum->GetOption());
+      hist_sum->Draw(TString("same ")+hist->GetOption());
     }
 
   for(const auto& hist:hists)
@@ -481,6 +420,7 @@ TCanvas* Plotter::GetCompare(vector<tuple<TH1*,TH1*>> histpairs,TString option){
     double range=fabs(maximum-minimum);
     axisowner->GetYaxis()->SetRangeUser(minimum/range<-0.01?minimum-0.1*range:0,maximum+0.1*range);
   }
+  gPad->RedrawAxis();
   return c;
 }
 vector<tuple<TH1*,TH1*>> Plotter::GetRatioHistPairs(vector<tuple<TH1*,TH1*>> histpairs,TString option){
@@ -569,6 +509,10 @@ TCanvas* Plotter::GetDiff(vector<tuple<TH1*,TH1*>> tu_hists,TString option){
   axisowner->GetYaxis()->SetRangeUser(minimum/range<-0.01?minimum-0.1*range:0,maximum+0.1*range);
   return c;
 }
+TCanvas* Plotter::GetSig(vector<tuple<TH1*,TH1*>> tu_hists,TString option){
+  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetSig(vector<tuple<TH1*,TH1*>> tu_hists,TString option)]"<<endl;
+  return NULL;
+}
 TCanvas* Plotter::GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,TString option){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,TString option)]"<<endl;
   TString option1,option2;
@@ -590,7 +534,6 @@ TCanvas* Plotter::GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,TString opti
   if(c->GetPad(1)->GetPrimitive("title")) ((TPaveText*)c->GetPad(1)->GetPrimitive("title"))->SetTextSize(0.075);
   gPad->SetPad(0,0.35,1,1);
   gPad->SetBottomMargin(0.02);
-  gPad->SetLeftMargin(0.15);
   TH1* axisparent=GetAxisParent(gPad);
   axisparent->GetYaxis()->SetLabelSize(0.06);
   axisparent->GetYaxis()->SetTitleSize(0.06);
@@ -608,7 +551,6 @@ TCanvas* Plotter::GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,TString opti
   }
   gPad->SetPad(0,0,1,0.365);
   gPad->SetTopMargin(0.02);
-  gPad->SetLeftMargin(0.15);
   gPad->SetBottomMargin(0.3);
   gPad->SetGridx();gPad->SetGridy();
   gPad->SetFillStyle(0);
@@ -650,7 +592,6 @@ TCanvas* Plotter::GetCompareAndDiff(vector<tuple<TH1*,TH1*>> hists,TString optio
   if(c->GetPad(1)->GetPrimitive("title")) ((TPaveText*)c->GetPad(1)->GetPrimitive("title"))->SetTextSize(0.075);
   gPad->SetPad(0,0.35,1,1);
   gPad->SetBottomMargin(0.02);
-  gPad->SetLeftMargin(0.15);
   TH1* axisparent=GetAxisParent(gPad);
   axisparent->GetYaxis()->SetLabelSize(0.06);
   axisparent->GetYaxis()->SetTitleSize(0.06);
@@ -668,7 +609,6 @@ TCanvas* Plotter::GetCompareAndDiff(vector<tuple<TH1*,TH1*>> hists,TString optio
   }
   gPad->SetPad(0,0,1,0.365);
   gPad->SetTopMargin(0.02);
-  gPad->SetLeftMargin(0.15);
   gPad->SetBottomMargin(0.3);
   gPad->SetGridx();gPad->SetGridy();
   gPad->SetFillStyle(0);
@@ -773,9 +713,12 @@ TCanvas* Plotter::DrawPlot(TString plotkey,TString option){
     c=GetDoubleRatio(plot);
   }else{
     vector<tuple<TH1*,TH1*>> histpairs=GetHistPairs(plot);
-    if(plot.type==Plot::Type::CompareAndRatio) c=GetCompareAndRatio(histpairs,plot.option);
+    if(plot.type==Plot::Type::Compare) c=GetCompare(histpairs,plot.option);
+    else if(plot.type==Plot::Type::Ratio) c=GetRatio(histpairs,plot.option);
+    else if(plot.type==Plot::Type::Diff) c=GetDiff(histpairs,plot.option);
+    else if(plot.type==Plot::Type::Sig) c=GetSig(histpairs,plot.option);
+    else if(plot.type==Plot::Type::CompareAndRatio) c=GetCompareAndRatio(histpairs,plot.option);
     else if(plot.type==Plot::Type::CompareAndDiff) c=GetCompareAndDiff(histpairs,plot.option);
-    else if(plot.type==Plot::Type::Compare) c=GetCompare(histpairs,plot.option);
   }    
   c->Update();
   c->Modified();
@@ -831,10 +774,16 @@ TH1* Plotter::GetTH1(TH1* hstack,bool deleteorigin){
       hist=(TH1*)((THStack*)hstack)->GetHists()->Last()->Clone();
       hist->SetDirectory(pdir);
       hist->Reset();
+      for(const auto& entry:entries){
+	if(entry.title==hstack->GetName()){
+	  entry.ApplyStyle(hist);
+	  hist->SetTitle(hstack->GetTitle());
+	  break;
+	}
+      }
       for(const auto& this_hist:*((THStack*)hstack)->GetHists()){
 	hist->Add((TH1*)this_hist);
       }
-      //samples[hstack->GetName()].ApplyHistStyle(hist);
     }else{
       hist=(TH1*)hstack->Clone();
       hist->SetDirectory(pdir);
@@ -886,20 +835,22 @@ void Plotter::RebinXminXmax(TH1* hist,int rebin,double xmin,double xmax){
     }else{
       if(rebin) hist->Rebin(rebin);
       if(xmin==0&&xmax==0){
-	int start=0,end=0;
-	for(int i=0;i<hist->GetNbinsX()+2;i++){
-	  if(hist->GetBinContent(i)&&hist->GetBinError(i)){
-	    start=i;
-	    break;
+	if(hist->GetXaxis()->GetFirst()==1&&hist->GetXaxis()->GetLast()==hist->GetNbinsX()){
+	  int start=0,end=0;
+	  for(int i=0;i<hist->GetNbinsX()+2;i++){
+	    if(hist->GetBinContent(i)&&hist->GetBinError(i)){
+	      start=i;
+	      break;
+	    }
 	  }
-	}
-	for(int i=hist->GetNbinsX()+1;i>=0;i--){
-	  if(hist->GetBinContent(i)&&hist->GetBinError(i)){
-	    end=i;
-	    break;
+	  for(int i=hist->GetNbinsX()+1;i>=0;i--){
+	    if(hist->GetBinContent(i)&&hist->GetBinError(i)){
+	      end=i;
+	      break;
+	    }
 	  }
+	  if(start<end) hist->GetXaxis()->SetRange(start,end);
 	}
-	if(start<end) hist->GetXaxis()->SetRange(start,end);
       }else hist->GetXaxis()->SetRangeUser(xmin,xmax);
     }
   }

@@ -44,8 +44,9 @@ public:
   friend Sample operator*(double w,const Sample& sam);
   void SetStyle(int color);
   void Add(TRegexp sampleregexp,double weight=1.,TString prefix="",TString suffix="");
-  void ApplyStyle(TH1* hist) const ;
+  void ApplyStyle(TH1* hist) const;
   void Print(bool detail=false) const;
+  bool IsCollection() const;
 };
 map<TString,Sample> samples;
 
@@ -57,10 +58,20 @@ Sample::Sample(TString title_,Sample::Type type_,int color_){
   type=type_;
   SetStyle(color_);
 }
+bool Sample::IsCollection() const{
+  if(type==Sample::Type::STACK||type==Sample::Type::SUM) return true;
+  else return false;
+}
 Sample Sample::operator+(const Sample& sam){
   Sample temp(*this);
-  if(temp.type==Sample::Type::STACK||temp.type==Sample::Type::SUM)
+  if(temp.IsCollection()&&sam.IsCollection())
+    temp.subs.insert(temp.subs.end(),sam.subs.begin(),sam.subs.end());
+  else if(temp.IsCollection()){
     temp.subs.push_back(sam);
+    if(temp.type==Sample::Type::STACK) temp.subs.back().style.fillcolor=temp.subs.back().style.linecolor;
+  }else if(sam.IsCollection())
+    for(const auto& subsample:sam.subs)
+      temp.files.insert(temp.files.end(),subsample.files.begin(),subsample.files.end());
   else
     temp.files.insert(temp.files.end(),sam.files.begin(),sam.files.end());
   return temp;
@@ -123,8 +134,7 @@ void Sample::SetStyle(int color){
   style=Style(color);
   
   if(type==Type::STACK){
-    style.fillcolor=0;
-    style.drawoption="e hist";
+    style.drawoption="e";
   }
 }
 void Sample::Add(TRegexp regexp,double weight,TString prefix,TString suffix){

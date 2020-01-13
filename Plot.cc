@@ -4,7 +4,7 @@
 #include"Utils.h"
 class Plot{
 public:
-  enum Type{UNDEF,Compare,Ratio,Diff,CompareAndRatio,CompareAndDiff,DoubleRatio,Collection};
+  enum Type{UNDEF,Compare,Ratio,Diff,Sig,CompareAndRatio,CompareAndDiff,DoubleRatio,Collection};
   TString name;
   TString histname;
   TString sysname;

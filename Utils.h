@@ -21,7 +21,8 @@ TString Basename(TString s){
 TString Replace(TString str,TRegexp reg,TString repl){
   int extent;
   int start=str.Index(reg,&extent);
-  return str.Replace(start,extent,repl);
+  if(start>=0) return str.Replace(start,extent,repl);
+  else return str;
 }
 
 #endif

@@ -12,7 +12,7 @@ public:
   TString analyzer;
   map<TString,vector<double>> binning;
   map<TString,TString> binformat;
-  AFBPlotter(TString mode_="dab",TString flag="");
+  AFBPlotter(TString mode_="dab");
 
   double GetChi2(TH1* h1,TH1* h2=NULL);
   void DetectBinning();
@@ -20,6 +20,10 @@ public:
   pair<double,double> GetRange(TString histname,TString axisname);
   pair<double,double> GetAFBAndError(TH1* costhetaCS);
   TH1* GetHist(const Sample& sample,TString histname,TString suffix="",int varibit=0);
+
+  TH1* GetHistWeightedAFB(TH1* hist_forward_num,TH1* hist_forward_den,TH1* hist_backward_num,TH1* hist_backward_den);
+  TH1* GetHistAFB(TH1* hist_forward,TH1* hist_backward);
+
   TCanvas* DrawPlot(TString plotkey,TString option="");
   map<TString,TString> plot_axisnames;
 };
@@ -65,14 +69,15 @@ TCanvas* AFBPlotter::DrawPlot(TString plotkey,TString option=""){
     }else{
       c->cd();
     }
-
+    
     TH1* axisowner=GetAxisParent(gPad);
     if(axisowner){
       if(plot.histname.Contains("AFB")) axisowner->GetYaxis()->SetTitle("A_{FB}"); 
       else if(plot.option.Contains("norm")) axisowner->GetYaxis()->SetTitle("Normalized");
       else if(plot.option.Contains("widthweight")) axisowner->GetYaxis()->SetTitle("Events / 1 GeV");
-      else axisowner->GetYaxis()->SetTitle(Form("Events / %g GeV",axisowner->GetBinWidth(1)));
-
+      //else axisowner->GetYaxis()->SetTitle(Form("Events / %g GeV",axisowner->GetBinWidth(1)));
+      else axisowner->GetYaxis()->SetTitle("Events");
+      
       if(gPad->GetPrimitive("TPave")){
 	TLegend* leg=(TLegend*)gPad->GetPrimitive("TPave");
 	for(auto obj:*leg->GetListOfPrimitives()){
@@ -87,20 +92,20 @@ TCanvas* AFBPlotter::DrawPlot(TString plotkey,TString option=""){
 	}
       }
 
-      axisowner->SetTitle("");
+      //axisowner->SetTitle("");
       TLatex latex;
       latex.SetTextSize(0.07);
       latex.SetNDC();
       if(plot.type!=Plot::Type::CompareAndRatio&&plot.type!=Plot::Type::CompareAndDiff) latex.SetTextSize(0.04);
-      latex.DrawLatex(0.17,0.92,"CMS #bf{#it{Preliminary}}");
+      //latex.DrawLatex(0.17,0.92,"CMS #bf{#it{Preliminary}}");
       if(plot.histname.Contains(TRegexp("^[a-z]*2016/"))&&!plot.option.Contains("nodata")){
-	latex.DrawLatex(0.6,0.92,"35.92 fb^{-1} (13 TeV)");
+	//latex.DrawLatex(0.6,0.92,"35.92 fb^{-1} (13 TeV)");
       }else if(plot.histname.Contains(TRegexp("^[a-z]*2017/"))&&!plot.option.Contains("nodata")){
-	latex.DrawLatex(0.6,0.92,"41.53 fb^{-1} (13 TeV)");
+	//latex.DrawLatex(0.6,0.92,"41.53 fb^{-1} (13 TeV)");
       }else if(plot.histname.Contains(TRegexp("^[a-z]*2018/"))&&!plot.option.Contains("nodata")){
-	latex.DrawLatex(0.6,0.92,"59.74 fb^{-1} (13 TeV)");
+	//latex.DrawLatex(0.6,0.92,"59.74 fb^{-1} (13 TeV)");
       }	
-	
+      
       gPad->Update();
       gPad->Modified();
     }
@@ -119,7 +124,54 @@ TH1* AFBPlotter::GetHistRaw(TString filename,TString histname){
   //if(DEBUG>3) cout<<"###DEBUG### AFBPlotter::GetHistRaw(TString filename,TString histname)"<<endl;
   TString syear=histname(TRegexp("201[6-8]"));
   if(!filename.Contains(syear)) return NULL;
-    
+
+  TH1* hist=NULL;
+  if(histname.Contains("forward")||histname.Contains("backward")){
+    TString this_axisname=histname(TRegexp("([a-z]+)"),histname.Index("ward"));
+    this_axisname=this_axisname(1,this_axisname.Length()-2);
+    const int naxis=3;
+    TString ordered_axisname[naxis]={"m","y","pt"};
+    TString this_histname=histname;
+    vector<pair<double,double>> ranges;
+    pair<double,double> this_range;
+    for(int i=0;i<naxis;i++){
+      if(ordered_axisname[i]==this_axisname)
+	this_range=GetRange(histname,ordered_axisname[i]);
+      else
+	ranges.push_back(GetRange(histname,ordered_axisname[i]));
+      this_histname=Replace(this_histname,TRegexp(ordered_axisname[i]+"[[0-9.]*,[0-9.]*]/"),"");
+    }
+    TH3* hist3=(TH3*)Plotter::GetHistRaw(filename,Replace(this_histname,"("+this_axisname+")",""));
+    if(hist3){
+      hist3->Sumw2();
+      if(ordered_axisname[0]==this_axisname){
+	int ybin1=hist3->GetYaxis()->FindBin(ranges[0].first),
+	  ybin2=hist3->GetYaxis()->FindBin(ranges[0].second)-1,
+	  zbin1=hist3->GetZaxis()->FindBin(ranges[1].first),
+	  zbin2=hist3->GetZaxis()->FindBin(ranges[1].second)-1;
+	hist=hist3->ProjectionX(histname,ybin1,ybin2,zbin1,zbin2);
+	hist->GetXaxis()->SetRangeUser(this_range.first,this_range.second);
+      }else if(ordered_axisname[1]==this_axisname){
+	int xbin1=hist3->GetXaxis()->FindBin(ranges[0].first),
+	  xbin2=hist3->GetXaxis()->FindBin(ranges[0].second)-1,
+	  zbin1=hist3->GetZaxis()->FindBin(ranges[1].first),
+	zbin2=hist3->GetZaxis()->FindBin(ranges[1].second)-1;
+	hist=hist3->ProjectionY(histname,xbin1,xbin2,zbin1,zbin2);
+	hist->GetXaxis()->SetRangeUser(this_range.first,this_range.second);
+      }else if(ordered_axisname[2]==this_axisname){
+	int xbin1=hist3->GetXaxis()->FindBin(ranges[0].first),
+	  xbin2=hist3->GetXaxis()->FindBin(ranges[0].second)-1,
+	  ybin1=hist3->GetYaxis()->FindBin(ranges[1].first),
+	  ybin2=hist3->GetYaxis()->FindBin(ranges[1].second)-1;
+	hist=hist3->ProjectionZ(histname,xbin1,xbin2,ybin1,ybin2);
+	hist->GetXaxis()->SetRangeUser(this_range.first,this_range.second);
+      }
+      hist->SetName(histname);
+      hist->SetDirectory(pdir);
+    }
+    return hist;
+  }
+
   TList* hlist=new TList;
   for(const auto& [axisname,axisbin]:binning){
     bool breakflag=false;
@@ -128,14 +180,14 @@ TH1* AFBPlotter::GetHistRaw(TString filename,TString histname){
       if(range.first==axisbin[i]&&range.second==axisbin[i+1]) break;
       if(range.first<=axisbin[i]&&range.second>=axisbin[i+1]){
 	TString this_histname=Replace(histname,TRegexp(axisname+"[[0-9.]*,[0-9.]*]"),Form("%s[%s,%s]",axisname.Data(),Form(binformat[axisname],binning[axisname][i]),Form(binformat[axisname],binning[axisname][i+1])));
-	TH1* this_hist=GetHistRaw(filename,this_histname);
-	if(this_hist) hlist->Add(this_hist);
-	breakflag=true;
+	  TH1* this_hist=GetHistRaw(filename,this_histname);
+	  if(this_hist) hlist->Add(this_hist);
+	  breakflag=true;
       }
     }
     if(breakflag) break;
   }
-  TH1* hist=NULL;
+
   if(hlist->GetSize()){
     hist=(TH1*)hlist->At(0)->Clone();
     hist->Reset();
@@ -148,52 +200,25 @@ TH1* AFBPlotter::GetHistRaw(TString filename,TString histname){
   hlist->Delete();
   delete hlist;
   return hist;
-  
 }
 TH1* AFBPlotter::GetHist(const Sample& sample,TString histname,TString suffix,int varibit){
-  TString afbstring=histname(TRegexp("AFB([a-z]+)"));
-  if(afbstring!=""){
-    TString axisname=afbstring(4,afbstring.Length()-5);
-    pair<double,double> range=GetRange(histname,axisname);
-    TH1D* afbhist=new TH1D(sample.title,histname+suffix,binning[axisname].size()-1,&binning[axisname][0]);
-    afbhist->SetDirectory(pdir);
-    if(histname.Contains("weightedAFB("+axisname+")")) afbstring="weightedAFB("+axisname+")";
-    for(int i=0;i<binning[axisname].size()-1;i++){
-      if(range.first<=binning[axisname][i]&&range.second>=binning[axisname][i+1]){
-	TString this_histname=Replace(histname,TRegexp(axisname+"[[0-9.]*,[0-9.]*]"),Form("%s[%s,%s]",axisname.Data(),Form(binformat[axisname],binning[axisname][i]),Form(binformat[axisname],binning[axisname][i+1])));
-	TH1* hist_forward=GetHist(sample,Replace(this_histname,afbstring,"forward"),suffix,varibit);
-	TH1* hist_backward=GetHist(sample,Replace(this_histname,afbstring,"backward"),suffix,varibit);
-	if(hist_forward&&hist_backward){
-	  double val=0,err=0;
-	  hist_forward=GetTH1(hist_forward,true);
-	  hist_backward=GetTH1(hist_backward,true);
-	  if(histname.Contains("weightedAFB")){
-	    double valfn=hist_forward->GetBinContent(2);
-	    double valfd=hist_forward->GetBinContent(3);
-	    double efd=hist_forward->GetBinError(3);
-	    double valbn=hist_backward->GetBinContent(2);
-	    double valbd=hist_backward->GetBinContent(3);
-	    double ebd=hist_backward->GetBinError(3);
-	    val=3./8.*(valfd-valbd)/(valfn+valbn);
-	    err=3./8.*(valbn*valfd+valfn*valbd)/pow(valfn+valbn,2)*sqrt(pow(efd/valfd,2)+pow(ebd/valbd,2));
-	  }else{
-	    double valf=hist_forward->GetBinContent(1);
-	    double ef=hist_forward->GetBinError(1);
-	    double valb=hist_backward->GetBinContent(1);
-	    double eb=hist_backward->GetBinError(1);
-	    val=(valf-valb)/(valf+valb);
-	    err=2*sqrt(ef*ef*valb*valb+eb*eb*valf*valf)/pow(valf+valb,2);
-	  }
-	  afbhist->SetBinContent(i+1,val);
-	  afbhist->SetBinError(i+1,err);
-	  delete hist_forward;
-	  delete hist_backward;
-	}
-      }
-    }
-    sample.ApplyStyle(afbhist);
-    afbhist->SetTitle(histname+suffix);
-    return afbhist;
+  TH1* hist=NULL;
+  if(histname.Contains("weightedAFB")){
+    TH1* hist_forward_num=GetHist(sample,Replace(histname,"weightedAFB","forward_num"),suffix,varibit);
+    TH1* hist_forward_den=GetHist(sample,Replace(histname,"weightedAFB","forward_den"),suffix,varibit);
+    TH1* hist_backward_num=GetHist(sample,Replace(histname,"weightedAFB","backward_num"),suffix,varibit);
+    TH1* hist_backward_den=GetHist(sample,Replace(histname,"weightedAFB","backward_den"),suffix,varibit);
+    hist=GetHistWeightedAFB(hist_forward_num,hist_forward_den,hist_backward_num,hist_backward_den);
+  }else if(histname.Contains("AFB")){
+    TH1* hist_forward=GetHist(sample,Replace(histname,"AFB","forward"),suffix,varibit);
+    TH1* hist_backward=GetHist(sample,Replace(histname,"AFB","backward"),suffix,varibit);
+    hist=GetHistAFB(hist_forward,hist_backward);
+  }
+  if(hist){
+    sample.ApplyStyle(hist);
+    hist->SetTitle(histname+suffix);
+    hist->SetDirectory(pdir);
+    return hist;
   }else{
     return Plotter::GetHist(sample,histname,suffix,varibit);
   }
@@ -211,6 +236,59 @@ pair<double,double> AFBPlotter::GetAFBAndError(TH1* hist){
   double valb=hist->IntegralAndError(0,zerobin-1,eb);
   if(to_delete) delete to_delete;
   return make_pair((valf-valb)/(valf+valb),2*sqrt(ef*ef*valb*valb+eb*eb*valf*valf)/pow(valf+valb,2));
+}
+
+TH1* AFBPlotter::GetHistWeightedAFB(TH1* hist_forward_num,TH1* hist_forward_den,TH1* hist_backward_num,TH1* hist_backward_den){
+  if(DEBUG>3) std::cout<<"###DEBUG### [AFBPlotter::GetHistWeightedAFB(TH1* hist_forward_num,TH1* hist_forward_den,TH1* hist_backward_num,TH1* hist_backward_den)]"<<endl;
+  if(!hist_forward_num||!hist_forward_den||!hist_backward_num||!hist_backward_den){
+    if(DEBUG>1) std::cout<<"###WARING### [AFBPlotter::GetHistweightedAFB] It is null TH1*"<<endl;
+    return NULL;
+  }
+  hist_forward_num=GetTH1(hist_forward_num,true);
+  hist_forward_den=GetTH1(hist_forward_den,true);
+  hist_backward_num=GetTH1(hist_backward_num,true);
+  hist_backward_den=GetTH1(hist_backward_den,true);
+  TH1* hist=(TH1*)hist_forward_num->Clone();
+  hist->SetDirectory(pdir);
+  hist->Reset();
+  for(int i=0;i<hist->GetNbinsX()+2;i++){
+    double valfn=hist_forward_num->GetBinContent(i);
+    double valbn=hist_backward_num->GetBinContent(i);
+    double valfd=hist_forward_den->GetBinContent(i);
+    double efd=hist_forward_den->GetBinError(i);
+    double valbd=hist_backward_den->GetBinContent(i);
+    double ebd=hist_backward_den->GetBinError(i);
+    hist->SetBinContent(i,3./8.*(valfd-valbd)/(valfn+valbn));
+    hist->SetBinError(i,3./8.*(valbn*valfd+valfn*valbd)/pow(valfn+valbn,2)*sqrt(pow(efd/valfd,2)+pow(ebd/valbd,2)));
+  }
+  TString this_title=hist_forward_num->GetTitle();
+  hist->SetTitle(this_title.ReplaceAll("forward_num","weightedAFB"));
+  return hist;
+}
+TH1* AFBPlotter::GetHistAFB(TH1* hist_forward,TH1* hist_backward){
+  if(DEBUG>3) std::cout<<"###DEBUG### [AFBPlotter::GetHistAFB(TH1* hist_forward,TH1* hist_backward)]"<<endl;
+  if(!hist_forward||!hist_backward){
+    if(DEBUG>1) std::cout<<"###WARING### [AFBPlotter::GetHistAFB] It is null TH1*"<<endl;
+    return NULL;
+  }
+  hist_forward=GetTH1(hist_forward,true);
+  hist_backward=GetTH1(hist_backward,true);
+  TH1* hist=(TH1*)hist_forward->Clone();
+  hist->SetDirectory(pdir);
+  hist->Reset();
+  for(int i=0;i<hist->GetNbinsX()+2;i++){
+    double valf=hist_forward->GetBinContent(i);
+    double ef=hist_forward->GetBinError(i);
+    double valb=hist_backward->GetBinContent(i);
+    double eb=hist_backward->GetBinError(i);
+    if(valf+valb){
+      hist->SetBinContent(i,(valf-valb)/(valf+valb));
+      hist->SetBinError(i,2*sqrt(ef*ef*valb*valb+eb*eb*valf*valf)/pow(valf+valb,2));
+    }
+  }
+  TString this_title=hist_forward->GetTitle();
+  hist->SetTitle(this_title.ReplaceAll("forward","AFB"));
+  return hist;
 }
 
   
@@ -243,54 +321,33 @@ void AFBPlotter::DetectBinning(){
       binning[axisname].push_back(edge);
 }
 
-AFBPlotter::AFBPlotter(TString mode_="dab",TString flag=""){
-  analyzer="AFBAnalyzer";
-  vector<TString> files=Split(gSystem->GetFromPipe("find $SKFlatOutputDir$SKFlatV/"+analyzer+"/ -type f"),"\n");
+AFBPlotter::AFBPlotter(TString mode_="dab"){
+  vector<TString> files=Split(gSystem->GetFromPipe("find $SKFlatOutputDir$SKFlatV/AFBAnalyzer/ -type f"),"\n");
   for(const auto& file:files){
-    TString year=file("/"+analyzer+"/[0-9]+/"); year=year(analyzer.Length()+2,4);
-    TString key=Replace(file,TString()+getenv("SKFlatOutputDir")+getenv("SKFlatV")+"/"+analyzer+"/","");
+    TString key=Replace(file,TString()+getenv("SKFlatOutputDir")+getenv("SKFlatV")+"/AFBAnalyzer/","");
     Sample frag;
     frag.files.push_back(make_tuple(file,1.,"",""));
     samples[key]=frag;
   } 
   
-  if(flag!="") flag="/"+flag+"__";
-  vector<TString> syears={"2016","2017","2018"};
-  for(const auto& syear:syears){
-    samples["muon"+syear]=Sample("muon"+syear,Sample::Type::DATA,kBlack)+TRegexp(syear+flag+"/DATA/AFBAnalyzer_SkimTree_SMP_DoubleMuon_[A-Z]");
-    samples["electron"+syear]=Sample("electron"+syear,Sample::Type::DATA,kBlack)+TRegexp(syear+flag+"/DATA/AFBAnalyzer_SkimTree_SMP_.*EG.*_[A-Z]");
+  samples["data"]=Sample("data",Sample::Type::DATA,kBlack)+TRegexp("/DATA/AFBAnalyzer_SkimTree_SMP_DoubleMuon_[A-Z]")+TRegexp("/DATA/AFBAnalyzer_SkimTree_SMP_.*EG.*_[A-Z]");
 
-    samples["amc"+syear]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp(syear+flag+"/AFBAnalyzer_SkimTree_SMP_DYJets.root");
-    samples["amctt"+syear]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::SIGNAL,kGreen)+TRegexp(syear+flag+"/AFBAnalyzer_SkimTree_SMP_DYJets.root"));
-    samples["genamc"+syear]=Sample("#gamma*/Z#rightarrowll (GEN)",Sample::Type::SIGNAL,kRed)+TRegexp(syear+flag+"/AFBAnalyzer_SkimTree_GEN_DYJets.root");
-    //samples["amc"+syear+"_nozptcor"]=Sample("amc"+syear+"_nozptcor",Sample::Type::SIGNAL,kRed,"amc"+syear,1.,"","_nozptcor"); //FIXME no 2018
-
-    //samples["amcPt"+syear]=Sample("amcPt"+syear,Sample::Type::SIGNAL,kRed,TRegexp("SkimTree_SMP_DYJets_Pt-[0-9]+To[0-9]+_"+syear));
-    
-    samples["amcJet"+syear]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp(syear+flag+"/AFBAnalyzer_SkimTree_SMP_DY[0-9]Jets.root");
-    samples["amcJettt"+syear]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::SIGNAL,kGreen)+TRegexp(syear+flag+"/AFBAnalyzer_SkimTree_SMP_DY[0-9]Jets.root"));
-    samples["genamcJet"+syear]=Sample("#gamma*/Z#rightarrowll (GEN)",Sample::Type::SIGNAL,kRed)+TRegexp(syear+flag+"/AFBAnalyzer_SkimTree_GEN_DY[0-9]Jets.root");
-    //samples["amcJet"+syear+"_nozptcor"]=Sample("amcJet"+syear+"_nozptcor",Sample::Type::SIGNAL,kRed,"amcJet"+syear,1.,"","_nozptcor");
-    
-    //samples["mg"+syear]=Sample("mg"+syear,Sample::Type::SIGNAL,kRed,TRegexp("SkimTree_SMP_DYJets_MG_"+syear));
-    //samples["powhegmuon"+syear]=Sample("powhegmuon"+syear,Sample::Type::SIGNAL,kBlue,TRegexp("ZToMuMu_M_[0-9]+_[0-9]+_"+syear));
-    //samples["powhegelectron"+syear]=Sample("powhegelectron"+syear,Sample::Type::SIGNAL,kBlue,TRegexp("ZToEE_M_[0-9]+_[0-9]+_"+syear));
-
-    //samples["genamc"+syear]=Sample("genamc"+syear,Sample::Type::GEN,kRed,TRegexp("SkimTree_GEN_DYJets_"+syear),1.,"gen_"); //FIXME no 2018
-    //samples["genamcJet"+syear]="gen_"%(Sample("genamcJet"+syear,Sample::Type::GEN,kRed,TRegexp("SkimTree_GEN_DY[0-9]Jets_"+syear),1.,"gen_"));
-    //samples["truthamcJet"+syear]=Sample("truthamcJet"+syear,Sample::Type::GEN,kRed,TRegexp("SkimTree_SMP_DY[0-9]Jets_"+syear),1.,"gen_");
-    //samples["genpowhegmuon"+syear]="gen_"%(Sample("powhegmuon"+syear,Sample::Type::SIGNAL,kBlue)+TRegexp("ZToMuMu_M_[0-9]+_[0-9]+_"+syear));
-    //samples["genpowhegelectron"+syear]="gen_"%(Sample("genpowhegelectron"+syear,Sample::Type::SIGNAL,kBlue)+TRegexp("ZToEE_M_[0-9]+_[0-9]+_"+syear),1.,"gen_");
-    
-    //FIXME no 2018
-    //if(syear!="2018") samples["amctt"+syear]=Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::BG,EColor::kGreen,"SkimTree_SMP_DYJets_"+syear,"tau_");
-    //FIXME no 2016
-    //samples["mgtt"+syear]=Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::BG,EColor::kGreen,TRegexp("SkimTree_SMP_DYJets_MG_"+syear),"tau_");
-
-    samples["vv"+syear]=Sample("Diboson",Sample::Type::BG,kBlue)+TRegexp(syear+flag+"/AFBAnalyzer_SkimTree_SMP_[W-Z][W-Z]_pythia");
-    samples["wjets"+syear]=Sample("W",Sample::Type::BG,kYellow)+TRegexp(syear+flag+"/AFBAnalyzer_SkimTree_SMP_WJets_MG");
-    samples["tt"+syear]=Sample("t#bar{t}",Sample::Type::BG,kMagenta)+TRegexp(syear+flag+"/AFBAnalyzer_SkimTree_SMP_TTLL_powheg");
-  }
+  samples["amc"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_SkimTree_SMP_DYJets.root");
+  samples["amctt"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::SIGNAL,kGreen)+TRegexp("/AFBAnalyzer_SkimTree_SMP_DYJets.root"));
+  samples["genamc"]=Sample("#gamma*/Z#rightarrowll (GEN)",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_SkimTree_GEN_DYJets.root");
+  //samples["amcPt"+syear]=Sample("amcPt"+syear,Sample::Type::SIGNAL,kRed,TRegexp("SkimTree_SMP_DYJets_Pt-[0-9]+To[0-9]+_"+syear));
+  samples["amcJet"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_SkimTree_SMP_DY[0-9]Jets.root");
+  samples["amcJettt"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::SIGNAL,kGreen)+TRegexp("/AFBAnalyzer_SkimTree_SMP_DY[0-9]Jets.root"));
+  samples["genamcJet"]=Sample("#gamma*/Z#rightarrowll (GEN)",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_SkimTree_GEN_DY[0-9]Jets.root");
+  samples["ww"]=Sample("WW",Sample::Type::BG,kBlue)+TRegexp("/AFBAnalyzer_SkimTree_SMP_WW_pythia");
+  samples["wz"]=Sample("WZ",Sample::Type::BG,kGreen)+TRegexp("/AFBAnalyzer_SkimTree_SMP_WZ_pythia");
+  samples["zz"]=Sample("ZZ",Sample::Type::BG,kCyan)+TRegexp("/AFBAnalyzer_SkimTree_SMP_ZZ_pythia");
+  samples["vv"]=Sample("Diboson",Sample::Type::BG,kBlue)+TRegexp("/AFBAnalyzer_SkimTree_SMP_[W-Z][W-Z]_pythia");
+  samples["wjets"]=Sample("W",Sample::Type::BG,kYellow)+TRegexp("/AFBAnalyzer_SkimTree_SMP_WJets_MG");
+  samples["tt"]=Sample("t#bar{t}",Sample::Type::BG,kMagenta)+TRegexp("/AFBAnalyzer_SkimTree_SMP_TTLL_powheg");
+  samples["amc+bg"]=Sample("simulation",Sample::Type::STACK,kRed)+"amc"+"amctt"+"vv"+"wjets"+"tt";
+  samples["amcJet+bg"]=Sample("simulation",Sample::Type::STACK,kRed)+"amcJet"+"amcJettt"+"vv"+"wjets"+"tt";
+  
 
   plot_axisnames["dimass"]="m(ll) [GeV]";
   plot_axisnames["dirap"]="y(ll)";
@@ -322,6 +379,7 @@ int AFBPlotter::Setup(TString mode_){
   else if(mode_=="aga"||mode_=="amc.genamc") mode="amc.genamc";
   else if(mode_=="wr") mode="wr";
   else if(mode_=="appamm") mode="amc_pp.amc_mm";
+  else if(mode_=="mc") mode="mc";
   else {
     cout<<"Invalid mode "<<mode_<<endl;
     exit(1);
@@ -342,20 +400,20 @@ int AFBPlotter::Setup(TString mode_){
 void AFBPlotter::SetupEntries(){
   if(DEBUG)  cout<<"[AFBPlotter::SetupEntries]"<<endl;
   if(mode=="data.amcJet+bg"){
-    entries.push_back(Sample("data",Sample::Type::DATA,kBlack)+TRegexp("^muon201[6-8]$")+TRegexp("^electron201[6-8]$"));
-    entries.push_back(Sample("simulation",Sample::Type::STACK,kRed)+TRegexp("^amcJet201[6-8]$")+TRegexp("^amcJettt201[6-8]$")+TRegexp("^vv201[6-8]$")+TRegexp("^wjets201[6-8]$")+TRegexp("^tt201[6-8]$"));
+    entries.push_back(samples["data"]);
+    entries.push_back(samples["amcJet+bg"]);			   
   }else if(mode=="data.amcJet+bg+ss"){
-    entries.push_back(Sample("data",Sample::Type::DATA,kBlack)+TRegexp("^muon201[6-8]$")+TRegexp("^electron201[6-8]$"));
-    entries.push_back(Sample("simulation",Sample::Type::STACK,kRed)+TRegexp("^amcJet201[6-8]$")+TRegexp("^amcJettt201[6-8]$")+TRegexp("^vv201[6-8]$")+TRegexp("^wjets201[6-8]$")+TRegexp("^tt201[6-8]$"));
-    Sample samesign="ss_"%(Sample("QCD dijet",Sample::Type::BG,kCyan)+TRegexp("^muon201[6-8]$")+TRegexp("^electron201[6-8]$")+(-1)*(Sample()+TRegexp("^amcJet201[6-8]$")+TRegexp("^amcJettt201[6-8]$")+TRegexp("^vv201[6-8]$")+TRegexp("^wjets201[6-8]$")+TRegexp("^tt201[6-8]$")));
+    entries.push_back(samples["data"]);
+    entries.push_back(samples["amcJet+bg"]);			   
+    Sample samesign="ss_"%(Sample("QCD dijet",Sample::Type::BG,kCyan)+samples["data"]+(-1)*(Sample()+"amcJet"+"amcJettt"+"vv"+"wjets"+"tt"));
     entries.back()=entries.back()+samesign;
   }else if(mode=="data.amc+bg"){
-    entries.push_back(Sample("data",Sample::Type::DATA,kBlack)+TRegexp("^muon201[6-8]$")+TRegexp("^electron201[6-8]$"));
-    entries.push_back(Sample("simulation",Sample::Type::STACK,kRed)+TRegexp("^amc201[6-8]$")+TRegexp("^amctt201[6-8]$")+TRegexp("^vv201[6-8]$")+TRegexp("^wjets201[6-8]$")+TRegexp("^tt201[6-8]$"));
+    entries.push_back(samples["data"]);
+    entries.push_back(samples["amc+bg"]);
   }else if(mode=="data.amc+bg+ss"){
-    entries.push_back(Sample("data",Sample::Type::DATA,kBlack)+TRegexp("^muon201[6-8]$")+TRegexp("^electron201[6-8]$"));
-    entries.push_back(Sample("simulation",Sample::Type::STACK,kRed)+TRegexp("^amc201[6-8]$")+TRegexp("^amctt201[6-8]$")+TRegexp("^vv201[6-8]$")+TRegexp("^wjets201[6-8]$")+TRegexp("^tt201[6-8]$"));
-    Sample samesign="ss_"%(Sample("QCD dijet",Sample::Type::BG,kCyan)+TRegexp("^muon201[6-8]$")+TRegexp("^electron201[6-8]$")+(-1)*(Sample()+TRegexp("^amc201[6-8]$")+TRegexp("^amctt201[6-8]$")+TRegexp("^vv201[6-8]$")+TRegexp("^wjets201[6-8]$")+TRegexp("^tt201[6-8]$")));
+    entries.push_back(samples["data"]);
+    entries.push_back(samples["amc+bg"]);			   
+    Sample samesign="ss_"%(Sample("QCD dijet",Sample::Type::BG,kCyan)+samples["data"]+(-1)*(Sample()+"amc"+"amctt"+"vv"+"wjets"+"tt"));
     entries.back()=entries.back()+samesign;
   }else if(mode=="amc.genamc"){
     entries.push_back(Sample("amc",Sample::Type::SIGNAL,kRed)+TRegexp("^amc201[6-8]$"));
@@ -389,7 +447,16 @@ void AFBPlotter::SetupEntries(){
     entries.back().style.linewidth=2;
     entries.back().style.fillcolor=0;
     entries.back().style.drawoption="hist e";
-  }    
+  }else if(mode=="mc"){
+    entries.push_back(samples["amc2016"]+samples["amc2017"]+samples["amc2018"]);
+    //entries.push_back(samples["amctt2016"]+samples["amctt2017"]+samples["amctt2018"]);
+    entries.push_back(samples["tt2016"]+samples["tt2017"]+samples["tt2018"]);
+    //entries.push_back(samples["vv2016"]+samples["vv2017"]+samples["vv2018"]);
+    entries.push_back(samples["ww2016"]+samples["ww2017"]+samples["ww2018"]);
+    //entries.push_back(samples["wz2016"]+samples["wz2017"]+samples["wz2018"]);
+    //entries.push_back(samples["zz2016"]+samples["zz2017"]+samples["zz2018"]);
+    //entries.push_back(samples["wjets2016"]+samples["wjets2017"]+samples["wjets2018"]);
+  }
 }
   
   

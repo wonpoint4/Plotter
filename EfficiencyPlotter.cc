@@ -5,24 +5,13 @@ class EfficiencyPlotter:public Plotter{
 public:
   void SetupEntries();
   void SetupSystematics();
-  int Setup(int channel_,int year_,TString mode_,bool withno);
-  TString mode;
-  bool withno;
-  int channel,year;
-  TString schannel,syear;
+  int Setup(int mode_=0);
+  int mode;
   TString analyzer;
-  EfficiencyPlotter();
+  EfficiencyPlotter(int mode_=-1);
   double GetChi2(TH1* h1,TH1* h2=NULL);
-  TCanvas* GetCanvas(TString key);
 };
-TCanvas* EfficiencyPlotter::GetCanvas(TString key){
-  TCanvas* c=Plotter::GetCanvas(key);
-  c->cd(1);
-  TText t;
-  t.DrawTextNDC(0.11,0.86,mode);
-  return c;
-}
-EfficiencyPlotter::EfficiencyPlotter(){
+EfficiencyPlotter::EfficiencyPlotter(int mode_){
   analyzer="EfficiencyValidation";
   TObjArray* arr=gSystem->GetFromPipe("find $SKFlatOutputDir$SKFlatV/"+analyzer+"/ -type f").Tokenize("\n");
   for(int i=0;i<arr->GetEntries();i++){
@@ -34,19 +23,7 @@ EfficiencyPlotter::EfficiencyPlotter(){
     sample.files.push_back(make_tuple(file,1.,"",""));
     samples[key]=sample;
   } 
-  
-  vector<TString> syears={"2016","2017","2018"};
-  for(const auto& syear:syears){
-    samples["muon"+syear]=Sample("muon"+syear,Sample::Type::DATA,kBlack)+TRegexp("SkimTree_SMP_DoubleMuon_[A-Z].*_"+syear);
-    samples["electron"+syear]=Sample("electron"+syear,Sample::Type::DATA,kBlack)+TRegexp("SkimTree_SMP_.*EG.*_[A-Z].*_"+syear);
-
-    samples["amc"+syear]=Sample("amc"+syear,Sample::Type::SIGNAL,kRed)+TRegexp("SkimTree_SMP_DYJets_"+syear);
-    samples["tau_amc"+syear]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::SIGNAL,kGreen)+TRegexp("SkimTree_SMP_DYJets_"+syear));
-    samples["vv"+syear]=Sample("Diboson",Sample::Type::BG,kBlue)+TRegexp("SkimTree_SMP_[W-Z][W-Z]_pythia_"+syear);
-    samples["wjets"+syear]=Sample("W",Sample::Type::BG,kYellow)+("SkimTree_SMP_WJets_MG_"+syear);
-    samples["tt"+syear]=Sample("t#bar{t}",Sample::Type::BG,kMagenta)+("SkimTree_SMP_TTLL_powheg_"+syear);
-  }
-
+  /*
   vector<TString> ids={"POGTight_PFIsoTight","POGTight_TrkIsoLoose","MediumID","MediumID_selective","MediumID_Q","MediumID_selective_Q","TightID_Q"};
   for(const auto& [key,sample]:samples){
     if(sample.type!=Sample::Type::UNDEF&&key.Contains(TRegexp("201[0-9]$"))){
@@ -56,24 +33,29 @@ EfficiencyPlotter::EfficiencyPlotter(){
       }
     }
   }
+  */
+  samples["muon"]=Sample("data (ee)",Sample::Type::DATA,kBlack)+TRegexp("SkimTree_SMP_DoubleMuon_[A-Z].*_201[6-8]$");
+  samples["electron"]=Sample("data (#mu#mu)",Sample::Type::DATA,kBlack)+TRegexp("SkimTree_SMP_.*EG.*_[A-Z].*_201[6-8]$");
+  samples["data"]=Sample("data",Sample::Type::DATA,kBlack)+"muon"+"electron";
+  samples["amc"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("SkimTree_SMP_DYJets_201[6-8]$");
+  samples["amctt"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::BG,kGreen)+TRegexp("SkimTree_SMP_DYJets_201[6-8]$"));
+  samples["vv"]=Sample("Diboson",Sample::Type::BG,kBlue)+TRegexp("SkimTree_SMP_[W-Z][W-Z]_pythia_201[6-8]$");
+  samples["wjets"]=Sample("W",Sample::Type::BG,kYellow)+TRegexp("SkimTree_SMP_WJets_MG_201[6-8]$");
+  samples["tt"]=Sample("t#bar{t}",Sample::Type::BG,kMagenta)+TRegexp("SkimTree_SMP_TTLL_powheg_201[6-8]$");
+  samples["sim"]=Sample("sim",Sample::Type::SUM,kRed)+"amc"+"amctt"+"vv"+"wjets"+"tt";
+  if(mode_>-1) Setup(mode_);
 }
 
-int EfficiencyPlotter::Setup(int channel_,int year_,TString mode_="",bool withno_=false){
-  entries.clear();
-  systematics.clear();
-  plots.clear();
-  channel=channel_;
-  year=year_;
+int EfficiencyPlotter::Setup(int mode_){
+  Reset();
+
   mode=mode_;
-  withno=withno_;
-  schannel=GetStringChannel((Channel)channel);
-  syear=Form("%d",year);
 
   SetupEntries();
   SetupSystematics();
-  SetupPlots("plots_EfficiencyValidation/"+mode+"/"+schannel+syear+"_"+mode+".dat");
+  SetupPlots(Form("plots_EfficiencyValidation/mode%d/plot.dat",mode));
 
-  if(DEBUG) cout<<"[Setup] nsample: "<<samples.size()<<endl;
+  if(DEBUG) cout<<"[Setup] nentries: "<<entries.size()<<endl;
   if(DEBUG) cout<<"[Setup] nsys: "<<systematics.size()<<endl;
   if(DEBUG) cout<<"[Setup] nplot: "<<plots.size()<<endl;
 
@@ -82,48 +64,24 @@ int EfficiencyPlotter::Setup(int channel_,int year_,TString mode_="",bool withno
 
 void EfficiencyPlotter::SetupEntries(){
   if(DEBUG)  cout<<"[EfficiencyPlotter::SetupEntries]"<<endl;
-  vector<tuple<int,int,TString>> availables={make_tuple(0,2016,"POGTight_PFIsoTight"),
-					     make_tuple(0,2017,"POGTight_PFIsoTight"),
-					     make_tuple(0,2017,"POGTight_TrkIsoLoose_Q"),
-					     make_tuple(0,2018,"POGTight_PFIsoTight"),
-					     make_tuple(0,2018,"POGTight_TrkIsoLoose"),
-					     make_tuple(1,2016,"MediumID"),
-					     make_tuple(1,2016,"MediumID_selective_Q"),
-					     make_tuple(1,2017,"MediumID"),
-					     make_tuple(1,2017,"MediumID_Q"),
-					     make_tuple(1,2017,"TightID_Q"),
-					     make_tuple(1,2017,"MediumID_selective_Q"),
-					     make_tuple(1,2018,"MediumID"),
-					     make_tuple(1,2018,"MediumID_selective"),};
-  
-  for(const auto& avail:availables){
-    if(make_tuple(channel,year,mode)==avail){
-      entries.push_back(Sample("data",Sample::Type::DATA,kBlack)+(schannel+syear+"_"+mode));
-      entries.push_back(Sample("sim",Sample::Type::STACK,kRed)+("amc"+syear+"_"+mode)+("tau_amc"+syear+"_"+mode)+("vv"+syear+"_"+mode)+("wjets"+syear+"_"+mode)+("tt"+syear+"_"+mode));
-      
-      if(withno){
-	entries.push_back((Sample("sim_noefficiencySF",Sample::Type::A,kBlue)+("amc"+syear+"_"+mode)+("tau_amc"+syear+"_"+mode)+("vv"+syear+"_"+mode)+("wjets"+syear+"_"+mode)+("tt"+syear+"_"+mode))%"_noefficiencySF");
-	//if(year==2018) samples["sim"]=MakeSample("sim",Sample::Type::SUM,kRed,make_tuple("mg"+syear+"_"+mode,1.),make_tuple("mgtt"+syear+"_"+mode,1.),make_tuple("vv"+syear+"_"+mode,1.),make_tuple("wjets"+syear+"_"+mode,1.),make_tuple("tt"+syear+"_"+mode,1.));
-	//if(year==2018) samples["sim2"]=MakeSample("sim_noefficiencySF",Sample::Type::SUM,kBlue,make_tuple("mg"+syear+"_"+mode+"_noefficiencySF",1.),make_tuple("mgtt"+syear+"_"+mode+"_noefficiencySF",1.),make_tuple("vv"+syear+"_"+mode+"_noefficiencySF",1.),make_tuple("wjets"+syear+"_"+mode+"_noefficiencySF",1.),make_tuple("tt"+syear+"_"+mode+"_noefficiencySF",1.));
-      }
-      if(DEBUG>1) PrintEntries(1);
-      return;
-    }
+  entries.push_back(samples["data"]);
+  entries.push_back(samples["sim"]);    
+  if(mode==1){
+    entries.push_back((Sample("sim_noefficiencySF",Sample::Type::A,kBlue)+"sim")%"_noefficiencySF");
   }
-  cout<<"###ERROR#### [EfficiencyPlotter::SetupSamples] Not available configuration"<<endl;
-  for(const auto& [ch,ye,mo]:availables) cout<<ch<<" "<<ye<<" "<<mo<<endl;
+  if(DEBUG>1) PrintEntries(1);
   return;
 }
 void EfficiencyPlotter::SetupSystematics(){
   if(DEBUG)  cout<<"[SetupSystematics]"<<endl;
-  if(channel==Channel::ELECTRON) systematics["RECOSF"]=MakeSystematic("RECOSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_RECOSF_up _RECOSF_down");
+  systematics["RECOSF"]=MakeSystematic("RECOSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_RECOSF_up _RECOSF_down");
   systematics["IDSF"]=MakeSystematic("IDSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_IDSF_up _IDSF_down");
-  if(channel==Channel::MUON) systematics["ISOSF"]=MakeSystematic("ISOSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_ISOSF_up _ISOSF_down");
+  systematics["ISOSF"]=MakeSystematic("ISOSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_ISOSF_up _ISOSF_down");
   systematics["triggerSF"]=MakeSystematic("triggerSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_triggerSF_up _triggerSF_down");
 
-  if(channel==Channel::ELECTRON) systematics["noRECOSF"]=MakeSystematic("noRECOSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_noRECOSF");
+  systematics["noRECOSF"]=MakeSystematic("noRECOSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_noRECOSF");
   systematics["noIDSF"]=MakeSystematic("noIDSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_noIDSF");
-  if(channel==Channel::MUON) systematics["noISOSF"]=MakeSystematic("noISOSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_noISOSF");
+  systematics["noISOSF"]=MakeSystematic("noISOSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_noISOSF");
   systematics["notriggerSF"]=MakeSystematic("notriggerSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_notriggerSF");
 
   systematics["nozptcor"]=MakeSystematic("nozptcor",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL),"_nozptcor");
