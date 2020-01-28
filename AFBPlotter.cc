@@ -19,7 +19,9 @@ public:
   TH1* GetHistRaw(TString filename,TString histname);
   pair<double,double> GetRange(TString histname,TString axisname);
   pair<double,double> GetAFBAndError(TH1* costhetaCS);
-  TH1* GetHist(const Sample& sample,TString histname,TString suffix="",int varibit=0);
+
+  using Plotter::GetHist;
+  TH1* GetHist(const Sample& sample,Plot plot,TString additional_option="");
 
   TH1* GetHistWeightedAFB(TH1* hist_forward_num,TH1* hist_forward_den,TH1* hist_backward_num,TH1* hist_backward_den);
   TH1* GetHistAFB(TH1* hist_forward,TH1* hist_backward);
@@ -201,26 +203,27 @@ TH1* AFBPlotter::GetHistRaw(TString filename,TString histname){
   delete hlist;
   return hist;
 }
-TH1* AFBPlotter::GetHist(const Sample& sample,TString histname,TString suffix,int varibit){
+TH1* AFBPlotter::GetHist(const Sample& sample,Plot plot,TString additional_option){
   TH1* hist=NULL;
-  if(histname.Contains("weightedAFB")){
-    TH1* hist_forward_num=GetHist(sample,Replace(histname,"weightedAFB","forward_num"),suffix,varibit);
-    TH1* hist_forward_den=GetHist(sample,Replace(histname,"weightedAFB","forward_den"),suffix,varibit);
-    TH1* hist_backward_num=GetHist(sample,Replace(histname,"weightedAFB","backward_num"),suffix,varibit);
-    TH1* hist_backward_den=GetHist(sample,Replace(histname,"weightedAFB","backward_den"),suffix,varibit);
+  plot.SetOption(additional_option);
+  if(plot.histname.Contains("weightedAFB")){
+    TH1* hist_forward_num=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","forward_num"));
+    TH1* hist_forward_den=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","forward_den"));
+    TH1* hist_backward_num=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","backward_num"));
+    TH1* hist_backward_den=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","backward_den"));
     hist=GetHistWeightedAFB(hist_forward_num,hist_forward_den,hist_backward_num,hist_backward_den);
-  }else if(histname.Contains("AFB")){
-    TH1* hist_forward=GetHist(sample,Replace(histname,"AFB","forward"),suffix,varibit);
-    TH1* hist_backward=GetHist(sample,Replace(histname,"AFB","backward"),suffix,varibit);
+  }else if(plot.histname.Contains("AFB")){
+    TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFB","forward"));
+    TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFB","backward"));
     hist=GetHistAFB(hist_forward,hist_backward);
   }
   if(hist){
     sample.ApplyStyle(hist);
-    hist->SetTitle(histname+suffix);
+    hist->SetTitle(plot.histname+plot.suffix);
     hist->SetDirectory(pdir);
     return hist;
   }else{
-    return Plotter::GetHist(sample,histname,suffix,varibit);
+    return Plotter::GetHist(sample,plot);
   }
 }
 pair<double,double> AFBPlotter::GetAFBAndError(TH1* hist){
