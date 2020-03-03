@@ -33,7 +33,7 @@ TString Systematic::GetTypeString() const{
   }
 }
 void Systematic::Print() const{
-  cout<<"#######################"<<endl;
+  cout<<"------------------------"<<endl;
   cout<<name<<" "<<GetTypeString()<<endl;
   cout<<"sysbit:"<<sysbit<<" varibit:"<<varibit<<endl;
   for(const auto& suffix:suffixes) cout<<suffix<<" ";

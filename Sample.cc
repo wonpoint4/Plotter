@@ -25,7 +25,7 @@ public:
   Type type;
   Style style;
   Style styletotal;
-  TString prefix;
+  map<TString,TString> replace;
   vector<tuple<TString,double,TString,TString>> files; //filename,type,weight,prefix,suffix
   vector<Sample> subs;
 
@@ -43,9 +43,10 @@ public:
   Sample operator*(double w);
   friend Sample operator*(double w,const Sample& sam);
   void SetStyle(int color);
+  void SetType(int type_);
   void Add(TRegexp sampleregexp,double weight=1.,TString prefix="",TString suffix="");
   void ApplyStyle(TH1* hist) const;
-  void Print(bool detail=false) const;
+  void Print(bool detail=false,TString prefix="") const;
   bool IsCollection() const;
 };
 map<TString,Sample> samples;
@@ -137,6 +138,13 @@ void Sample::SetStyle(int color){
     style.drawoption="e";
   }
 }
+void Sample::SetType(int type_){
+  if(type==Type::STACK){
+    for(auto& sub:subs){
+      sub.SetType(type_);
+    }
+  }else type=(Type)type_;
+}
 void Sample::Add(TRegexp regexp,double weight,TString prefix,TString suffix){
   for(auto it=samples.begin();it!=samples.end();it++){
     if(it->first.Contains(regexp)) (*this)=(*this)+weight*(prefix%(it->second)%suffix);
@@ -149,16 +157,17 @@ void Sample::ApplyStyle(TH1* hist) const {
     hist->SetNameTitle(title,title);
   }
 }
-void Sample::Print(bool detail) const{
-  cout<<"Title: "<<title<<" "<<"Type: "<<GetTypeString()<<endl;
-  cout<<"Style: ";
-  style.Print();
-  for(const auto& [file,weight,prefix,suffix]:files){
-    cout<<file<<" "<<weight<<" "<<prefix<<" "<<suffix<<endl;
-  }
-  for(const auto& sub:subs){
-    sub.Print(detail);
-  }
+void Sample::Print(bool detail,TString pre) const{
+  if(detail){
+    cout<<pre<<"Title:"<<title<<" Type:"<<GetTypeString()<<" ";
+    style.Print();
+    for(const auto& [file,weight,prefix,suffix]:files){
+      cout<<pre<<"  "<<file<<" "<<weight<<" "<<prefix<<" "<<suffix<<endl;
+    }
+    for(const auto& sub:subs){
+      sub.Print(detail,pre+"  ");
+    }
+  }else cout<<pre<<"Title: "<<title<<" "<<"Type: "<<GetTypeString()<<endl;
 }
 
 Sample MakeSample(TString title,Sample::Type type,int color,tuple<TString,double> subsample1,tuple<TString,double> subsample2=make_tuple("",0.),tuple<TString,double> subsample3=make_tuple("",0.),tuple<TString,double> subsample4=make_tuple("",0.),tuple<TString,double> subsample5=make_tuple("",0.),tuple<TString,double> subsample6=make_tuple("",0.),tuple<TString,double> subsample7=make_tuple("",0.)){

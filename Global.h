@@ -16,7 +16,7 @@
 #include"TLegendEntry.h"
 using namespace std;
 
-int DEBUG=3; //0:quiet 1:error 2:warning 3:info 4:debug
+int DEBUG=3; //0:quiet 1:error 2:warning 3:info 4:debug 5:all
 
 /////////////////////////////////////////////////////////////////////////////
 ///////////////////////////// struct and enum ///////////////////////////////

@@ -20,7 +20,7 @@ Style::Style(int color){
     markercolor=color;
     markerstyle=20;
     markersize=0.7;
-    drawoption="e";
+    drawoption="e p";
     fillcolor=0;
   }else{
     //fillcolor=color;

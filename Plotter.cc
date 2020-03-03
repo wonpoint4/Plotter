@@ -17,7 +17,8 @@ public:
   TString plotdir;
 
   //Print
-  void PrintSamples(TRegexp regexp=".*");
+  void PrintFiles(bool detail=false,TRegexp regexp=".*");
+  void PrintSamples(bool detail=false,TRegexp regexp=".*");
   void PrintEntries(bool detail=false,TRegexp regexp=".*");
   void PrintHistKeys(const Sample& sample,TRegexp regexp=".*");
   void PrintPlots(TRegexp reg=".*");
@@ -27,6 +28,7 @@ public:
   virtual TH1* GetHistRaw(TString filename,TString histname);
   virtual TH1* GetHist(const Sample& sample,Plot plot,TString additional_option="");
   virtual TH1* GetHist(TString samplekey,TString plotkey,TString additional_option="");
+  virtual void GetHistActionForAdditionalClass(TObject*& obj,Plot plot);
   tuple<TH1*,TH1*> GetHistPair(const Sample& sample,const Plot& plot);
   vector<tuple<TH1*,TH1*>> GetHistPairs(const Plot& plot);
 
@@ -45,6 +47,7 @@ public:
   TCanvas* GetSig(vector<tuple<TH1*,TH1*>> hists,TString option);
   TCanvas* GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,TString option);
   TCanvas* GetCompareAndDiff(vector<tuple<TH1*,TH1*>> hists,TString option);
+  TCanvas* GetCompareAndSig(vector<tuple<TH1*,TH1*>> hists,TString option);
   TCanvas* GetDoubleRatio(Plot& plot);
   virtual TCanvas* DrawPlot(Plot plotkey,TString additional_option="");
   virtual TCanvas* DrawPlot(TString plotkey,TString additional_option="");
@@ -75,7 +78,7 @@ public:
   set<TString> GetHistKeys(const Sample& sample,TRegexp regexp=".*");
   set<TString> ParseHistKeys(set<TString> histkeys,set<TString> fixes,set<TString> excludes={});
   set<TString> GetParsedHistKeys(set<TString> excludes={});
-  void AddPlot(TString plotkey,TString plotoption="");
+  virtual void AddPlot(TString plotkey,TString plotoption="");
   void AddPlots(TRegexp regexp=".*",TString plotoption="");
   void RemovePlot(TString plotkey);
   void RemovePlots(TRegexp regexp=".*");
@@ -93,6 +96,7 @@ public:
 
   //etc
   const Sample& GetEntry(TString entrytitle);
+  void AddEntry(TString samplekey);
   void Reset();
   
   //working
@@ -109,6 +113,7 @@ Plotter::Plotter(){
   gStyle->SetCanvasDefH(600);
   gStyle->SetCanvasDefW(700);
   gStyle->SetPadLeftMargin(0.15);
+  gStyle->SetTickLength(0.015,"Y");
 }
 Plotter::~Plotter(){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::~Plotter()]"<<endl;
@@ -119,22 +124,37 @@ Plotter::~Plotter(){
 /////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// Print ////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-void Plotter::PrintSamples(TRegexp regexp){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::PrintSamples(TRegexp regexp)]"<<endl;
+void Plotter::PrintFiles(bool detail,TRegexp regexp){
+  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::PrintSamples(bool detail,TRegexp regexp)]"<<endl;
+  std::cout<<"--------------------------"<<endl;
   for(const auto& [key,sample]:samples){
+    if(sample.type!=Sample::Type::UNDEF) continue;
     if(key.Contains(regexp)){
-      std::cout<<" @ Key: "<<key<<" ";
-      sample.Print();
-      std::cout<<endl;
+      std::cout<<"@Key: "<<key<<" "<<endl;
+      if(detail) sample.Print(detail,"  ");
+      std::cout<<"--------------------------"<<endl;
+    }
+  }
+}
+void Plotter::PrintSamples(bool detail,TRegexp regexp){
+  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::PrintSamples(bool detail,TRegexp regexp)]"<<endl;
+  std::cout<<"--------------------------"<<endl;
+  for(const auto& [key,sample]:samples){
+    if(sample.type==Sample::Type::UNDEF) continue;
+    if(key.Contains(regexp)){
+      std::cout<<"@Key: "<<key<<" "<<endl;
+      sample.Print(detail,"  ");
+      std::cout<<"--------------------------"<<endl;
     }
   }
 }
 void Plotter::PrintEntries(bool detail,TRegexp regexp){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::PrintEntries(bool detail,TRegexp regexp)]"<<endl;
+  std::cout<<"--------------------------"<<endl;
   for(const auto& entry:entries){
     if(entry.title.Contains(regexp)){
       entry.Print(detail);
-      std::cout<<endl;
+      std::cout<<"--------------------------"<<endl;
     }
   }
 }
@@ -164,9 +184,10 @@ TH1* Plotter::GetHistRaw(TString filename,TString histname){
   TH1* hist=(TH1*)f->Get(histname);
   if(hist){
     hist->SetDirectory(pdir);
-    if(DEBUG>2) std::cout<<"###INFO### [Plotter::GetHistRaw] get "<<histname<<" in "<<filename<<endl;
+    if(!hist->GetSumw2N()) hist->Sumw2();
+    if(DEBUG>2) std::cout<<"###INFO#### [Plotter::GetHistRaw] get "<<histname<<" in "<<filename<<endl;
   }else{
-    if(DEBUG>1) std::cout<<"###WARNING### [Plotter::GetHistRaw] no "<<histname<<" in "<<filename<<endl;
+    if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistRaw] no "<<histname<<" in "<<filename<<endl;
   }
   f->Close();
   delete f;
@@ -178,9 +199,10 @@ TH1* Plotter::GetHist(TString samplekey,TString plotkey,TString additional_optio
   return GetHist(samples[samplekey],plot,additional_option);
 }
 TH1* Plotter::GetHist(const Sample& sample,Plot plot,TString additional_option){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHist(const Sample& sample,Plot plot,TString additional_option)]"<<endl;
+  if(DEBUG>2) std::cout<<"###INFO#### [Plotter::GetHist] "<<sample.title<<" "<<plot.name<<" "<<plot.option<<" "<<additional_option<<endl;
   plot.SetOption(additional_option);
   TH1* hist=NULL;
+  TString axisstring=plot.histname(TRegexp("([x-zu]*)$"));
   if(sample.type==Sample::Type::STACK){
     for(int i=sample.subs.size()-1;i>=0;i--){
       TH1* this_hist=GetHist(sample.subs[i],plot);
@@ -205,10 +227,54 @@ TH1* Plotter::GetHist(const Sample& sample,Plot plot,TString additional_option){
       }
     }
   }else{
+    TString histname=Replace(plot.histname,axisstring,"");
     for(const auto& [filepath,weight,pre,suf]:sample.files){
-      TString finalhistname=sample.prefix+GetHistNameWithPrefixAndSuffix(plot.histname,pre,suf+((1<<sample.type)&plot.varibit?plot.suffix:""));
+      TString finalhistname=GetHistNameWithPrefixAndSuffix(histname,pre,suf+((1<<sample.type)&plot.varibit?plot.suffix:""));
+      for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(finalhistname,newstr);
       TH1* this_hist=GetHistRaw(filepath,finalhistname);
       if(this_hist){
+	if(axisstring!=""){
+	  if(strstr(this_hist->ClassName(),"TH2")!=NULL){
+	    TH2* hist2d=(TH2*)this_hist;
+	    int ixmin = plot.xmin ? hist2d->GetXaxis()->FindBin(plot.xmin) : 0 ;
+	    int ixmax = plot.xmax ? hist2d->GetXaxis()->FindBin(plot.xmax-0.00001) : -1 ;	
+	    int iymin = plot.ymin ? hist2d->GetYaxis()->FindBin(plot.ymin) : 0 ;
+	    int iymax = plot.ymax ? hist2d->GetYaxis()->FindBin(plot.ymax-0.00001) : -1 ;
+	    if(axisstring=="(x)") this_hist=(TH1*)hist2d->ProjectionX("_px",iymin,iymax);
+	    else if(axisstring=="(y)") this_hist=(TH1*)hist2d->ProjectionY("_py",ixmin,ixmax);
+	    else{
+	      if(DEBUG>0) std::cout<<"###ERROR### [Plotter::GetHist] wrong axisstring or classname"<<endl;
+	    }
+	    delete hist2d;
+	  }else if(strstr(this_hist->ClassName(),"TH3")!=NULL){
+	    TH3* hist3d=(TH3*)this_hist;
+	    int ixmin=0,iymin=0,izmin=0;
+	    int ixmax=-1,iymax=-1,izmax=-1;
+	    if(plot.xmin||plot.xmax){
+	      ixmin=hist3d->GetXaxis()->FindBin(plot.xmin);
+	      ixmax=hist3d->GetXaxis()->FindBin(plot.xmax-0.00001);
+	    }
+	    if(plot.ymin||plot.ymax){
+	      iymin=hist3d->GetYaxis()->FindBin(plot.ymin);
+	      iymax=hist3d->GetYaxis()->FindBin(plot.ymax-0.00001);
+	    }
+	    if(plot.zmin||plot.zmax){
+	      izmin=hist3d->GetZaxis()->FindBin(plot.zmin);
+	      izmax=hist3d->GetZaxis()->FindBin(plot.zmax-0.00001);
+	    }
+	    if(axisstring=="(x)") this_hist=(TH1*)hist3d->ProjectionX("_px",iymin,iymax,izmin,izmax);
+	    else if(axisstring=="(y)") this_hist=(TH1*)hist3d->ProjectionY("_py",ixmin,ixmax,izmin,izmax);
+	    else if(axisstring=="(z)") this_hist=(TH1*)hist3d->ProjectionZ("_pz",ixmin,ixmax,iymin,iymax);
+	    else{
+	      if(DEBUG>0) std::cout<<"###ERROR### [Plotter::GetHist] wrong axisstring or classname"<<endl;
+	    }
+	    delete hist3d;
+	  }else{
+	    TObject* obj=(TObject*)this_hist;
+	    GetHistActionForAdditionalClass(obj,plot);
+	    this_hist=(TH1*)obj;
+	  }
+	}
 	this_hist->SetName(sample.title);
 	if(!hist){
 	  hist=(TH1*)this_hist->Clone();
@@ -223,13 +289,20 @@ TH1* Plotter::GetHist(const Sample& sample,Plot plot,TString additional_option){
   if(hist){
     sample.ApplyStyle(hist);
     if(IsEntry(sample)){
-      hist->SetTitle(plot.histname+plot.suffix);    
-      RebinXminXmax(hist,plot.rebin,plot.xmin,plot.xmax);
+      hist->SetTitle(plot.name+plot.suffix);
+      if(axisstring=="(x)") RebinXminXmax(hist,plot.rebin,plot.xmin,plot.xmax);
+      else if(axisstring=="(y)") RebinXminXmax(hist,plot.rebin,plot.ymin,plot.ymax);
+      else if(axisstring=="(z)") RebinXminXmax(hist,plot.rebin,plot.zmin,plot.zmax);
+      else if(axisstring=="(u)") RebinXminXmax(hist,plot.rebin,plot.umin,plot.umax);
+      else RebinXminXmax(hist,plot.rebin,plot.xmin,plot.xmax);
       if(plot.option.Contains("widthweight")) WidthWeight(hist);
       if(plot.option.Contains("norm")) Normalize(hist);
     }
   }
   return hist;
+}
+void Plotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot){
+  if(DEBUG>1) std::cout<<"###WARNING# [Plotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot)] Unsupported class name "<<obj->ClassName()<<endl;
 }
 tuple<TH1*,TH1*> Plotter::GetHistPair(const Sample& sample,const Plot& plot){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistPair(const Sample& sample,const Plot& plot)]"<<endl;
@@ -248,7 +321,7 @@ tuple<TH1*,TH1*> Plotter::GetHistPair(const Sample& sample,const Plot& plot){
     const Systematic& systematic=sysmap.second;
     if(systematic.type==Systematic::Type::MULTI) continue;
     if(sysbit&systematic.sysbit){
-      if(DEBUG>1) std::cout<<"###INFO### [Plotter::GetHistPair] sysname="<<systematic.name<<" systype="<<systematic.GetTypeString()<<endl;
+      if(DEBUG>1) std::cout<<"###INFO#### [Plotter::GetHistPair] sysname="<<systematic.name<<" systype="<<systematic.GetTypeString()<<endl;
       vector<TH1*> variations;
       for(const auto& suffix:systematic.suffixes){
 	TH1* this_hist=GetHist(sample,plot,Form("suffix:%s varibit:%d sysname:",suffix.Data(),systematic.varibit));
@@ -263,7 +336,7 @@ tuple<TH1*,TH1*> Plotter::GetHistPair(const Sample& sample,const Plot& plot){
       }else{
 	if(DEBUG>0) std::cout<<"###ERROR### [Plotter::GetHistPair] Wrong Systematic::Type "<<systematic.type<<endl;
       }
-      if(DEBUG>2) std::cout<<"###INFO### [Plotter::GetHistPair] "<<systematic.name+": "<<variations.size()<<" variations"<<endl;
+      if(DEBUG>2) std::cout<<"###INFO#### [Plotter::GetHistPair] "<<systematic.name+": "<<variations.size()<<" variations"<<endl;
       for(unsigned int j=0;j<variations.size();j++){
 	delete variations.at(j);
       }
@@ -388,10 +461,16 @@ TCanvas* Plotter::GetCompare(vector<tuple<TH1*,TH1*>> histpairs,TString option){
   if(!axisowner) axisowner=get<0>(histpairs[0]);
   
   TCanvas* c=new TCanvas;
-  axisowner->SetStats(0);
-  axisowner->Draw();
+  if(strstr(axisowner->ClassName(),"THStack")==NULL){
+    axisowner->SetStats(0);
+    axisowner->Draw(axisowner->GetOption());
+  }else{
+    axisowner->Draw();
+    axisowner=((THStack*)axisowner)->GetHistogram();
+    axisowner->SetName("hframe");
+    axisowner->Draw();
+  }
   if(c->GetPrimitive("title")) ((TPaveText*)c->GetPrimitive("title"))->SetTextSize(0.075);
-  axisowner->GetYaxis()->SetTickLength(0.015);
 
   for(const auto& hist:hists)
     if(strstr(hist->ClassName(),"THStack")){
@@ -411,7 +490,7 @@ TCanvas* Plotter::GetCompare(vector<tuple<TH1*,TH1*>> histpairs,TString option){
   TLegend* legend=GetLegend(histpairs,option);
   if(!option.Contains("noleg")) legend->Draw();
 
-  if(option.Contains("logx")) c->SetLogx();
+  if(option.Contains("logx")){c->SetLogx();axisowner->GetXaxis()->SetMoreLogLabels();}
   if(option.Contains("logy")){
     tuple<double,double> minmax=GetMinMax(hists);
     double minimum=get<0>(minmax),maximum=get<1>(minmax);
@@ -515,7 +594,42 @@ TCanvas* Plotter::GetDiff(vector<tuple<TH1*,TH1*>> tu_hists,TString option){
 }
 TCanvas* Plotter::GetSig(vector<tuple<TH1*,TH1*>> tu_hists,TString option){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetSig(vector<tuple<TH1*,TH1*>> tu_hists,TString option)]"<<endl;
-  return NULL;
+  vector<TH1*> hists;
+  for(auto tu_hist:tu_hists){
+    if(get<1>(tu_hist)) hists.push_back(get<1>(tu_hist));
+    else hists.push_back(get<0>(tu_hist));
+  }
+  TH1* base=NULL;
+  TString baseopt=option("base:[0-9]*");
+  if(baseopt!="") base=GetTH1(hists[((TString)baseopt(5,100)).Atoi()]);
+  else if(tu_hists.size()>2) base=GetTH1(hists[0]);
+  else base=GetTH1(hists[1]);
+  
+  vector<tuple<TH1*,TH1*>> tu_hists_new;
+  for(auto hist:hists){
+    if(hist){
+      hist=GetTH1(hist,true);
+      for(int i=0;i<hist->GetNbinsX()+2;i++){
+	double error=sqrt(pow(hist->GetBinError(i),2)+pow(base->GetBinError(i),2));
+	double content=(hist->GetBinContent(i)-base->GetBinContent(i))/error;
+	hist->SetBinContent(i,content);
+	hist->SetBinError(i,0);
+      }
+    }
+    tu_hists_new.push_back(make_tuple(hist,(TH1*)NULL));
+  }
+  TCanvas* c=GetCompare(tu_hists_new,option);
+  TH1* axisowner=GetAxisParent(c);
+  
+  axisowner->GetYaxis()->SetTitle("Significance");
+  axisowner->GetYaxis()->SetLabelSize(0.06);
+
+  axisowner->GetYaxis()->SetRangeUser(-2.9,2.9);
+  //tuple<double,double> minmax=GetMinMax(VectorTH1(tu_hists_new));
+  //double minimum=get<0>(minmax),maximum=get<1>(minmax);
+  //double range=fabs(maximum-minimum);
+  //axisowner->GetYaxis()->SetRangeUser(minimum/range<-0.01?minimum-0.1*range:0,maximum+0.1*range);
+  return c;
 }
 TCanvas* Plotter::GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,TString option){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,TString option)]"<<endl;
@@ -564,6 +678,62 @@ TCanvas* Plotter::GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,TString opti
     axisparent->SetStats(0);
     axisparent->GetYaxis()->SetLabelSize(0.1);
     axisparent->GetYaxis()->SetTitle("Ratio");
+    axisparent->GetYaxis()->SetTitleSize(0.12);
+    axisparent->GetYaxis()->SetTitleOffset(0.6);
+    axisparent->GetXaxis()->SetTitle(axisparent->GetTitle());
+    axisparent->GetXaxis()->SetTitleSize(0.12);
+    axisparent->GetXaxis()->SetLabelSize(0.12);
+  }
+  gPad->Update();
+  gPad->Modified();
+  return c;
+}
+TCanvas* Plotter::GetCompareAndSig(vector<tuple<TH1*,TH1*>> hists,TString option){
+  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetCompareAndSig(vector<tuple<TH1*,TH1*>> hists,TString option)]"<<endl;
+  TString option1,option2;
+  for(const auto& opt:Split(option," ")){
+    if(opt.Contains("1:")) option1+=opt(2,100)+" ";
+    else if(opt.Contains("2:")) option2+=opt(2,100)+" ";
+    else{
+      option1+=opt+" ";
+      option2+=opt+" ";
+    }
+  } 
+    
+  TCanvas* c=new TCanvas;
+  c->Divide(1,2);
+  TCanvas* c1temp=GetCompare(hists,option1);
+  c->cd(1);
+  c1temp->DrawClonePad();
+  delete c1temp;
+  if(c->GetPad(1)->GetPrimitive("title")) ((TPaveText*)c->GetPad(1)->GetPrimitive("title"))->SetTextSize(0.075);
+  gPad->SetPad(0,0.35,1,1);
+  gPad->SetBottomMargin(0.02);
+  TH1* axisparent=GetAxisParent(gPad);
+  axisparent->GetYaxis()->SetLabelSize(0.06);
+  axisparent->GetYaxis()->SetTitleSize(0.06);
+  axisparent->GetYaxis()->SetTitleOffset(1.2);
+  axisparent->GetXaxis()->SetLabelSize(0);
+  axisparent->GetXaxis()->SetTitle("");
+  gPad->Update();
+  gPad->Modified();
+
+  TCanvas* c2temp=GetSig(hists,option2+" noleg");
+  c->cd(2);
+  if(c2temp){
+    c2temp->DrawClonePad();
+    delete c2temp;
+  }
+  gPad->SetPad(0,0,1,0.365);
+  gPad->SetTopMargin(0.02);
+  gPad->SetBottomMargin(0.3);
+  gPad->SetGridy();
+  gPad->SetFillStyle(0);
+  axisparent=GetAxisParent(gPad);
+  if(axisparent){
+    axisparent->SetTitle("");
+    axisparent->SetStats(0);
+    axisparent->GetYaxis()->SetLabelSize(0.1);
     axisparent->GetYaxis()->SetTitleSize(0.12);
     axisparent->GetYaxis()->SetTitleOffset(0.6);
     axisparent->GetXaxis()->SetTitle(axisparent->GetTitle());
@@ -687,7 +857,7 @@ TCanvas* Plotter::GetDoubleRatio(Plot& plot){
 }
 
 TCanvas* Plotter::DrawPlot(Plot plot,TString additional_option){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::DrawPlot(TString plotkey,TString additional_option)]"<<endl;
+  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::DrawPlot(Plot plotkey,TString additional_option)]"<<endl;
   plot.SetOption(additional_option);
   TCanvas* c=NULL;
   if(plot.type==Plot::Type::DoubleRatio){
@@ -700,6 +870,7 @@ TCanvas* Plotter::DrawPlot(Plot plot,TString additional_option){
     else if(plot.type==Plot::Type::Sig) c=GetSig(histpairs,plot.option);
     else if(plot.type==Plot::Type::CompareAndRatio) c=GetCompareAndRatio(histpairs,plot.option);
     else if(plot.type==Plot::Type::CompareAndDiff) c=GetCompareAndDiff(histpairs,plot.option);
+    else if(plot.type==Plot::Type::CompareAndSig) c=GetCompareAndSig(histpairs,plot.option);
   }    
   c->Update();
   c->Modified();
@@ -746,6 +917,7 @@ TString Plotter::GetHistNameWithPrefixAndSuffix(TString histname,TString prefix,
 TH1* Plotter::GetAxisParent(TVirtualPad* pad){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetAxisParent(TVirtualPad* pad)]"<<endl;
   if(pad){
+    if(pad->FindObject("hframe")) return (TH1*)pad->FindObject("hframe");
     TList* list=pad->GetListOfPrimitives();
     for(int i=0;i<list->GetSize();i++){
       if(strstr(list->At(i)->ClassName(),"TH")!=NULL) return (TH1*)list->At(i);
@@ -807,8 +979,10 @@ tuple<double,double> Plotter::GetMinMax(const vector<TH1*>& hists){
   for(auto hist:hists){
     if(hist){
       if(strstr(hist->ClassName(),"THStack")) hist=GetTH1(hist);
-      if(maximum<hist->GetMaximum()) maximum=hist->GetMaximum();
-      if(minimum>hist->GetMinimum()) minimum=hist->GetMinimum();
+      double this_maximum=hist->GetBinContent(hist->GetMaximumBin());
+      double this_minimum=hist->GetBinContent(hist->GetMinimumBin());
+      if(maximum<this_maximum) maximum=this_maximum;
+      if(minimum>this_minimum) minimum=this_minimum;
     }
   }
   return make_tuple(minimum,maximum);
@@ -888,8 +1062,10 @@ void Plotter::WidthWeight(vector<TH1*> hists){
   for(auto& hist:hists) WidthWeight(hist);
 }
 bool Plotter::IsEntry(const Sample& sample){
-  for(const auto& entry:entries)
+  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::IsEntry(const Sample& sample)]"<<endl;  
+  for(const auto& entry:entries){
     if(&entry==&sample) return true;
+  }
   return false;
 }
 
@@ -978,10 +1154,15 @@ set<TString> Plotter::GetHistKeys(TList* keys,TRegexp regexp=".*"){
 }
 set<TString> Plotter::GetHistKeys(const Sample& sample,TRegexp regexp=".*"){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistKeys(const Sample& sample,TRegexp regexp=\".*\")]"<<endl;
-  TFile f(get<0>(sample.files[0]));
-  TList* keys=f.GetListOfKeys();
-  set<TString> histkeys=GetHistKeys(keys,regexp);
-  f.Close();
+  set<TString> histkeys;
+  if(sample.subs.size()){
+    return GetHistKeys(sample.subs[0],regexp);
+  }else if(sample.files.size()){
+    TFile f(get<0>(sample.files[0]));
+    TList* keys=f.GetListOfKeys();
+    histkeys=GetHistKeys(keys,regexp);
+    f.Close();
+  }
   return histkeys;
 }
 set<TString> Plotter::ParseHistKeys(set<TString> histkeys,set<TString> fixes,set<TString> excludes={}){
@@ -1037,13 +1218,14 @@ set<TString> Plotter::GetParsedHistKeys(set<TString> excludes={}){
 void Plotter::AddPlot(TString plotkey,TString plotoption){
   Plot plot;
   plot.name=plotkey;plot.histname=plotkey;
+  if(entries.size()==1) plot.type=Plot::Type::Compare;
   plot.SetOption(plotoption);
   if(plot.type==Plot::Type::DoubleRatio){
     for(auto const& [k,p]:plots){
       if(k.Contains(TRegexp(plotkey+"$"))) plot.subplots.push_back(p);
     }
     if(plot.subplots.size()!=2){
-      if(DEBUG>0) cout<<"###ERROR### DoubleRatio should have 2 subplots ("<<plot.subplots.size()<<"!=2"<<endl;
+      if(DEBUG>0) std::cout<<"###ERROR### DoubleRatio should have 2 subplots ("<<plot.subplots.size()<<"!=2"<<endl;
       plot.Print();
       exit(1);
     }
@@ -1161,7 +1343,13 @@ const Sample& Plotter::GetEntry(TString entrytitle){
   if(DEBUG>0) std::cout<<"###ERROR### [Plotter::GetEntry(TString entrytitle)] no entry with title "<<entrytitle<<endl;
   return entries.at(0);
 }
-
+void Plotter::AddEntry(TString samplekey){
+  if(samples.find(samplekey)!=samples.end()){
+    entries.push_back(samples[samplekey]);
+  }else{
+    if(DEBUG>0) std::cout<<"###ERROR### [Plotter::AddEntry(TString samplekey)] no sample with key "<<samplekey<<endl;
+  }
+}
 void Plotter::Reset(){
   entries.clear();
   systematics.clear();
@@ -1169,8 +1357,6 @@ void Plotter::Reset(){
   plots.clear();
   plotdir="";
 }
-
-
 //////////////////////working/////////////////////////
   
 
@@ -1304,7 +1490,7 @@ void Plotter::SavePlots(TString outputdir="plot",int njob=1,int ijob=0){
       system("mkdir -p "+dir);
       dirs.insert(dir);
     }
-    if(DEBUG>1) std::cout<<"###INFO### [SavePlots] save "<<outputdir+"/"+histname+".png"<<endl;
+    if(DEBUG>1) std::cout<<"###INFO#### [SavePlots] save "<<outputdir+"/"+histname+".png"<<endl;
     c=GetCompare(histname,0,plot->rebin,plot->xmin,plot->xmax,plot->option);
     c->SaveAs(outputdir+"/"+histname+".png");
     THStack* hstack=(THStack*)c->GetPad(1)->GetPrimitive("hstack");
@@ -1317,7 +1503,7 @@ void Plotter::SavePlots(TString outputdir="plot",int njob=1,int ijob=0){
 	system("mkdir -p "+this_dir);
 	dirs.insert(this_dir);
       }
-      if(DEBUG>1) std::cout<<"###INFO### [SavePlots] save "<<this_dir+"/"+histname(histname.Last('/'),histname.Length())+".png"<<endl;
+      if(DEBUG>1) std::cout<<"###INFO#### [SavePlots] save "<<this_dir+"/"+histname(histname.Last('/'),histname.Length())+".png"<<endl;
       c=GetCompare(histname,systematics[is].sysbit,plot->rebin,plot->xmin,plot->xmax,plot->option);
       if(c){
 	c->SaveAs(this_dir+"/"+histname(histname.Last('/'),histname.Length())+".png");
@@ -1326,7 +1512,7 @@ void Plotter::SavePlots(TString outputdir="plot",int njob=1,int ijob=0){
 	delete c;
       }
       if(systematics[is].suffixes.size()==1){
-	if(DEBUG>1) std::cout<<"###INFO### [SavePlots] save "<<this_dir+"/"+histname(histname.Last('/'),histname.Length())+"_raw.png"<<endl;
+	if(DEBUG>1) std::cout<<"###INFO#### [SavePlots] save "<<this_dir+"/"+histname(histname.Last('/'),histname.Length())+"_raw.png"<<endl;
 	c=GetCompare(histname+(systematics[is].vary_data?systematics[is].suffixes[0]:""),histname+(systematics[is].vary_signal?systematics[is].suffixes[0]:""),histname+(systematics[is].vary_bg?systematics[is].suffixes[0]:""),0,plot->rebin,plot->xmin,plot->xmax,plot->option);
 	if(c){
 	  c->SaveAs(this_dir+"/"+histname(histname.Last('/'),histname.Length())+"_raw.png");

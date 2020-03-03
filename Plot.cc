@@ -4,7 +4,7 @@
 #include"Utils.h"
 class Plot{
 public:
-  enum Type{UNDEF,Compare,Ratio,Diff,Sig,CompareAndRatio,CompareAndDiff,DoubleRatio,Collection};
+  enum Type{UNDEF,Compare,Ratio,Diff,Sig,CompareAndRatio,CompareAndDiff,CompareAndSig,DoubleRatio,Collection};
   TString name;
   TString histname;
   TString sysname;
@@ -12,7 +12,7 @@ public:
   int varibit=0;
   Type type=Type::CompareAndRatio;
   int rebin=0;
-  double xmin=0,xmax=0;
+  double xmin=0,xmax=0,ymin=0,ymax=0,zmin=0,zmax=0,umin=0,umax=0;
   TString option;
   vector<Plot> subplots;
   Plot(vector<TString> words);
@@ -50,6 +50,12 @@ void Plot::SetOption(TString option_){
     else if(opt.Contains(TRegexp("^rebin:"))) rebin=TString(opt(6,999)).Atoi();
     else if(opt.Contains(TRegexp("^xmin:"))) xmin=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^xmax:"))) xmax=TString(opt(5,999)).Atof();
+    else if(opt.Contains(TRegexp("^ymin:"))) ymin=TString(opt(5,999)).Atof();
+    else if(opt.Contains(TRegexp("^ymax:"))) ymax=TString(opt(5,999)).Atof();
+    else if(opt.Contains(TRegexp("^zmin:"))) zmin=TString(opt(5,999)).Atof();
+    else if(opt.Contains(TRegexp("^zmax:"))) zmax=TString(opt(5,999)).Atof();
+    else if(opt.Contains(TRegexp("^umin:"))) umin=TString(opt(5,999)).Atof();
+    else if(opt.Contains(TRegexp("^umax:"))) umax=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^sysname:"))) sysname=opt(8,999);
     else if(opt.Contains(TRegexp("^suffix:"))) suffix=opt(7,999);
     else if(opt.Contains(TRegexp("^varibit:"))) varibit=TString(opt(8,999)).Atoi();
@@ -64,6 +70,12 @@ void Plot::RemoveOption(TString option_){
     else if(remove=="rebin") rebin=0;
     else if(remove=="xmin") xmin=0;
     else if(remove=="xmax") xmax=0;
+    else if(remove=="ymin") ymin=0;
+    else if(remove=="ymax") ymax=0;
+    else if(remove=="zmin") zmin=0;
+    else if(remove=="zmax") zmax=0;
+    else if(remove=="umin") umin=0;
+    else if(remove=="umax") umax=0;
     else if(remove=="sysname") sysname="";
     else if(remove=="suffix") suffix="";
     else if(remove=="varibit") varibit=0;
@@ -88,6 +100,12 @@ void Plot::Print(std::ostream& out) const{
   if(rebin!=0) out<<" rebin:"<<rebin;
   if(xmin!=0) out<<" xmin:"<<xmin;
   if(xmax!=0) out<<" xmax:"<<xmax;
+  if(ymin!=0) out<<" ymin:"<<ymin;
+  if(ymax!=0) out<<" ymax:"<<ymax;
+  if(zmin!=0) out<<" zmin:"<<zmin;
+  if(zmax!=0) out<<" zmax:"<<zmax;
+  if(umin!=0) out<<" umin:"<<umin;
+  if(umax!=0) out<<" umax:"<<umax;
   if(sysname!="") out<<" sysname:"<<sysname;
   if(suffix!="") out<<" suffix:"<<suffix;
   if(varibit!=0) out<<" varibit:"<<varibit;
