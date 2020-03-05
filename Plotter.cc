@@ -12,6 +12,7 @@ public:
   vector<Sample> entries;
   map<TString,Systematic> systematics;
   map<TString,Plot> plots;
+  map<TString,set<TString>> histkeys_cache;
   static TDirectory *pdir;
   TString plotfile;
   TString plotdir;
@@ -20,7 +21,7 @@ public:
   void PrintFiles(bool detail=false,TRegexp regexp=".*");
   void PrintSamples(bool detail=false,TRegexp regexp=".*");
   void PrintEntries(bool detail=false,TRegexp regexp=".*");
-  void PrintHistKeys(const Sample& sample,TRegexp regexp=".*");
+  void PrintHistKeys(const Sample& sample,TString regexp=".*");
   void PrintPlots(TRegexp reg=".*");
   void PrintSystematics();
 
@@ -74,8 +75,9 @@ public:
   
   //Plot
   void SetupPlots(TString filename);
-  set<TString> GetHistKeys(TList* keys,TRegexp regexp=".*");
-  set<TString> GetHistKeys(const Sample& sample,TRegexp regexp=".*");
+  set<TString> GetHistKeys(TDirectory* dir,TRegexp regexp=".*");
+  set<TString> GetHistKeys(TString filename,TString regexp=".*");
+  set<TString> GetHistKeys(const Sample& sample,TString regexp=".*");
   set<TString> ParseHistKeys(set<TString> histkeys,set<TString> fixes,set<TString> excludes={});
   set<TString> GetParsedHistKeys(set<TString> excludes={});
   virtual void AddPlot(TString plotkey,TString plotoption="");
@@ -158,8 +160,8 @@ void Plotter::PrintEntries(bool detail,TRegexp regexp){
     }
   }
 }
-void Plotter::PrintHistKeys(const Sample& sample,TRegexp regexp=".*"){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::PrintHistKeys(TString samplename,TRegexp regexp=\".*\")]"<<endl;
+void Plotter::PrintHistKeys(const Sample& sample,TString regexp=".*"){
+  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::PrintHistKeys(TString samplename,TString regexp=\".*\")]"<<endl;
   set<TString> histkeys=GetHistKeys(sample,regexp);
   for(const auto& key:histkeys) std::cout<<key<<endl;
 }
@@ -180,17 +182,30 @@ void Plotter::PrintSystematics(){
 ////////////////////////////// Hist /////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 TH1* Plotter::GetHistRaw(TString filename,TString histname){
-  TFile *f=new TFile(filename);
-  TH1* hist=(TH1*)f->Get(histname);
-  if(hist){
-    hist->SetDirectory(pdir);
-    if(!hist->GetSumw2N()) hist->Sumw2();
-    if(DEBUG>2) std::cout<<"###INFO#### [Plotter::GetHistRaw] get "<<histname<<" in "<<filename<<endl;
+  TH1* hist=NULL;
+  if(histname.MaybeRegexp()){
+    for(const auto& key:GetHistKeys(filename,"^"+histname+"$")){
+      TH1* this_hist=GetHistRaw(filename,key);
+      if(this_hist){
+	if(hist){
+	  hist->Add(this_hist);
+	  delete this_hist;
+	}else hist=this_hist;
+      }
+    }
   }else{
-    if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistRaw] no "<<histname<<" in "<<filename<<endl;
+    TFile *f=new TFile(filename);
+    hist=(TH1*)f->Get(histname);
+    if(hist){
+      hist->SetDirectory(pdir);
+      if(!hist->GetSumw2N()) hist->Sumw2();
+      if(DEBUG>2) std::cout<<"###INFO#### [Plotter::GetHistRaw] get "<<histname<<" in "<<filename<<endl;
+    }else{
+      if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistRaw] no "<<histname<<" in "<<filename<<endl;
+    }
+    f->Close();
+    delete f;
   }
-  f->Close();
-  delete f;
   return hist;
 }
 TH1* Plotter::GetHist(TString samplekey,TString plotkey,TString additional_option){
@@ -1134,13 +1149,13 @@ void Plotter::SetupPlots(TString filename){
     }
   }
 }
-set<TString> Plotter::GetHistKeys(TList* keys,TRegexp regexp=".*"){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistKeys(TList* keys,TRegexp regexp=\".*\")]"<<endl;
+set<TString> Plotter::GetHistKeys(TDirectory* dir,TRegexp regexp=".*"){
+  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistKeys(TDirectory* dir,TRegexp regexp=\".*\")]"<<endl;
   set<TString> histkeys;
-  for(const auto& obj:*keys){
+  for(const auto& obj:*(dir->GetListOfKeys())){
     TKey* key=(TKey*)obj;
     if(strcmp(key->GetClassName(),"TDirectoryFile")==0){
-      set<TString> this_histkeys=GetHistKeys(((TDirectoryFile*)key->ReadObj())->GetListOfKeys(),regexp);
+      set<TString> this_histkeys=GetHistKeys((TDirectory*)key->ReadObj(),regexp);
       histkeys.insert(this_histkeys.begin(),this_histkeys.end());
     }else{
       TString path=key->GetMotherDir()->GetPath();
@@ -1152,16 +1167,34 @@ set<TString> Plotter::GetHistKeys(TList* keys,TRegexp regexp=".*"){
   }
   return histkeys;
 }
-set<TString> Plotter::GetHistKeys(const Sample& sample,TRegexp regexp=".*"){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistKeys(const Sample& sample,TRegexp regexp=\".*\")]"<<endl;
+set<TString> Plotter::GetHistKeys(TString filename,TString regexp=".*"){
+  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistKeys(TString filename,TString regexp=\".*\")]"<<endl;
+  if(histkeys_cache.find(filename)==histkeys_cache.end()){
+    TFile *f=new TFile(filename);
+    histkeys_cache[filename]=GetHistKeys((TDirectory*)f,".*");
+    f->Close();delete f;
+  }
+  if(regexp==".*") return histkeys_cache[filename];
+  else{
+    set<TString> histkeys;
+    for(const TString& key:histkeys_cache[filename])
+      if(key.Contains(TRegexp(regexp))) histkeys.insert(key);
+    return histkeys;
+  }
+}
+set<TString> Plotter::GetHistKeys(const Sample& sample,TString regexp=".*"){
+  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistKeys(const Sample& sample,TString regexp=\".*\")]"<<endl;
   set<TString> histkeys;
   if(sample.subs.size()){
-    return GetHistKeys(sample.subs[0],regexp);
+    for(const auto& sub:sample.subs){
+      set<TString> this_histkeys=GetHistKeys(sub,regexp);
+      histkeys.insert(this_histkeys.begin(),this_histkeys.end());
+    }
   }else if(sample.files.size()){
-    TFile f(get<0>(sample.files[0]));
-    TList* keys=f.GetListOfKeys();
-    histkeys=GetHistKeys(keys,regexp);
-    f.Close();
+    for(const auto& file:sample.files){
+      set<TString> this_histkeys=GetHistKeys(get<0>(file),regexp);
+      histkeys.insert(this_histkeys.begin(),this_histkeys.end());
+    }
   }
   return histkeys;
 }
