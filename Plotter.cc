@@ -248,47 +248,47 @@ TH1* Plotter::GetHist(const Sample& sample,Plot plot,TString additional_option){
       for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(finalhistname,newstr);
       TH1* this_hist=GetHistRaw(filepath,finalhistname);
       if(this_hist){
-	if(axisstring!=""){
-	  if(strstr(this_hist->ClassName(),"TH2")!=NULL){
-	    TH2* hist2d=(TH2*)this_hist;
-	    int ixmin = plot.xmin ? hist2d->GetXaxis()->FindBin(plot.xmin) : 0 ;
-	    int ixmax = plot.xmax ? hist2d->GetXaxis()->FindBin(plot.xmax-0.00001) : -1 ;	
-	    int iymin = plot.ymin ? hist2d->GetYaxis()->FindBin(plot.ymin) : 0 ;
-	    int iymax = plot.ymax ? hist2d->GetYaxis()->FindBin(plot.ymax-0.00001) : -1 ;
-	    if(axisstring=="(x)") this_hist=(TH1*)hist2d->ProjectionX("_px",iymin,iymax);
-	    else if(axisstring=="(y)") this_hist=(TH1*)hist2d->ProjectionY("_py",ixmin,ixmax);
-	    else{
-	      if(DEBUG>0) std::cout<<"###ERROR### [Plotter::GetHist] wrong axisstring or classname"<<endl;
-	    }
-	    delete hist2d;
-	  }else if(strstr(this_hist->ClassName(),"TH3")!=NULL){
-	    TH3* hist3d=(TH3*)this_hist;
-	    int ixmin=0,iymin=0,izmin=0;
-	    int ixmax=-1,iymax=-1,izmax=-1;
-	    if(plot.xmin||plot.xmax){
-	      ixmin=hist3d->GetXaxis()->FindBin(plot.xmin);
-	      ixmax=hist3d->GetXaxis()->FindBin(plot.xmax-0.00001);
-	    }
-	    if(plot.ymin||plot.ymax){
-	      iymin=hist3d->GetYaxis()->FindBin(plot.ymin);
-	      iymax=hist3d->GetYaxis()->FindBin(plot.ymax-0.00001);
-	    }
-	    if(plot.zmin||plot.zmax){
-	      izmin=hist3d->GetZaxis()->FindBin(plot.zmin);
-	      izmax=hist3d->GetZaxis()->FindBin(plot.zmax-0.00001);
-	    }
-	    if(axisstring=="(x)") this_hist=(TH1*)hist3d->ProjectionX("_px",iymin,iymax,izmin,izmax);
-	    else if(axisstring=="(y)") this_hist=(TH1*)hist3d->ProjectionY("_py",ixmin,ixmax,izmin,izmax);
-	    else if(axisstring=="(z)") this_hist=(TH1*)hist3d->ProjectionZ("_pz",ixmin,ixmax,iymin,iymax);
-	    else{
-	      if(DEBUG>0) std::cout<<"###ERROR### [Plotter::GetHist] wrong axisstring or classname"<<endl;
-	    }
-	    delete hist3d;
-	  }else{
-	    TObject* obj=(TObject*)this_hist;
-	    GetHistActionForAdditionalClass(obj,plot);
-	    this_hist=(TH1*)obj;
+	if(strstr(this_hist->ClassName(),"TH2")!=NULL){
+	  TH2* hist2d=(TH2*)this_hist;
+	  int ixmin = plot.xmin ? hist2d->GetXaxis()->FindBin(plot.xmin) : 0 ;
+	  int ixmax = plot.xmax ? hist2d->GetXaxis()->FindBin(plot.xmax-0.00001) : -1 ;	
+	  int iymin = plot.ymin ? hist2d->GetYaxis()->FindBin(plot.ymin) : 0 ;
+	  int iymax = plot.ymax ? hist2d->GetYaxis()->FindBin(plot.ymax-0.00001) : -1 ;
+	  if(axisstring=="") this_hist=(TH1*)hist2d->ProjectionY("_py",ixmin,ixmax);
+	  else if(axisstring=="(x)") this_hist=(TH1*)hist2d->ProjectionX("_px",iymin,iymax);
+	  else if(axisstring=="(y)") this_hist=(TH1*)hist2d->ProjectionY("_py",ixmin,ixmax);
+	  else{
+	    if(DEBUG>0) std::cout<<"###ERROR### [Plotter::GetHist] wrong axisstring or classname"<<endl;
 	  }
+	  delete hist2d;
+	}else if(strstr(this_hist->ClassName(),"TH3")!=NULL){
+	  TH3* hist3d=(TH3*)this_hist;
+	  int ixmin=0,iymin=0,izmin=0;
+	  int ixmax=-1,iymax=-1,izmax=-1;
+	  if(plot.xmin||plot.xmax){
+	    ixmin=hist3d->GetXaxis()->FindBin(plot.xmin);
+	    ixmax=hist3d->GetXaxis()->FindBin(plot.xmax-0.00001);
+	  }
+	  if(plot.ymin||plot.ymax){
+	    iymin=hist3d->GetYaxis()->FindBin(plot.ymin);
+	    iymax=hist3d->GetYaxis()->FindBin(plot.ymax-0.00001);
+	  }
+	  if(plot.zmin||plot.zmax){
+	    izmin=hist3d->GetZaxis()->FindBin(plot.zmin);
+	    izmax=hist3d->GetZaxis()->FindBin(plot.zmax-0.00001);
+	  }
+	  if(axisstring=="") this_hist=(TH1*)hist3d->ProjectionZ("_pz",ixmin,ixmax,iymin,iymax);
+	  else if(axisstring=="(x)") this_hist=(TH1*)hist3d->ProjectionX("_px",iymin,iymax,izmin,izmax);
+	  else if(axisstring=="(y)") this_hist=(TH1*)hist3d->ProjectionY("_py",ixmin,ixmax,izmin,izmax);
+	  else if(axisstring=="(z)") this_hist=(TH1*)hist3d->ProjectionZ("_pz",ixmin,ixmax,iymin,iymax);
+	  else{
+	    if(DEBUG>0) std::cout<<"###ERROR### [Plotter::GetHist] wrong axisstring or classname"<<endl;
+	  }
+	  delete hist3d;
+	}else{
+	  TObject* obj=(TObject*)this_hist;
+	  GetHistActionForAdditionalClass(obj,plot);
+	  this_hist=(TH1*)obj;
 	}
 	this_hist->SetName(sample.title);
 	if(!hist){
@@ -302,6 +302,7 @@ TH1* Plotter::GetHist(const Sample& sample,Plot plot,TString additional_option){
     }
   }
   if(hist){
+    cout<<"next"<<endl;
     sample.ApplyStyle(hist);
     if(IsEntry(sample)){
       hist->SetTitle(plot.name+plot.suffix);
@@ -1216,7 +1217,7 @@ set<TString> Plotter::ParseHistKeys(set<TString> histkeys,set<TString> fixes,set
       TString dirname=Dirname(key);
       TString basename=Basename(key);
       if(basename.Contains(TRegexp(fix))){
-	key=dirname+"/"+Replace(basename,TRegexp(fix),"");
+	key=dirname+"/"+Replace(basename,fix,"");
 	if(key.Contains("^[.]/")) key=Replace(key,"^[.]/","");
       }
     }

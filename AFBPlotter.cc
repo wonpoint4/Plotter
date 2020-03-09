@@ -128,6 +128,7 @@ TH1* AFBPlotter::GetHist(const Sample& sample,Plot plot,TString additional_optio
   }
 }
 void AFBPlotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot){
+  if(DEBUG>3) std::cout<<"###DEBUG### [AFBPlotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot)"<<endl;
   if(strstr(obj->ClassName(),"TH4D")!=NULL){
     TH4D* hist4d=(TH4D*)obj;
     int ixmin=0,iymin=0,izmin=0,iumin=0;
@@ -149,7 +150,8 @@ void AFBPlotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot){
       iumax=hist4d->GetUaxis()->FindBin(plot.umax-0.00001);
     }
     TString axisstring=plot.histname(TRegexp("([x-zu]*)$"));
-    if(axisstring=="(x)") obj=(TObject*)hist4d->ProjectionX("_px",iymin,iymax,izmin,izmax,iumin,iumax);
+    if(axisstring=="") obj=(TObject*)hist4d->ProjectionU("_pu",ixmin,ixmax,iymin,iymax,izmin,izmax);
+    else if(axisstring=="(x)") obj=(TObject*)hist4d->ProjectionX("_px",iymin,iymax,izmin,izmax,iumin,iumax);
     else if(axisstring=="(y)") obj=(TObject*)hist4d->ProjectionY("_py",ixmin,ixmax,izmin,izmax,iumin,iumax);
     else if(axisstring=="(z)") obj=(TObject*)hist4d->ProjectionZ("_pz",ixmin,ixmax,iymin,iymax,iumin,iumax);
     else if(axisstring=="(u)") obj=(TObject*)hist4d->ProjectionU("_pu",ixmin,ixmax,iymin,iymax,izmin,izmax);
@@ -181,7 +183,7 @@ void AFBPlotter::AddPlot(TString plotkey,TString option){
   }
   plot.histname=Replace(plot.histname,"(m)","(x)");
   plot.histname=Replace(plot.histname,"(pt)","(z)");
-  if(plot.histname.Contains("costhetaCS")){plot.histname+="(u)";}
+  //if(plot.histname.Contains("costhetaCS")){plot.histname+="(u)";}
   if(plot.histname.Contains("dimass")){plot.histname=Replace(plot.histname,"dimass","costhetaCS");plot.histname+="(x)";}
   if(plot.histname.Contains("dirap")){plot.histname=Replace(plot.histname,"dirap","costhetaCS");plot.histname+="(y)";}
   if(plot.histname.Contains("dipt")){plot.histname=Replace(plot.histname,"dipt","costhetaCS");plot.histname+="(z)";}
@@ -267,7 +269,16 @@ AFBPlotter::AFBPlotter(TString mode_="dab"){
     samples[key]=frag;
   } 
   
-  samples["data"]=Sample("data",Sample::Type::DATA,kBlack)+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]")+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_.*EG.*_[A-Z]");
+  samples["data"]=Sample("data",Sample::Type::DATA,kBlack,20)+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]")+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_.*EG.*_[A-Z]");
+  samples["mm2016"]=Sample("data (mm2016)",Sample::Type::DATA,kBlack,20)+TRegexp("2016.*/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]");
+  samples["mm2017"]=Sample("data (mm2017)",Sample::Type::DATA,kRed,20)+TRegexp("2017.*/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]");
+  samples["mm2018"]=Sample("data (mm2018)",Sample::Type::DATA,kBlue,20)+TRegexp("2018.*/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]");
+  samples["ee2016"]=Sample("data (ee2016)",Sample::Type::DATA,kBlack,22)+TRegexp("2016.*/DATA/AFBAnalyzer_SkimTree_Dilepton_.*EG.*_[A-Z]");
+  samples["ee2017"]=Sample("data (ee2017)",Sample::Type::DATA,kRed,22)+TRegexp("2017.*/DATA/AFBAnalyzer_SkimTree_Dilepton_.*EG.*_[A-Z]");
+  samples["ee2018"]=Sample("data (ee2018)",Sample::Type::DATA,kBlue,22)+TRegexp("2018.*/DATA/AFBAnalyzer_SkimTree_Dilepton_.*EG.*_[A-Z]");
+  samples["mm"]=Sample("data (mm)",Sample::Type::DATA,kBlack,20)+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]");
+  samples["ee"]=Sample("data (ee)",Sample::Type::DATA,kRed,22)+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_.*EG.*_[A-Z]");
+
   samples["ww"]=Sample("WW",Sample::Type::BG,kBlue)+TRegexp("/AFBAnalyzer_SkimTree_Dilepton_WW_pythia");
   samples["wz"]=Sample("WZ",Sample::Type::BG,kGreen)+TRegexp("/AFBAnalyzer_SkimTree_Dilepton_WZ_pythia");
   samples["zz"]=Sample("ZZ",Sample::Type::BG,kCyan)+TRegexp("/AFBAnalyzer_SkimTree_Dilepton_ZZ_pythia");
@@ -276,53 +287,22 @@ AFBPlotter::AFBPlotter(TString mode_="dab"){
   samples["tt"]=Sample("t#bar{t}",Sample::Type::BG,kMagenta)+TRegexp("/AFBAnalyzer_SkimTree_Dilepton_TTLL_powheg");
 
   samples["amc"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_DYJets.root");
-  samples["amctt"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::SIGNAL,kGreen)+TRegexp("/AFBAnalyzer_DYJets.root"));
-  samples["lheamc"]=Sample("#gamma*/Z#rightarrowll (LHE)",Sample::Type::SIGNAL,kBlue)+TRegexp("/AFBAnalyzer_DYJets.root");
-  samples["lheamc"].replace["/([^/ ])"]="/lhe_$1";
-  samples["genamc"]=Sample("#gamma*/Z#rightarrowll (GEN)",Sample::Type::SIGNAL,kGreen)+TRegexp("/AFBAnalyzer_DYJets.root");
-  samples["genamc"].replace["/([^/ ])"]="/gen_$1";
-  samples["genfidamc"]=Sample("#gamma*/Z#rightarrowll (GEN fiducial)",Sample::Type::SIGNAL,kGreen)+TRegexp("/AFBAnalyzer_DYJets.root");
-  samples["genfidamc"].replace["/([^/ ])"]="/genfid_$1";
-  samples["truthamc"]=Sample("#gamma*/Z#rightarrowll (truth)",Sample::Type::SIGNAL,kCyan)+TRegexp("/AFBAnalyzer_DYJets.root");
-  samples["truthamc"].replace["/([^/ ])"]="/truth_$1";
-  samples["amc+bg"]=Sample("simulation",Sample::Type::STACK,kRed)+"amc"+"amctt"+"vv"+"wjets"+"tt";
-  samples["amc+bg+ss"]=samples["amc+bg"]+"ss_"%(Sample("QCD dijet",Sample::Type::BG,kCyan)+samples["data"]+(-1)*(Sample()+"amc"+"amctt"+"vv"+"wjets"+"tt"));
-
   samples["amcJet"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_DY[0-9]Jets.root");
-  samples["amcJettt"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::SIGNAL,kGreen)+TRegexp("/AFBAnalyzer_DY[0-9]Jets.root"));
-  samples["genamcJet"]=Sample("#gamma*/Z#rightarrowll (GEN)",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_DY[0-9]Jets.root");
-  samples["amcJet+bg"]=Sample("simulation",Sample::Type::STACK,kRed)+"amcJet"+"amcJettt"+"vv"+"wjets"+"tt";
-  samples["amcJet+bg+ss"]=samples["amcJet+bg"]+"ss_"%(Sample("QCD dijet",Sample::Type::BG,kCyan)+samples["data"]+(-1)*(Sample()+"amcJet"+"amcJettt"+"vv"+"wjets"+"tt"));
-
   samples["amcPt"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_DYJets_Pt-[0-9]*To[0-9Inf]*.root");
+  samples["amcM"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_DYJets_M-[0-9]*to[0-9Inf]*.root");
+  TString dysamples[]={"amc","amcJet","amcPt","amcM"};
+  for(auto dysample:dysamples){
+    samples["tau_"+dysample]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::BG,kGreen)+dysample);
+    samples["lhe_"+dysample]="lhe_"%(Sample("#gamma*/Z#rightarrowll (LHE)",Sample::Type::SIGNAL,kBlue)+dysample);
+    samples["gen_"+dysample]="gen_"%(Sample("#gamma*/Z#rightarrowll (GEN)",Sample::Type::SIGNAL,kGreen)+dysample);
+    samples["genfid_"+dysample]="genfid_"%(Sample("#gamma*/Z#rightarrowll (GEN fiducial)",Sample::Type::SIGNAL,kGreen)+dysample);
+    samples["truth_"+dysample]="truth_"%(Sample("#gamma*/Z#rightarrowll (truth)",Sample::Type::SIGNAL,kCyan)+dysample);
+  }
+    
   samples["amcPt_stack"]=Sample("DY Pt-binned",Sample::Type::STACK,kBlue)+TRegexp("/AFBAnalyzer_DYJets_Pt-[0-9]*To[0-9Inf]*.root");
   for(auto& sub:samples["amcPt_stack"].subs) sub.title=sub.title(TRegexp("Pt-[0-9]*To[0-9Inf]*"));
-  samples["amcPttt"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::SIGNAL,kGreen)+TRegexp("/AFBAnalyzer_DYJets_Pt-[0-9]*To[0-9Inf]*.root"));
-  samples["lheamcPt"]=Sample("DY Pt-binned (LHE)",Sample::Type::SIGNAL,kBlue)+TRegexp("/AFBAnalyzer_DYJets_Pt-[0-9]*To[0-9Inf]*.root");
-  samples["lheamcPt"].replace["/([^/ ])"]="/lhe_$1";
-  samples["genamcPt"]=Sample("DY Pt-binned (GEN)",Sample::Type::SIGNAL,kGreen)+TRegexp("/AFBAnalyzer_DYJets_Pt-[0-9]*To[0-9Inf]*.root");
-  samples["genamcPt"].replace["/([^/ ])"]="/gen_$1";
-  samples["genfidamcPt"]=Sample("DY Pt-binned (GEN fiducial)",Sample::Type::SIGNAL,kGreen)+TRegexp("/AFBAnalyzer_DYJets_Pt-[0-9]*To[0-9Inf]*.root");
-  samples["genfidamcPt"].replace["/([^/ ])"]="/genfid_$1";
-  samples["truthamcPt"]=Sample("DY Pt-binned (truth)",Sample::Type::SIGNAL,kCyan)+TRegexp("/AFBAnalyzer_DYJets_Pt-[0-9]*To[0-9Inf]*.root");
-  samples["truthamcPt"].replace["/([^/ ])"]="/truth_$1";
-  samples["amcPt+bg"]=Sample("simulation",Sample::Type::STACK,kRed)+"amcPt"+"amcPttt"+"vv"+"wjets"+"tt";
-  samples["amcPt+bg+ss"]=samples["amcPt+bg"]+"ss_"%(Sample("QCD dijet",Sample::Type::BG,kCyan)+samples["data"]+(-1)*(Sample()+"amcPt"+"amcPttt"+"vv"+"wjets"+"tt"));
-
-  samples["amcM"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_DYJets_M-[0-9]*to[0-9Inf]*.root");
   samples["amcM_stack"]=Sample("DY M-binned",Sample::Type::STACK,kBlue)+TRegexp("/AFBAnalyzer_DYJets_M-[0-9]*to[0-9Inf]*.root");
   for(auto& sub:samples["amcM_stack"].subs) sub.title=sub.title(TRegexp("M-[0-9]*to[0-9Inf]*"));
-  samples["amcMtt"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::SIGNAL,kGreen)+TRegexp("/AFBAnalyzer_DYJets_M-[0-9]*to[0-9Inf]*.root"));
-  samples["lheamcM"]=Sample("DY M-binned (LHE)",Sample::Type::SIGNAL,kBlue)+TRegexp("/AFBAnalyzer_DYJets_M-[0-9]*to[0-9Inf]*.root");
-  samples["lheamcM"].replace["/([^/ ])"]="/lhe_$1";
-  samples["genamcM"]=Sample("DY M-binned (GEN)",Sample::Type::SIGNAL,kGreen)+TRegexp("/AFBAnalyzer_DYJets_M-[0-9]*to[0-9Inf]*.root");
-  samples["genamcM"].replace["/([^/ ])"]="/gen_$1";
-  samples["genfidamcM"]=Sample("DY M-binned (GEN fiducial)",Sample::Type::SIGNAL,kGreen)+TRegexp("/AFBAnalyzer_DYJets_M-[0-9]*to[0-9Inf]*.root");
-  samples["genfidamcM"].replace["/([^/ ])"]="/genfid_$1";
-  samples["truthamcM"]=Sample("DY M-binned (truth)",Sample::Type::SIGNAL,kCyan)+TRegexp("/AFBAnalyzer_DYJets_M-[0-9]*to[0-9Inf]*.root");
-  samples["truthamcM"].replace["/([^/ ])"]="/truth_$1";
-  samples["amcM+bg"]=Sample("simulation",Sample::Type::STACK,kRed)+"amcM"+"amcMtt"+"vv"+"wjets"+"tt";
-  samples["amcM+bg+ss"]=samples["amcM+bg"]+"ss_"%(Sample("QCD dijet",Sample::Type::BG,kCyan)+samples["data"]+(-1)*(Sample()+"amcM"+"amcMtt"+"vv"+"wjets"+"tt"));
   
   plot_axisnames["dimass"]="m(ll) [GeV]";
   plot_axisnames["dirap"]="y(ll)";
@@ -414,14 +394,47 @@ void AFBPlotter::SetupEntries(){
     //entries.push_back(samples["zz2016"]+samples["zz2017"]+samples["zz2018"]);
     //entries.push_back(samples["wjets2016"]+samples["wjets2017"]+samples["wjets2018"]);
   }else{
-    vector<TString> entry_keys=Split(mode,":");
+    vector<TString> entry_keys=Split(mode," ");
     for(auto entry_key:entry_keys){
-      if(samples.find(entry_key)!=samples.end())
-	entries.push_back(samples[entry_key]);
-      else{
-	if(DEBUG>0) std::cout<<"###ERROR### [AFBPlotter::SetupEntries] No "<<entry_key<<" in samples"<<endl;
-	exit(1);
+      Sample entry;
+      if(entry_key.BeginsWith("*")) entry=Sample("stack",Sample::Type::STACK);
+      else entry=Sample("sum",Sample::Type::SUM);
+      TPRegexp("^\\*").Substitute(entry_key,"");
+      TPRegexp("([+-])").Substitute(entry_key," $1","g");
+      vector<TString> sample_keys=Split(entry_key," ");
+      for(int i=0;i<(int)sample_keys.size();i++){
+	TString sample_key=Replace(sample_keys[i],"[+-]","");
+	Sample sample;
+	if(samples.find(sample_key)!=samples.end()){
+	  sample=samples[sample_key];
+	}else if(sample_key=="bg"){
+	  sample=Sample("bg",Sample::Type::STACK,kBlue);
+	  if(mode.Contains("amcPt")) sample=sample+"tau_amcPt";
+	  else if(mode.Contains("amcM")) sample=sample+"tau_amcM";
+	  else if(mode.Contains("amc")) sample=sample+"tau_amc";
+	  sample=sample+"vv"+"wjets"+"tt";
+	}else if(sample_key=="ss"){
+	  sample=Sample("QCD dijet",Sample::Type::BG,kCyan)+"data";
+	  if(mode.Contains("amcPt")) sample=sample-"tau_amcPt";
+	  else if(mode.Contains("amcM")) sample=sample-"tau_amcM";
+	  else if(mode.Contains("amc")) sample=sample-"tau_amc";
+	  sample="ss_"%(sample-"vv"-"wjets"-"tt");
+	}else{
+	  if(DEBUG>0) std::cout<<"###ERROR### [AFBPlotter::SetupEntries] No "<<entry_key<<" in samples"<<endl;
+	  exit(1);
+	}
+	if(i==0){
+	  if(entry.type==Sample::Type::SUM) entry.title=sample.title;
+	  entry.style=sample.style;
+	  entry=entry+sample;
+	}else if(sample_keys[i].BeginsWith("+")) entry=entry+sample;
+	else if(sample_keys[i].BeginsWith("-")) entry=entry-sample;
+	else{
+	  if(DEBUG>0) std::cout<<"###ERROR### [AFBPlotter::SetupEntries] Wrong syntax "<<entry_key<<endl;
+	  exit(1);
+	}
       }
+      entries.push_back(entry);
     }
   }
 }

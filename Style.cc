@@ -11,24 +11,22 @@ public:
   int markerstyle=-1;
   double markersize=-1;
   TString drawoption;
-  Style(int color=1);
+  Style(int color=-1,int marker=-1);
   void Apply(TH1* hist) const;
   void Print() const;
 };
-Style::Style(int color){
-  if(color==1){
-    markercolor=color;
-    markerstyle=20;
-    markersize=0.7;
-    drawoption="e p";
-    fillcolor=0;
-  }else{
-    //fillcolor=color;
+Style::Style(int color,int marker){
+  if(color>0){
     fillcolor=0;
     linecolor=color;
     markercolor=color;
     drawoption="e hist";
   }
+  if(marker>0){
+    markerstyle=marker;
+    markersize=0.7;
+    drawoption="e p";
+  }    
 }
     
 void Style::Apply(TH1* hist) const {

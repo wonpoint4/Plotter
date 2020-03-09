@@ -29,12 +29,15 @@ public:
   vector<tuple<TString,double,TString,TString>> files; //filename,type,weight,prefix,suffix
   vector<Sample> subs;
 
-  Sample();
-  Sample(TString title_,Sample::Type type_,int color_);
+  Sample(TString title_="",Sample::Type type_=Sample::Type::UNDEF,int color_=-1,int marker_=-1);
   Sample operator+(const Sample& sam);
   Sample operator+(const char* key);
   Sample operator+(const TString key);
   Sample operator+(const TRegexp reg);
+  Sample operator-(const Sample& sam);
+  Sample operator-(const char* key);
+  Sample operator-(const TString key);
+  Sample operator-(const TRegexp reg);
   friend Sample operator%(const char* prefix,const Sample& sam);
   friend Sample operator%(const TString prefix,const Sample& sam);
   friend Sample operator%(const Sample& sam,const char* suffix);
@@ -42,7 +45,7 @@ public:
 
   Sample operator*(double w);
   friend Sample operator*(double w,const Sample& sam);
-  void SetStyle(int color);
+  void SetStyle(int color_,int marker_=-1);
   void SetType(int type_);
   void Add(TRegexp sampleregexp,double weight=1.,TString prefix="",TString suffix="");
   void ApplyStyle(TH1* hist) const;
@@ -51,13 +54,10 @@ public:
 };
 map<TString,Sample> samples;
 
-Sample::Sample(){
-  type=(Sample::Type)UNDEF;
-}
-Sample::Sample(TString title_,Sample::Type type_,int color_){
+Sample::Sample(TString title_,Sample::Type type_,int color_,int marker_){
   title=title_;
   type=type_;
-  SetStyle(color_);
+  SetStyle(color_,marker_);
 }
 bool Sample::IsCollection() const{
   if(type==Sample::Type::STACK||type==Sample::Type::SUM) return true;
@@ -91,6 +91,26 @@ Sample Sample::operator+(const TRegexp reg){
   Sample temp(*this);
   for(auto const& [key,sample]:samples)
     if(key.Contains(reg)) temp=temp+sample;
+  return temp;
+}
+
+Sample Sample::operator-(const Sample& sam){
+  return (*this)+(-1.)*sam;
+}
+Sample Sample::operator-(const char* key){
+  for(const auto& [k,sample]:samples){
+    if(k==key) return (*this)-sample;
+  }
+  if(DEBUG>0) cout<<"###ERROR### [Sample operator-(const char* key,const Sample& sam)] no sample with key "<<key<<endl;
+  exit(1);
+}  
+Sample Sample::operator-(const TString key){
+  return (*this)-key.Data();
+}
+Sample Sample::operator-(const TRegexp reg){
+  Sample temp(*this);
+  for(auto const& [key,sample]:samples)
+    if(key.Contains(reg)) temp=temp-sample;
   return temp;
 }
 Sample operator%(const char* prefix,const Sample& sam){
@@ -131,8 +151,8 @@ Sample operator*(double f,const Sample& sam){
     for(auto& [file,w,pre,suf]:temp.files) w*=f;
   return temp;
 }
-void Sample::SetStyle(int color){
-  style=Style(color);
+void Sample::SetStyle(int color_,int marker_){
+  style=Style(color_,marker_);
   
   if(type==Type::STACK){
     style.drawoption="e";
@@ -169,38 +189,4 @@ void Sample::Print(bool detail,TString pre) const{
     }
   }else cout<<pre<<"Title: "<<title<<" "<<"Type: "<<GetTypeString()<<endl;
 }
-
-Sample MakeSample(TString title,Sample::Type type,int color,tuple<TString,double> subsample1,tuple<TString,double> subsample2=make_tuple("",0.),tuple<TString,double> subsample3=make_tuple("",0.),tuple<TString,double> subsample4=make_tuple("",0.),tuple<TString,double> subsample5=make_tuple("",0.),tuple<TString,double> subsample6=make_tuple("",0.),tuple<TString,double> subsample7=make_tuple("",0.)){
-  Sample sample(title,type,color);
-  if(get<0>(subsample1)!="") sample.Add(get<0>(subsample1),get<1>(subsample1),"","");
-  if(get<0>(subsample2)!="") sample.Add(get<0>(subsample2),get<1>(subsample2),"","");
-  if(get<0>(subsample3)!="") sample.Add(get<0>(subsample3),get<1>(subsample3),"","");
-  if(get<0>(subsample4)!="") sample.Add(get<0>(subsample4),get<1>(subsample4),"","");
-  if(get<0>(subsample5)!="") sample.Add(get<0>(subsample5),get<1>(subsample5),"","");
-  if(get<0>(subsample6)!="") sample.Add(get<0>(subsample6),get<1>(subsample6),"","");
-  if(get<0>(subsample7)!="") sample.Add(get<0>(subsample7),get<1>(subsample7),"","");
-  return sample;
-}
-Sample MakeSample(TString title,Sample::Type type,int color,tuple<TString,double,TString,TString> subsample1=make_tuple("",0.,"",""),tuple<TString,double,TString,TString> subsample2=make_tuple("",0.,"",""),tuple<TString,double,TString,TString> subsample3=make_tuple("",0.,"",""),tuple<TString,double,TString,TString> subsample4=make_tuple("",0.,"",""),tuple<TString,double,TString,TString> subsample5=make_tuple("",0.,"",""),tuple<TString,double,TString,TString> subsample6=make_tuple("",0.,"",""),tuple<TString,double,TString,TString> subsample7=make_tuple("",0.,"","")){
-  Sample sample(title,type,color);
-  if(get<0>(subsample1)!="") sample.Add(get<0>(subsample1),get<1>(subsample1),get<2>(subsample1),get<3>(subsample1));
-  if(get<0>(subsample2)!="") sample.Add(get<0>(subsample2),get<1>(subsample2),get<2>(subsample2),get<3>(subsample2));
-  if(get<0>(subsample3)!="") sample.Add(get<0>(subsample3),get<1>(subsample3),get<2>(subsample3),get<3>(subsample3));
-  if(get<0>(subsample4)!="") sample.Add(get<0>(subsample4),get<1>(subsample4),get<2>(subsample4),get<3>(subsample4));
-  if(get<0>(subsample5)!="") sample.Add(get<0>(subsample5),get<1>(subsample5),get<2>(subsample5),get<3>(subsample5));
-  if(get<0>(subsample6)!="") sample.Add(get<0>(subsample6),get<1>(subsample6),get<2>(subsample6),get<3>(subsample6));
-  if(get<0>(subsample7)!="") sample.Add(get<0>(subsample7),get<1>(subsample7),get<2>(subsample7),get<3>(subsample7));
-  return sample;
-}
-Sample MakeSample(TString title,Sample::Type type,int color,TString key,double weight=1.,TString prefix="",TString suffix=""){
-  Sample sample(title,type,color);
-  sample.Add(key,weight,prefix,suffix);
-  return sample;
-}
-Sample MakeSample(TString title,Sample::Type type,int color,TRegexp regexp,double weight=1.,TString prefix="",TString suffix=""){
-  Sample sample(title,type,color);
-  sample.Add(regexp,weight,prefix,suffix);
-  return sample;
-}
-
 #endif

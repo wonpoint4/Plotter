@@ -18,9 +18,10 @@ TString Basename(TString s){
   if(s.Last('/')!=-1) return s(s.Last('/')+1,s.Length());
   else return s;
 }
-TString Replace(TString str,TRegexp reg,TString repl){
+TString Replace(TString str,TString reg,TString repl){
+  if(reg=="") return str;
   int extent;
-  int start=str.Index(reg,&extent);
+  int start=str.Index(TRegexp(reg),&extent);
   if(start>=0) return str.Replace(start,extent,repl);
   else return str;
 }
