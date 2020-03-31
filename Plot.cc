@@ -21,6 +21,7 @@ public:
   void Print(std::ostream& out=cout) const;
   void SetOption(TString option_);
   void RemoveOption(TString option_);
+  bool IsMultiPad() const;
   Plot operator-(const char* opt);
   Plot operator+(const char* opt);
   Plot operator/(Plot p);
@@ -153,5 +154,8 @@ Plot::Plot(vector<TString> words){
 Plot::Plot(TString line="") : Plot(Split(line," ")){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plot::Plot(TString line="")]"<<endl;
 }
-
+bool Plot::IsMultiPad() const {
+  if(type==Type::CompareAndRatio||type==Type::CompareAndDiff||type==Type::CompareAndSig) return true;
+  else return false;
+}
 #endif

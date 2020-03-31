@@ -8,7 +8,7 @@ public:
   int Setup(TString mode_);
   TString mode;
   TString analyzer;
-  AFBPlotter(TString mode_="dab");
+  AFBPlotter(TString mode_="data *amc+bg");
 
   double GetChi2(TH1* h1,TH1* h2=NULL);
   void SetupTH4D();
@@ -33,7 +33,7 @@ TCanvas* AFBPlotter::DrawPlot(TString plotkey,TString option=""){
     plot.SetOption(option);
     for(auto [histname,axisname]:plot_axisnames){
       if(plot.name.Contains(TRegexp("/[^/]*"+histname))){
-	if(plot.type&(Plot::Type::CompareAndRatio|Plot::Type::CompareAndDiff|Plot::Type::CompareAndSig)){
+	if(plot.IsMultiPad()){
 	  c->GetPad(2)->cd();
 	}else{
 	  c->cd();
@@ -48,7 +48,7 @@ TCanvas* AFBPlotter::DrawPlot(TString plotkey,TString option=""){
 	}
       }
     }
-    if(plot.type&(Plot::Type::CompareAndRatio|Plot::Type::CompareAndDiff|Plot::Type::CompareAndSig)){
+    if(plot.IsMultiPad()){
       c->GetPad(1)->cd();
     }else{
       c->cd();
@@ -80,7 +80,7 @@ TCanvas* AFBPlotter::DrawPlot(TString plotkey,TString option=""){
       TLatex latex;
       latex.SetTextSize(0.07);
       latex.SetNDC();
-      if(!(plot.type&(Plot::Type::CompareAndRatio|Plot::Type::CompareAndDiff|Plot::Type::CompareAndSig))) latex.SetTextSize(0.04);
+      if(!(plot.IsMultiPad())) latex.SetTextSize(0.04);
       //latex.DrawLatex(0.17,0.92,"CMS #bf{#it{Preliminary}}");
       if(plot.histname.Contains(TRegexp("^[a-z]*2016/"))){
 	//latex.DrawLatex(0.6,0.92,"35.92 fb^{-1} (13 TeV)");
@@ -98,7 +98,7 @@ TCanvas* AFBPlotter::DrawPlot(TString plotkey,TString option=""){
 }
 
 pair<double,double> AFBPlotter::GetRange(TString histname,TString axisname){
-  TString rangestring=histname(TRegexp(axisname+"[[0-9.]*,[0-9.]*]"));
+  TString rangestring=histname(TRegexp(axisname+"[[-+0-9.]*,[-+0-9.]*]"));
   TString first=rangestring(axisname.Length()+1,rangestring.Index(',')-axisname.Length()-1);
   TString second=rangestring(rangestring.Index(',')+1,rangestring.Length()-rangestring.Index(',')-2);
   return make_pair(first.Atof(),second.Atof());
@@ -108,10 +108,10 @@ TH1* AFBPlotter::GetHist(const Sample& sample,Plot plot,TString additional_optio
   TH1* hist=NULL;
   plot.SetOption(additional_option);
   if(plot.histname.Contains("weightedAFB")){
-    TH1* hist_forward_num=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","forward_num"));
-    TH1* hist_forward_den=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","forward_den"));
-    TH1* hist_backward_num=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","backward_num"));
-    TH1* hist_backward_den=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","backward_den"));
+    TH1* hist_forward_num=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_num")+" umin:0 umax:1");
+    TH1* hist_forward_den=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_den")+" umin:0 umax:1");
+    TH1* hist_backward_num=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_num")+" umin:-1 umax:0");
+    TH1* hist_backward_den=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_den")+" umin:-1 umax:0");
     hist=GetHistWeightedAFB(hist_forward_num,hist_forward_den,hist_backward_num,hist_backward_den);
   }else if(plot.histname.Contains("AFB")){
     TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFB","costhetaCS")+" umin:0 umax:1");
@@ -166,20 +166,20 @@ void AFBPlotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot){
 void AFBPlotter::AddPlot(TString plotkey,TString option){
   Plotter::AddPlot(plotkey,option);
   Plot& plot=plots[plotkey];
-  if(plot.histname.Contains(TRegexp("m[[0-9.]*,[0-9.]*]/"))){
+  if(plot.histname.Contains(TRegexp("m[[-+0-9.]*,[-+0-9.]*]/"))){
     auto range=GetRange(plot.histname,"m");
     plot.SetOption(Form("xmin:%f xmax:%f",range.first,range.second));
-    plot.histname=Replace(plot.histname,"m[[0-9.]*,[0-9.]*]/","");
+    plot.histname=Replace(plot.histname,"m[[-+0-9.]*,[-+0-9.]*]/","");
   }
-  if(plot.histname.Contains(TRegexp("y[[0-9.]*,[0-9.]*]/"))){
+  if(plot.histname.Contains(TRegexp("y[[-+0-9.]*,[-+0-9.]*]/"))){
     auto range=GetRange(plot.histname,"y");
     plot.SetOption(Form("ymin:%f ymax:%f",range.first,range.second));
-    plot.histname=Replace(plot.histname,"y[[0-9.]*,[0-9.]*]/","");
+    plot.histname=Replace(plot.histname,"y[[-+0-9.]*,[-+0-9.]*]/","");
   }
-  if(plot.histname.Contains(TRegexp("pt[[0-9.]*,[0-9.]*]/"))){
+  if(plot.histname.Contains(TRegexp("pt[[-+0-9.]*,[-+0-9.]*]/"))){
     auto range=GetRange(plot.histname,"pt");
     plot.SetOption(Form("zmin:%f zmax:%f",range.first,range.second));
-    plot.histname=Replace(plot.histname,"pt[[0-9.]*,[0-9.]*]/","");
+    plot.histname=Replace(plot.histname,"pt[[-+0-9.]*,[-+0-9.]*]/","");
   }
   plot.histname=Replace(plot.histname,"(m)","(x)");
   plot.histname=Replace(plot.histname,"(pt)","(z)");
@@ -270,13 +270,13 @@ AFBPlotter::AFBPlotter(TString mode_="dab"){
   } 
   
   samples["data"]=Sample("data",Sample::Type::DATA,kBlack,20)+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]")+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_.*EG.*_[A-Z]");
-  samples["mm2016"]=Sample("data (mm2016)",Sample::Type::DATA,kBlack,20)+TRegexp("2016.*/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]");
-  samples["mm2017"]=Sample("data (mm2017)",Sample::Type::DATA,kRed,20)+TRegexp("2017.*/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]");
-  samples["mm2018"]=Sample("data (mm2018)",Sample::Type::DATA,kBlue,20)+TRegexp("2018.*/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]");
+  samples["mm2016"]=Sample("data (#mu#mu2016)",Sample::Type::DATA,kBlack,20)+TRegexp("2016.*/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]");
+  samples["mm2017"]=Sample("data (#mu#mu2017)",Sample::Type::DATA,kRed,20)+TRegexp("2017.*/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]");
+  samples["mm2018"]=Sample("data (#mu#mu2018)",Sample::Type::DATA,kBlue,20)+TRegexp("2018.*/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]");
   samples["ee2016"]=Sample("data (ee2016)",Sample::Type::DATA,kBlack,22)+TRegexp("2016.*/DATA/AFBAnalyzer_SkimTree_Dilepton_.*EG.*_[A-Z]");
   samples["ee2017"]=Sample("data (ee2017)",Sample::Type::DATA,kRed,22)+TRegexp("2017.*/DATA/AFBAnalyzer_SkimTree_Dilepton_.*EG.*_[A-Z]");
   samples["ee2018"]=Sample("data (ee2018)",Sample::Type::DATA,kBlue,22)+TRegexp("2018.*/DATA/AFBAnalyzer_SkimTree_Dilepton_.*EG.*_[A-Z]");
-  samples["mm"]=Sample("data (mm)",Sample::Type::DATA,kBlack,20)+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]");
+  samples["mm"]=Sample("data (#mu#mu)",Sample::Type::DATA,kBlack,20)+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]");
   samples["ee"]=Sample("data (ee)",Sample::Type::DATA,kRed,22)+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_.*EG.*_[A-Z]");
 
   samples["ww"]=Sample("WW",Sample::Type::BG,kBlue)+TRegexp("/AFBAnalyzer_SkimTree_Dilepton_WW_pythia");
@@ -295,7 +295,7 @@ AFBPlotter::AFBPlotter(TString mode_="dab"){
     samples["tau_"+dysample]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::BG,kGreen)+dysample);
     samples["lhe_"+dysample]="lhe_"%(Sample("#gamma*/Z#rightarrowll (LHE)",Sample::Type::SIGNAL,kBlue)+dysample);
     samples["gen_"+dysample]="gen_"%(Sample("#gamma*/Z#rightarrowll (GEN)",Sample::Type::SIGNAL,kGreen)+dysample);
-    samples["genfid_"+dysample]="genfid_"%(Sample("#gamma*/Z#rightarrowll (GEN fiducial)",Sample::Type::SIGNAL,kGreen)+dysample);
+    samples["genfid_"+dysample]="genfid_"%(Sample("#gamma*/Z#rightarrowll (GEN fiducial)",Sample::Type::SIGNAL,kMagenta)+dysample);
     samples["truth_"+dysample]="truth_"%(Sample("#gamma*/Z#rightarrowll (truth)",Sample::Type::SIGNAL,kCyan)+dysample);
   }
     
@@ -397,7 +397,7 @@ void AFBPlotter::SetupEntries(){
     vector<TString> entry_keys=Split(mode," ");
     for(auto entry_key:entry_keys){
       Sample entry;
-      if(entry_key.BeginsWith("*")) entry=Sample("stack",Sample::Type::STACK);
+      if(entry_key.BeginsWith("*")) entry=Sample("simulation",Sample::Type::STACK);
       else entry=Sample("sum",Sample::Type::SUM);
       TPRegexp("^\\*").Substitute(entry_key,"");
       TPRegexp("([+-])").Substitute(entry_key," $1","g");
@@ -455,10 +455,8 @@ void AFBPlotter::SetupSystematics(){
 
   vector<TString> prefixes;
   for(int i=0;i<100;i++) prefixes.push_back(Form("_pdf%d",i));
-  //FIXME
-  //if(year==2017) systematics["pdf"]=MakeSystematic("pdf",Systematic::Type::HESSIAN,(1<<Sample::Type::SIGNAL),prefixes);
-  //else if(year==2016) systematics["pdf"]=MakeSystematic("pdf",Systematic::Type::GAUSSIAN,(1<<Sample::Type::SIGNAL),prefixes);
-  //else cout<<"###WARNING### [SetupSystematics] wrong year"<<endl;
+  systematics["pdfh"]=MakeSystematic("pdfh",Systematic::Type::HESSIAN,(1<<Sample::Type::SIGNAL),prefixes);
+  systematics["pdfg"]=MakeSystematic("pdfg",Systematic::Type::GAUSSIAN,(1<<Sample::Type::SIGNAL),prefixes);
 
   systematics["noRECOSF"]=MakeSystematic("noRECOSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_noRECOSF");
   systematics["noIDSF"]=MakeSystematic("noIDSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_noIDSF");

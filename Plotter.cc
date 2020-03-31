@@ -200,12 +200,12 @@ TH1* Plotter::GetHistRaw(TString filename,TString histname){
       hist->SetDirectory(pdir);
       if(!hist->GetSumw2N()) hist->Sumw2();
       if(DEBUG>2) std::cout<<"###INFO#### [Plotter::GetHistRaw] get "<<histname<<" in "<<filename<<endl;
-    }else{
-      if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistRaw] no "<<histname<<" in "<<filename<<endl;
     }
     f->Close();
     delete f;
   }
+  if(!hist)
+    if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistRaw] no "<<histname<<" in "<<filename<<endl;
   return hist;
 }
 TH1* Plotter::GetHist(TString samplekey,TString plotkey,TString additional_option){
@@ -248,7 +248,8 @@ TH1* Plotter::GetHist(const Sample& sample,Plot plot,TString additional_option){
       for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(finalhistname,newstr);
       TH1* this_hist=GetHistRaw(filepath,finalhistname);
       if(this_hist){
-	if(strstr(this_hist->ClassName(),"TH2")!=NULL){
+	if(strstr(this_hist->ClassName(),"TH1")!=NULL){
+	}else if(strstr(this_hist->ClassName(),"TH2")!=NULL){
 	  TH2* hist2d=(TH2*)this_hist;
 	  int ixmin = plot.xmin ? hist2d->GetXaxis()->FindBin(plot.xmin) : 0 ;
 	  int ixmax = plot.xmax ? hist2d->GetXaxis()->FindBin(plot.xmax-0.00001) : -1 ;	
@@ -302,7 +303,6 @@ TH1* Plotter::GetHist(const Sample& sample,Plot plot,TString additional_option){
     }
   }
   if(hist){
-    cout<<"next"<<endl;
     sample.ApplyStyle(hist);
     if(IsEntry(sample)){
       hist->SetTitle(plot.name+plot.suffix);
@@ -637,10 +637,11 @@ TCanvas* Plotter::GetSig(vector<tuple<TH1*,TH1*>> tu_hists,TString option){
   TCanvas* c=GetCompare(tu_hists_new,option);
   TH1* axisowner=GetAxisParent(c);
   
-  axisowner->GetYaxis()->SetTitle("Significance");
+  axisowner->GetYaxis()->SetTitle("Difference (#sigma)");
   axisowner->GetYaxis()->SetLabelSize(0.06);
 
-  axisowner->GetYaxis()->SetRangeUser(-2.9,2.9);
+  if(option.Contains("widey")) axisowner->GetYaxis()->SetRangeUser(-4.9,4.9);
+  else axisowner->GetYaxis()->SetRangeUser(-2.9,2.9);
   //tuple<double,double> minmax=GetMinMax(VectorTH1(tu_hists_new));
   //double minimum=get<0>(minmax),maximum=get<1>(minmax);
   //double range=fabs(maximum-minimum);
@@ -1114,9 +1115,11 @@ TLegend* Plotter::GetLegend(const vector<TH1*>& hists,TString option){
   
   vector<double> coordinates;
   double char_unit=0.02,entry_unit=0.13;
-  if(option.Contains("leftleg")) coordinates={0.11,0.89,0.11+maxlen*char_unit,0.89-entry_size*entry_unit};
-  else if(option.Contains("middlebottomleg")) coordinates={0.5-0.5*maxlen*char_unit,0.05,0.5+0.5*maxlen*char_unit,0.05+entry_size*entry_unit};
-  else if(option.Contains("bottomleg")) coordinates={0.89,0.05,0.89-maxlen*char_unit,0.05+entry_size*entry_unit};
+  if(option.Contains("topleftleg")||option.Contains("TLleg")) coordinates={0.16,0.89,0.16+maxlen*char_unit,0.89-entry_size*entry_unit};
+  else if(option.Contains("topmiddleleg")||option.Contains("TMleg")) coordinates={0.5-0.5*maxlen*char_unit,0.89,0.5+0.5*maxlen*char_unit,0.89-entry_size*entry_unit};
+  else if(option.Contains("bottomleftleg")||option.Contains("BLleg")) coordinates={0.16,0.05,0.16+maxlen*char_unit,0.05+entry_size*entry_unit};
+  else if(option.Contains("bottommiddleleg")||option.Contains("BMleg")) coordinates={0.5-0.5*maxlen*char_unit,0.05,0.5+0.5*maxlen*char_unit,0.05+entry_size*entry_unit};
+  else if(option.Contains("bottomrightleg")||option.Contains("BRleg")) coordinates={0.89,0.05,0.89-maxlen*char_unit,0.05+entry_size*entry_unit};
   else coordinates={0.89,0.89,0.89-maxlen*char_unit,0.89-entry_size*entry_unit};
   TLegend* legend=new TLegend(coordinates[0],coordinates[1],coordinates[2],coordinates[3]);
 
@@ -1136,6 +1139,7 @@ TLegend* Plotter::GetLegend(const vector<tuple<TH1*,TH1*>>& hists,TString option
 ////////////////////////////// Plot /////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 void Plotter::SetupPlots(TString filename){
+  TPRegexp("[ *]").Substitute(filename,"_","g");
   plotdir=Dirname(filename);
   plotfile=Basename(filename);
   gSystem->Exec("mkdir -p "+plotdir);

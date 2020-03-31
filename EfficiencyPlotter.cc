@@ -5,71 +5,64 @@ class EfficiencyPlotter:public Plotter{
 public:
   void SetupEntries();
   void SetupSystematics();
-  int Setup(int mode_=0);
-  int mode;
-  TString analyzer;
-  EfficiencyPlotter(int mode_=-1);
+  int Setup(TString mode_);
+  TString mode;
+  EfficiencyPlotter(TString mode_="data sim_stack");
   double GetChi2(TH1* h1,TH1* h2=NULL);
 };
-EfficiencyPlotter::EfficiencyPlotter(int mode_){
-  analyzer="EfficiencyValidation";
-  TObjArray* arr=gSystem->GetFromPipe("find $SKFlatOutputDir$SKFlatV/"+analyzer+"/ -type f").Tokenize("\n");
-  for(int i=0;i<arr->GetEntries();i++){
-    TString file=((TObjString*)arr->At(i))->String();
-    TString year=file("/"+analyzer+"/[0-9]+/"); year=year(analyzer.Length()+2,4);
-    TString key=file(analyzer+"_.*\\.root");
-    key=key(analyzer.Length()+1,key.Index(".root")-analyzer.Length()-1)+"_"+year;
-    Sample sample;
+EfficiencyPlotter::EfficiencyPlotter(TString mode_){
+  vector<TString> files=Split(gSystem->GetFromPipe("find $SKFlatOutputDir$SKFlatV/EfficiencyValidation/ -type f"),"\n");
+  for(int i=0;i<files.size();i++){
+    TString file=files[i];
+    TString key=Replace(file,TString()+getenv("SKFlatOutputDir")+getenv("SKFlatV")+"/EfficiencyValidation/","");
+    Sample sample(key,Sample::Type::UNDEF,i%8+2);
     sample.files.push_back(make_tuple(file,1.,"",""));
     samples[key]=sample;
   } 
-  /*
-  vector<TString> ids={"POGTight_PFIsoTight","POGTight_TrkIsoLoose","MediumID","MediumID_selective","MediumID_Q","MediumID_selective_Q","TightID_Q"};
-  for(const auto& [key,sample]:samples){
-    if(sample.type!=Sample::Type::UNDEF&&key.Contains(TRegexp("201[0-9]$"))){
-      for(const auto& id:ids){
-	samples[key+"_"+id]=sample%("_"+id);
-	samples[key+"_"+id+"_noefficiencySF"]=(Sample(key+" (noSF)",Sample::Type::A,kMagenta)+sample)%("_"+id+"_noefficiencySF");
-      }
-    }
-  }
-  */
-  samples["muon"]=Sample("data (ee)",Sample::Type::DATA,kBlack)+TRegexp("SkimTree_SMP_DoubleMuon_[A-Z].*_201[6-8]$");
-  samples["electron"]=Sample("data (#mu#mu)",Sample::Type::DATA,kBlack)+TRegexp("SkimTree_SMP_.*EG.*_[A-Z].*_201[6-8]$");
-  samples["data"]=Sample("data",Sample::Type::DATA,kBlack)+"muon"+"electron";
-  samples["amc"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("SkimTree_SMP_DYJets_201[6-8]$");
-  samples["amctt"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::BG,kGreen)+TRegexp("SkimTree_SMP_DYJets_201[6-8]$"));
-  samples["vv"]=Sample("Diboson",Sample::Type::BG,kBlue)+TRegexp("SkimTree_SMP_[W-Z][W-Z]_pythia_201[6-8]$");
-  samples["wjets"]=Sample("W",Sample::Type::BG,kYellow)+TRegexp("SkimTree_SMP_WJets_MG_201[6-8]$");
-  samples["tt"]=Sample("t#bar{t}",Sample::Type::BG,kMagenta)+TRegexp("SkimTree_SMP_TTLL_powheg_201[6-8]$");
+
+  samples["muon"]=Sample("data (ee)",Sample::Type::DATA,kBlack,20)+TRegexp("/DATA/EfficiencyValidation_DoubleMuon_[A-Z]");
+  samples["electron"]=Sample("data (#mu#mu)",Sample::Type::DATA,kBlack,20)+TRegexp("/EfficiencyValidation_.*EG.*_[A-Z]");
+  samples["data"]=Sample("data",Sample::Type::DATA,kBlack,20)+"muon"+"electron";
+  samples["amc"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/EfficiencyValidation_DYJets.root");
+  samples["amctt"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::BG,kGreen)+TRegexp("/EfficiencyValidation_DYJets.root"));
+  samples["vv"]=Sample("Diboson",Sample::Type::BG,kBlue)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_[W-Z][W-Z]_pythia.root");
+  samples["wjets"]=Sample("W",Sample::Type::BG,kYellow)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_WJets_MG.root");
+  samples["tt"]=Sample("t#bar{t}",Sample::Type::BG,kMagenta)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_TTLL_powheg.root");
+
+  samples["sim_stack"]=Sample("sim",Sample::Type::STACK,kRed)+"amc"+"amctt"+"vv"+"wjets"+"tt";
   samples["sim"]=Sample("sim",Sample::Type::SUM,kRed)+"amc"+"amctt"+"vv"+"wjets"+"tt";
-  if(mode_>-1) Setup(mode_);
+  samples["sim_noSF"]=(Sample("sim",Sample::Type::SUM,kBlue)+"amc"+"amctt"+"vv"+"wjets"+"tt")%"_noefficiencySF";
+
+  Setup(mode_);
 }
 
-int EfficiencyPlotter::Setup(int mode_){
+int EfficiencyPlotter::Setup(TString mode_){
   Reset();
 
   mode=mode_;
 
   SetupEntries();
   SetupSystematics();
-  SetupPlots(Form("plots_EfficiencyValidation/mode%d/plot.dat",mode));
+  SetupPlots("plot_EfficiencyValidation/"+mode+"/plot.dat");
 
-  if(DEBUG) cout<<"[Setup] nentries: "<<entries.size()<<endl;
-  if(DEBUG) cout<<"[Setup] nsys: "<<systematics.size()<<endl;
-  if(DEBUG) cout<<"[Setup] nplot: "<<plots.size()<<endl;
+  if(DEBUG) std::cout<<"[Setup] nentries: "<<entries.size()<<endl;
+  if(DEBUG) std::cout<<"[Setup] nsys: "<<systematics.size()<<endl;
+  if(DEBUG) std::cout<<"[Setup] nplot: "<<plots.size()<<endl;
 
   return 1;
 }
 
 void EfficiencyPlotter::SetupEntries(){
-  if(DEBUG)  cout<<"[EfficiencyPlotter::SetupEntries]"<<endl;
-  entries.push_back(samples["data"]);
-  entries.push_back(samples["sim"]);    
-  if(mode==1){
-    entries.push_back((Sample("sim_noefficiencySF",Sample::Type::A,kBlue)+"sim")%"_noefficiencySF");
+  if(DEBUG)  cout<<"[EfficiencyPlotter::SetupEntries] mode="<<mode<<endl;
+  vector<TString> entry_keys=Split(mode," ");
+  for(auto entry_key:entry_keys){
+    if(samples.find(entry_key)!=samples.end())
+      entries.push_back(samples[entry_key]);
+    else{
+      if(DEBUG>0) std::cout<<"###ERROR### [EfficiencyPlotter::SetupEntries] No "<<entry_key<<" in samples"<<endl;
+    }
   }
-  if(DEBUG>1) PrintEntries(1);
+  if(DEBUG>1) PrintEntries();
   return;
 }
 void EfficiencyPlotter::SetupSystematics(){
