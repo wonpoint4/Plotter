@@ -22,6 +22,7 @@ public:
   void PrintSamples(bool detail=false,TRegexp regexp=".*");
   void PrintEntries(bool detail=false,TRegexp regexp=".*");
   void PrintHistKeys(const Sample& sample,TString regexp=".*");
+  void PrintHistKeys(int ientry=0,TString regexp=".*");
   void PrintPlots(TRegexp reg=".*");
   void PrintSystematics();
 
@@ -161,8 +162,13 @@ void Plotter::PrintEntries(bool detail,TRegexp regexp){
   }
 }
 void Plotter::PrintHistKeys(const Sample& sample,TString regexp=".*"){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::PrintHistKeys(TString samplename,TString regexp=\".*\")]"<<endl;
+  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::PrintHistKeys(const Sample& sample,TString regexp=\".*\")]"<<endl;
   set<TString> histkeys=GetHistKeys(sample,regexp);
+  for(const auto& key:histkeys) std::cout<<key<<endl;
+}
+void Plotter::PrintHistKeys(int ientry,TString regexp=".*"){
+  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::PrintHistKeys(int ientry,TString regexp=\".*\")]"<<endl;
+  set<TString> histkeys=GetHistKeys(entries[ientry],regexp);
   for(const auto& key:histkeys) std::cout<<key<<endl;
 }
 void Plotter::PrintPlots(TRegexp reg){

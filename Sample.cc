@@ -182,7 +182,7 @@ void Sample::Print(bool detail,TString pre) const{
     cout<<pre<<"Title:"<<title<<" Type:"<<GetTypeString()<<" ";
     style.Print();
     for(const auto& [file,weight,prefix,suffix]:files){
-      cout<<pre<<"  "<<file<<" "<<weight<<" "<<prefix<<" "<<suffix<<endl;
+      cout<<pre<<"  "<<file<<" "<<weight<<" "<<prefix<<" "<<suffix<<" "<<gSystem->GetFromPipe("stat -c %.19y "+file)<<endl;
     }
     for(const auto& sub:subs){
       sub.Print(detail,pre+"  ");
