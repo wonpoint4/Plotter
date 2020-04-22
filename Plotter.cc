@@ -318,7 +318,7 @@ TH1* Plotter::GetHist(const Sample& sample,Plot plot,TString additional_option){
       else if(axisstring=="(u)") RebinXminXmax(hist,plot.rebin,plot.umin,plot.umax);
       else RebinXminXmax(hist,plot.rebin,plot.xmin,plot.xmax);
       if(plot.option.Contains("widthweight")) WidthWeight(hist);
-      if(plot.option.Contains("norm")) Normalize(hist);
+      //if(plot.option.Contains("norm")) Normalize(hist);
     }
   }
   return hist;
@@ -330,55 +330,58 @@ tuple<TH1*,TH1*> Plotter::GetHistPair(const Sample& sample,const Plot& plot){
   if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistPair(const Sample& sample,const Plot& plot)]"<<endl;
 
   TH1* central=GetHist(sample,plot);
-  if(plot.sysname=="") return make_tuple(central,(TH1*)NULL);
-  
-  THStack* hstack=NULL;
-  if(strstr(central->ClassName(),"THStack")!=NULL){
-    hstack=(THStack*)central;
-    central=GetTH1((TH1*)hstack);
-  }
-  int sysbit=systematics[plot.sysname].sysbit;
-  vector<TH1*> syss;
-  for(const auto& sysmap:systematics){
-    const Systematic& systematic=sysmap.second;
-    if(systematic.type==Systematic::Type::MULTI) continue;
-    if(sysbit&systematic.sysbit){
-      if(DEBUG>1) std::cout<<"###INFO#### [Plotter::GetHistPair] sysname="<<systematic.name<<" systype="<<systematic.GetTypeString()<<endl;
-      vector<TH1*> variations;
-      for(const auto& suffix:systematic.suffixes){
-	TH1* this_hist=GetHist(sample,plot,Form("suffix:%s varibit:%d sysname:",suffix.Data(),systematic.varibit));
-	variations.push_back(GetTH1(this_hist,true));
-      }
-      if(systematic.type==Systematic::Type::ENVELOPE){
-	syss.push_back(GetEnvelope(central,variations));
-      }else if(systematic.type==Systematic::Type::GAUSSIAN){
-	syss.push_back(GetRMSError(central,variations));
-      }else if(systematic.type==Systematic::Type::HESSIAN){
-	syss.push_back(GetHessianError(central,variations));
-      }else{
-	if(DEBUG>0) std::cout<<"###ERROR### [Plotter::GetHistPair] Wrong Systematic::Type "<<systematic.type<<endl;
-      }
-      if(DEBUG>2) std::cout<<"###INFO#### [Plotter::GetHistPair] "<<systematic.name+": "<<variations.size()<<" variations"<<endl;
-      for(unsigned int j=0;j<variations.size();j++){
-	delete variations.at(j);
-      }
-    }
-  }
   TH1 *total=NULL;
-  if(syss.size()>0){
-    total=(TH1*)central->Clone();
-    total->SetDirectory(pdir);
-    for(int i=0;i<(int)syss.size();i++){
-      AddError(total,syss.at(i));
-      delete syss.at(i);
+  if(plot.sysname!=""){
+    THStack* hstack=NULL;
+    if(strstr(central->ClassName(),"THStack")!=NULL){
+      hstack=(THStack*)central;
+      central=GetTH1((TH1*)hstack);
     }
+    int sysbit=systematics[plot.sysname].sysbit;
+    vector<TH1*> syss;
+    for(const auto& sysmap:systematics){
+      const Systematic& systematic=sysmap.second;
+      if(systematic.type==Systematic::Type::MULTI) continue;
+      if(sysbit&systematic.sysbit){
+	if(DEBUG>1) std::cout<<"###INFO#### [Plotter::GetHistPair] sysname="<<systematic.name<<" systype="<<systematic.GetTypeString()<<endl;
+	vector<TH1*> variations;
+	for(const auto& suffix:systematic.suffixes){
+	  TH1* this_hist=GetHist(sample,plot,Form("suffix:%s varibit:%d sysname:",suffix.Data(),systematic.varibit));
+	  variations.push_back(GetTH1(this_hist,true));
+	}
+	if(systematic.type==Systematic::Type::ENVELOPE){
+	  syss.push_back(GetEnvelope(central,variations));
+	}else if(systematic.type==Systematic::Type::GAUSSIAN){
+	  syss.push_back(GetRMSError(central,variations));
+	}else if(systematic.type==Systematic::Type::HESSIAN){
+	  syss.push_back(GetHessianError(central,variations));
+	}else{
+	  if(DEBUG>0) std::cout<<"###ERROR### [Plotter::GetHistPair] Wrong Systematic::Type "<<systematic.type<<endl;
+	}
+	if(DEBUG>2) std::cout<<"###INFO#### [Plotter::GetHistPair] "<<systematic.name+": "<<variations.size()<<" variations"<<endl;
+	for(unsigned int j=0;j<variations.size();j++){
+	  delete variations.at(j);
+	}
+      }
+    }
+    if(syss.size()>0){
+      total=(TH1*)central->Clone();
+      total->SetDirectory(pdir);
+      for(int i=0;i<(int)syss.size();i++){
+	AddError(total,syss.at(i));
+	delete syss.at(i);
+      }
+    }
+    if(hstack){
+      delete central;
+      central=(TH1*)hstack;
+    }
+    sample.ApplyStyle(total,true);
   }
-  if(hstack){
-    delete central;
-    central=(TH1*)hstack;
+  if(plot.option.Contains("norm")){
+    Normalize(total);
+    Normalize(central);
   }
-  //central->SetLineWidth(2);
-  central->SetOption(central->GetOption()+TString(" e1"));
   return make_tuple(central,total);
 }
 vector<tuple<TH1*,TH1*>> Plotter::GetHistPairs(const Plot& plot){

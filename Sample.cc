@@ -24,12 +24,13 @@ public:
   TString title;
   Type type;
   Style style;
-  Style styletotal;
+  Style style_alt;
   map<TString,TString> replace;
   vector<tuple<TString,double,TString,TString>> files; //filename,type,weight,prefix,suffix
   vector<Sample> subs;
 
-  Sample(TString title_="",Sample::Type type_=Sample::Type::UNDEF,int color_=-1,int marker_=-1);
+  Sample(TString title_="",Sample::Type type_=Sample::Type::UNDEF,Style styleA=Style(),Style styleB=Style());
+  Sample(TString title_,Sample::Type type_,int color,int marker=-1,int fill=-1,TString drawoption="");
   Sample operator+(const Sample& sam);
   Sample operator+(const char* key);
   Sample operator+(const TString key);
@@ -45,19 +46,25 @@ public:
 
   Sample operator*(double w);
   friend Sample operator*(double w,const Sample& sam);
-  void SetStyle(int color_,int marker_=-1);
+  void SetStyle(int color,int marker=-1,int fill=-1,TString drawoption="");
   void SetType(int type_);
   void Add(TRegexp sampleregexp,double weight=1.,TString prefix="",TString suffix="");
-  void ApplyStyle(TH1* hist) const;
+  void ApplyStyle(TH1* hist,bool alt=false) const;
   void Print(bool detail=false,TString prefix="") const;
   bool IsCollection() const;
 };
 map<TString,Sample> samples;
 
-Sample::Sample(TString title_,Sample::Type type_,int color_,int marker_){
+Sample::Sample(TString title_,Sample::Type type_,Style styleA,Style styleB){
   title=title_;
   type=type_;
-  SetStyle(color_,marker_);
+  style=styleA;
+  style_alt=styleB;
+}
+Sample::Sample(TString title_,Sample::Type type_,int color,int marker,int fill,TString drawoption){
+  title=title_;
+  type=type_;
+  SetStyle(color,marker,fill,drawoption);
 }
 bool Sample::IsCollection() const{
   if(type==Sample::Type::STACK||type==Sample::Type::SUM) return true;
@@ -151,8 +158,8 @@ Sample operator*(double f,const Sample& sam){
     for(auto& [file,w,pre,suf]:temp.files) w*=f;
   return temp;
 }
-void Sample::SetStyle(int color_,int marker_){
-  style=Style(color_,marker_);
+void Sample::SetStyle(int color,int marker,int fill,TString drawoption){
+  style=Style(color,marker,fill,drawoption);
   
   if(type==Type::STACK){
     style.drawoption="e";
@@ -170,11 +177,13 @@ void Sample::Add(TRegexp regexp,double weight,TString prefix,TString suffix){
     if(it->first.Contains(regexp)) (*this)=(*this)+weight*(prefix%(it->second)%suffix);
   }
 }
-void Sample::ApplyStyle(TH1* hist) const {
+void Sample::ApplyStyle(TH1* hist,bool alt) const {
   if(DEBUG>3) cout<<"###DEBUG### [Sample::ApplyStyle(TH1* hist)]"<<endl;
-  style.Apply(hist);
+  if(alt) style_alt.Apply(hist);
+  else style.Apply(hist);
+
   if(hist){
-    hist->SetNameTitle(title,title);
+    hist->SetName(title);
   }
 }
 void Sample::Print(bool detail,TString pre) const{

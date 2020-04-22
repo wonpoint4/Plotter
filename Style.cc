@@ -11,11 +11,11 @@ public:
   int markerstyle=-1;
   double markersize=-1;
   TString drawoption;
-  Style(int color=-1,int marker=-1);
+  Style(int color=-1,int marker=-1,int fillstyle_=-1,TString drawoption_="");
   void Apply(TH1* hist) const;
   void Print() const;
 };
-Style::Style(int color,int marker){
+Style::Style(int color,int marker,int fillstyle_,TString drawoption_){
   if(color>0){
     fillcolor=0;
     linecolor=color;
@@ -26,7 +26,13 @@ Style::Style(int color,int marker){
     markerstyle=marker;
     markersize=0.7;
     drawoption="e p";
-  }    
+  }
+  if(fillstyle_>0){
+    fillstyle=fillstyle_;
+    fillcolor=linecolor;
+    drawoption.ReplaceAll("e ","e2 ");
+  }
+  if(drawoption_!="") drawoption=drawoption_;
 }
     
 void Style::Apply(TH1* hist) const {
