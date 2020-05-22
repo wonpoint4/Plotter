@@ -15,7 +15,14 @@ public:
   map<TString,set<TString>> histkeys_cache;
   static TDirectory *pdir;
   TString plotfile;
-  TString plotdir;
+  TString plotdir="fig";
+
+  //Setup
+  void ScanFiles(TString path);
+  virtual void SetupEntries(TString mode);
+  void Reset();
+  const Sample& GetEntry(TString entrytitle) const;
+  void AddEntry(TString key);
 
   //Print
   void PrintFiles(bool detail=false,TRegexp regexp=".*");
@@ -100,10 +107,8 @@ public:
   Systematic MakeSystematic(TString name,Systematic::Type type,int varibit,TString includes);
 
   //etc
-  const Sample& GetEntry(TString entrytitle);
-  void AddEntry(TString samplekey);
-  void Reset();
-  void ScanFiles(TString path);
+  double GetChi2(TH1* h1,TH1* h2) const;
+  int GetAutoColor() const;
   
   //working
 
@@ -124,6 +129,51 @@ Plotter::~Plotter(){
   SavePlotFile();
 }
 
+/////////////////////////////////////////////////////////////////////////////
+////////////////////////////// Setup ////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+void Plotter::ScanFiles(TString path){
+  vector<TString> files=Split(gSystem->GetFromPipe("find "+path+" -type f -name '*.root'"),"\n");
+  if(!path.EndsWith("/")) path+="/";
+  for(const auto& file:files){
+    TString key=Replace(file,path,"");
+    key=Replace(key,".root$","");
+    samples[key]=Sample(file,Sample::Type::FILE);
+  }
+}
+void Plotter::SetupEntries(TString mode){
+  if(Verbosity) std::cout<<"[Plotter::SetupEntries] mode = '"<<mode<<"'"<<endl;
+  vector<TString> entry_keys=Split(mode," ");
+  for(auto entry_key:entry_keys){
+    AddEntry(entry_key);
+  }
+  return;
+}
+void Plotter::Reset(){
+  entries.clear();
+  systematics.clear();
+  SavePlotFile();
+  plots.clear();
+  plotdir="fig";
+}
+const Sample& Plotter::GetEntry(TString entrytitle) const {
+  for(const auto& entry:entries){
+    if(entry.title==entrytitle) return entry;
+  }
+  PError("[Plotter::GetEntry(TString entrytitle)] no entry with title "+entrytitle);
+  return entries.at(0);
+}
+void Plotter::AddEntry(TString key){
+  if(samples.find(key)!=samples.end()){
+    if(samples[key].IsFile()){
+      Sample sample(key,Sample::Type::UNDEF,GetAutoColor());
+      sample=sample+samples[key];
+      entries.push_back(sample);
+    }else entries.push_back(samples[key]);
+  }else{
+    PError("[Plotter::AddEntry] no sample with key "+key);
+  }
+}
 
 /////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// Print ////////////////////////////////////////
@@ -1065,7 +1115,7 @@ void Plotter::RebinXminXmax(TH1* hist,int rebin,double xmin,double xmax){
 }
 
 void Plotter::Normalize(TH1* hist,double val){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::Normalize(TH1* hists,double val=1.)]"<<endl;
+  PAll("[Plotter::Normalize(TH1* hists,double val=1.)]");
   if(hist){
     if(strstr(hist->ClassName(),"THStack")){
       TH1* hsim=GetTH1(hist);
@@ -1401,34 +1451,33 @@ Systematic Plotter::MakeSystematic(TString name,Systematic::Type type,int varibi
 ///////////////////////////////////////////////////////////////////////
 ///////////////////// etc /////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
-const Sample& Plotter::GetEntry(TString entrytitle){
-  for(const auto& entry:entries){
-    if(entry.title==entrytitle) return entry;
+int Plotter::GetAutoColor() const {
+  set<int> colors={1,2,3,4,5,6,7,8,9};
+  for(const auto& color:colors){
+    bool exist=false;
+    for(const auto& entry:entries){
+      if(entry.style.linecolor==color){
+	exist=true;
+	break;
+      }
+    }
+    if(!exist){
+      return color;
+    }
   }
-  if(DEBUG>0) std::cout<<"###ERROR### [Plotter::GetEntry(TString entrytitle)] no entry with title "<<entrytitle<<endl;
-  return entries.at(0);
+  return 0;
 }
-void Plotter::AddEntry(TString samplekey){
-  if(samples.find(samplekey)!=samples.end()){
-    entries.push_back(samples[samplekey]);
-  }else{
-    if(DEBUG>0) std::cout<<"###ERROR### [Plotter::AddEntry(TString samplekey)] no sample with key "<<samplekey<<endl;
+double Plotter::GetChi2(TH1* h1,TH1* h2) const {
+  double chi2=0;
+  for(int i=h1->GetXaxis()->GetFirst();i<h1->GetXaxis()->GetLast()+1;i++){
+    double x1=h1->GetBinContent(i);
+    double ex1=h1->GetBinError(i);
+    double x2=h2?h2->GetBinContent(i):0.;
+    double ex2=h2?h2->GetBinError(i):0.;
+    chi2+=pow((x1-x2)/(ex1-ex2),2);
   }
-}
-void Plotter::Reset(){
-  entries.clear();
-  systematics.clear();
-  SavePlotFile();
-  plots.clear();
-  plotdir="";
-}
-void Plotter::ScanFiles(TString path){
-  vector<TString> files=Split(gSystem->GetFromPipe("find "+path+" -type f -name '*.root'"),"\n");
-  if(!path.EndsWith("/")) path+="/";
-  for(const auto& file:files){
-    TString key=Replace(file,path,"");
-    samples[key]=Sample(file,Sample::Type::FILE);
-  }
+  chi2/=h1->GetXaxis()->GetLast()-h1->GetXaxis()->GetFirst()+1;
+  return chi2;
 }
 
 //////////////////////working/////////////////////////
