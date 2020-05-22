@@ -11,14 +11,7 @@ public:
   double GetChi2(TH1* h1,TH1* h2=NULL);
 };
 EfficiencyPlotter::EfficiencyPlotter(TString mode_){
-  vector<TString> files=Split(gSystem->GetFromPipe("find $SKFlatOutputDir$SKFlatV/EfficiencyValidation/ -type f"),"\n");
-  for(int i=0;i<files.size();i++){
-    TString file=files[i];
-    TString key=Replace(file,TString()+getenv("SKFlatOutputDir")+getenv("SKFlatV")+"/EfficiencyValidation/","");
-    Sample sample(key,Sample::Type::UNDEF,i%8+2);
-    sample.files.push_back(make_tuple(file,1.,"",""));
-    samples[key]=sample;
-  } 
+  ScanFiles((TString)getenv("SKFlatOutputDir")+getenv("SKFlatV")+"/EfficiencyValidation/");
 
   samples["muon"]=Sample("data (ee)",Sample::Type::DATA,kBlack,20)+TRegexp("/DATA/EfficiencyValidation_DoubleMuon_[A-Z]")+TRegexp("/DATA/EfficiencyValidation_SingleMuon_[A-Z]");
   samples["electron"]=Sample("data (#mu#mu)",Sample::Type::DATA,kBlack,20)+TRegexp("/EfficiencyValidation_.*EG.*_[A-Z]")+TRegexp("/EfficiencyValidation_SingleElectron_[A-Z]");

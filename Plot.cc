@@ -94,7 +94,6 @@ void Plot::RemoveOption(TString option_){
   option=newoption;
 }
 void Plot::Print(std::ostream& out) const{
-  //if(DEBUG>3) std::cout<<"###DEBUG### [void Plot::Print(std::ostream& out) const]"<<endl;
   out<<"<Plot> ";
   out<<"name:"<<name<<" histname:"<<histname;
   if(type!=Type::UNDEF) out<<" type:"<<type;
@@ -121,13 +120,11 @@ void Plot::Print(std::ostream& out) const{
   out<<" </Plot>\n";
 }
 Plot::~Plot(){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plot::~Plot()]"<<endl;
 }
 Plot::Plot(vector<TString> words){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plot::Plot(vector<TString> words)]"<<endl;
   int imax=words.size();
   if(imax==0) return;
-  if(words[0]!="<Plot>") cout<<"###ERROR### [Plot::Plot] Wrong format"<<endl;
+  if(words[0]!="<Plot>") PError("[Plot::Plot] Wrong format");
   vector<TString> subplot_words;
   int depth=0;
   for(int i=0;i<imax;i++){
@@ -149,10 +146,9 @@ Plot::Plot(vector<TString> words){
       else if(depth>1) subplot_words.push_back(words[i]);
     }      
   }
-  this->Print();
+  //this->Print();
 }  
 Plot::Plot(TString line="") : Plot(Split(line," ")){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plot::Plot(TString line="")]"<<endl;
 }
 bool Plot::IsMultiPad() const {
   if(type==Type::CompareAndRatio||type==Type::CompareAndDiff||type==Type::CompareAndSig) return true;
