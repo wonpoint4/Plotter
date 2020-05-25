@@ -18,6 +18,7 @@ public:
   TString plotdir="fig";
 
   //Setup
+  void AddFile(TString key,TString file);
   void ScanFiles(TString path);
   virtual void SetupEntries(TString mode);
   void Reset();
@@ -132,17 +133,23 @@ Plotter::~Plotter(){
 /////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// Setup ////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
+void Plotter::AddFile(TString key,TString file){
+  if(samples.find(key)==samples.end())
+    samples[key]=Sample(file,Sample::Type::FILE);
+  else PError("[Plotter::AddFile] sample "+key+" already exists");
+}
 void Plotter::ScanFiles(TString path){
   vector<TString> files=Split(gSystem->GetFromPipe("find "+path+" -type f -name '*.root'"),"\n");
   if(!path.EndsWith("/")) path+="/";
   for(const auto& file:files){
     TString key=Replace(file,path,"");
     key=Replace(key,".root$","");
-    samples[key]=Sample(file,Sample::Type::FILE);
+    AddFile(key,file);
   }
 }
 void Plotter::SetupEntries(TString mode){
   if(Verbosity) std::cout<<"[Plotter::SetupEntries] mode = '"<<mode<<"'"<<endl;
+  entries.clear();
   vector<TString> entry_keys=Split(mode," ");
   for(auto entry_key:entry_keys){
     AddEntry(entry_key);
@@ -951,8 +958,8 @@ TCanvas* Plotter::DrawPlot(Plot plot,TString additional_option){
   }else{
     vector<tuple<TH1*,TH1*>> histpairs=GetHistPairs(plot);
     vector<TH1*> hists=VectorTH1(histpairs);
-    if(hists.size()==0){
-      PError("[Plotter::DrawPlot] hists is zero length");
+    if(hists.size()<entries.size()){
+      PError("[Plotter::DrawPlot] #hists < #entries ");
       _depth--;
       return NULL;
     }
@@ -981,11 +988,13 @@ vector<TCanvas*> Plotter::DrawPlots(TRegexp plotkey,TString additional_option){
   return canvases;
 }
 void Plotter::SavePlot(TString plotkey,TString option){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::SavePlot(TString plotkey)]"<<endl;
+  PDebug("[Plotter::SavePlot(TString plotkey)]");
   pdir=new TDirectory;
+  TString format="png";
+  if(option.Contains("pdf")) format="pdf";
   TCanvas* c=DrawPlot(plotkey,option);
   gSystem->Exec("mkdir -p "+plotdir+"/"+Dirname(plotkey));
-  c->SaveAs(plotdir+"/"+plotkey+".png");
+  c->SaveAs(plotdir+"/"+plotkey+"."+format);
   delete c;
   pdir->Delete();
 }
@@ -1133,7 +1142,7 @@ void Plotter::Normalize(vector<TH1*> hists,double val){
   for(auto& hist:hists) Normalize(hist,val);
 }
 void Plotter::WidthWeight(TH1* hist){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::WidthWeight(TH1* hist)]"<<endl;
+  PAll("[Plotter::WidthWeight(TH1* hist)]");
   if(hist){
     if(strstr(hist->ClassName(),"THStack")){
       TH1* hsim=GetTH1(hist);
@@ -1230,7 +1239,7 @@ void Plotter::SetupPlots(TString filename){
   }
 }
 set<TString> Plotter::GetHistKeys(TDirectory* dir,TRegexp regexp=".*"){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistKeys(TDirectory* dir,TRegexp regexp=\".*\")]"<<endl;
+  PAll("[Plotter::GetHistKeys(TDirectory* dir,TRegexp regexp=\".*\")]");
   set<TString> histkeys;
   for(const auto& obj:*(dir->GetListOfKeys())){
     TKey* key=(TKey*)obj;
@@ -1248,7 +1257,7 @@ set<TString> Plotter::GetHistKeys(TDirectory* dir,TRegexp regexp=".*"){
   return histkeys;
 }
 set<TString> Plotter::GetHistKeys(TString filename,TString regexp=".*"){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistKeys(TString filename=\""<<filename<<",TString regexp=\""<<regexp<<"\")]"<<endl;
+  PAll("[Plotter::GetHistKeys(TString filename=\""+filename+",TString regexp=\""+regexp+"\")]");
   if(histkeys_cache.find(filename)==histkeys_cache.end()){
     TFile *f=new TFile(filename);
     histkeys_cache[filename]=GetHistKeys((TDirectory*)f,".*");

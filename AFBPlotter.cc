@@ -3,7 +3,7 @@
 #include"Plotter.cc"
 class AFBPlotter:public Plotter{
 public:
-  void SetupEntries();
+  void SetupEntries(TString mode);
   void SetupSystematics();
   int Setup(TString mode_);
   TString mode;
@@ -279,11 +279,11 @@ AFBPlotter::AFBPlotter(TString mode_="dab"){
   samples["wjets"]=Sample("W",Sample::Type::BG,kYellow)+TRegexp("/AFBAnalyzer_.*WJets_MG");
   samples["tt"]=Sample("t#bar{t}",Sample::Type::BG,kMagenta)+TRegexp("/AFBAnalyzer_.*TTLL_powheg");
 
-  samples["amc"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets.root");
-  samples["amcJet"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DY[0-9]Jets.root");
-  samples["amcPt"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets_Pt-[0-9]*To[0-9Inf]*.root");
-  samples["amcM"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets_M-[0-9]*to[0-9Inf]*.root");
-  samples["mg"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets_MG.root");
+  samples["amc"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets$");
+  samples["amcJet"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DY[0-9]Jets$");
+  samples["amcPt"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets_Pt-[0-9]*To[0-9Inf]*$");
+  samples["amcM"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets_M-[0-9]*to[0-9Inf]*$");
+  samples["mg"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets_MG$");
   TString dysamples[]={"amc","amcJet","amcPt","amcM","mg"};
   for(auto dysample:dysamples){
     samples["tau_"+dysample]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::BG,kGreen)+dysample);
@@ -293,15 +293,15 @@ AFBPlotter::AFBPlotter(TString mode_="dab"){
     samples["truth_"+dysample]="truth_"%(Sample("#gamma*/Z#rightarrowll (truth)",Sample::Type::SIGNAL,kCyan)+dysample);
   }
     
-  samples["amcPt_stack"]=Sample("DY Pt-binned",Sample::Type::STACK,kBlue)+TRegexp("/AFBAnalyzer_.*DYJets_Pt-[0-9]*To[0-9Inf]*.root");
+  samples["amcPt_stack"]=Sample("DY Pt-binned",Sample::Type::STACK,kBlue)+TRegexp("/AFBAnalyzer_.*DYJets_Pt-[0-9]*To[0-9Inf]*$");
   for(auto& sub:samples["amcPt_stack"].subs) sub.title=sub.title(TRegexp("Pt-[0-9]*To[0-9Inf]*"));
-  samples["amcM_stack"]=Sample("DY M-binned",Sample::Type::STACK,kBlue)+TRegexp("/AFBAnalyzer_.*DYJets_M-[0-9]*to[0-9Inf]*.root");
+  samples["amcM_stack"]=Sample("DY M-binned",Sample::Type::STACK,kBlue)+TRegexp("/AFBAnalyzer_.*DYJets_M-[0-9]*to[0-9Inf]*$");
   for(auto& sub:samples["amcM_stack"].subs) sub.title=sub.title(TRegexp("M-[0-9]*to[0-9Inf]*"));
 
   /*
   samples["private"]=Sample("aMC@NLO private",Sample::Type::A,Style(kBlue,20));
   samples["private"].replace["([em][em])20[0-9][0-9]"]="$1";
-  samples["private"].files.push_back(make_tuple("/data8/Users/hsseo/GeneratorTools/Hist/DY4D_MG_DY_NLO0_aew.root",1,"",""));
+  samples["private"].files.push_back(make_tuple("/data8/Users/hsseo/GeneratorTools/Hist/DY4D_MG_DY_NLO0_aew$",1,"",""));
   samples["private_correct"]=(Sample("correct direction",Sample::Type::A,Style(kRed,20))+"private")%"_correct";
   samples["private_0"]=(Sample("PDG sin^{2}#theta",Sample::Type::A,Style(kRed,20))+"private")%"_0";
   */
@@ -343,7 +343,7 @@ int AFBPlotter::Setup(TString mode_){
     //exit(1);
   }
 
-  SetupEntries();
+  SetupEntries(mode);
   SetupSystematics();
   SetupPlots("plot_AFBAnalyzer/"+mode+"/plot.dat");
 
@@ -354,8 +354,9 @@ int AFBPlotter::Setup(TString mode_){
   return 1;
 }
  
-void AFBPlotter::SetupEntries(){
+void AFBPlotter::SetupEntries(TString mode){
   if(Verbosity) std::cout<<"[AFBPlotter::SetupEntries] mode="<<mode<<endl;
+  entries.clear();
   if(mode.Contains(TRegexp("muon$"))||mode.Contains(TRegexp("electron$"))){
     TString schannel;
     if(mode.Contains(TRegexp("muon$"))) schannel="muon";
@@ -403,6 +404,10 @@ void AFBPlotter::SetupEntries(){
       TPRegexp("^\\*").Substitute(entry_key,"");
       TPRegexp("([+-])").Substitute(entry_key," $1","g");
       vector<TString> sample_keys=Split(entry_key," ");
+      if(sample_keys.size()==1){
+	AddEntry(entry_key);
+	continue;
+      }
       for(int i=0;i<(int)sample_keys.size();i++){
 	TString sample_key=Replace(sample_keys[i],"[+-]","");
 	Sample sample;
