@@ -11,14 +11,15 @@ public:
 EfficiencyPlotter::EfficiencyPlotter(TString mode_){
   ScanFiles((TString)getenv("SKFlatOutputDir")+getenv("SKFlatV")+"/EfficiencyValidation/");
 
-  samples["muon"]=Sample("data (ee)",Sample::Type::DATA,kBlack,20)+TRegexp("/DATA/EfficiencyValidation_DoubleMuon_[A-Z]")+TRegexp("/DATA/EfficiencyValidation_SingleMuon_[A-Z]");
-  samples["electron"]=Sample("data (#mu#mu)",Sample::Type::DATA,kBlack,20)+TRegexp("/EfficiencyValidation_.*EG.*_[A-Z]")+TRegexp("/EfficiencyValidation_SingleElectron_[A-Z]");
+  samples["muon"]=Sample("data (#mu#mu)",Sample::Type::DATA,kBlack,20)+TRegexp("/DATA/EfficiencyValidation_SkimTree_Dilepton_DoubleMuon_[A-Z]")+TRegexp("/DATA/EfficiencyValidation_SingleMuon_[A-Z]");
+  samples["electron"]=Sample("data (ee)",Sample::Type::DATA,kBlack,20)+TRegexp("/EfficiencyValidation_.*EG.*_[A-Z]")+TRegexp("/EfficiencyValidation_SingleElectron_[A-Z]");
   samples["data"]=Sample("data",Sample::Type::DATA,kBlack,20)+"muon"+"electron";
   samples["amc"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/EfficiencyValidation_DYJets$");
   samples["amctt"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::BG,kGreen)+TRegexp("/EfficiencyValidation_DYJets$"));
   samples["vv"]=Sample("Diboson",Sample::Type::BG,kBlue)+TRegexp("/EfficiencyValidation_[W-Z][W-Z]_pythia$");
   samples["wjets"]=Sample("W",Sample::Type::BG,kYellow)+TRegexp("/EfficiencyValidation_WJets_MG$");
   samples["tt"]=Sample("t#bar{t}",Sample::Type::BG,kMagenta)+TRegexp("/EfficiencyValidation_TTLL_powheg$");
+  samples["ss"]="ss_"%(Sample("QCD multi-jet",Sample::Type::SUM,kCyan)+"data"-"amc"-"amctt"-"vv"-"wjets"-"tt");
 
   samples["sim_stack"]=Sample("sim",Sample::Type::STACK,Style(kRed,-1,3001,"e2"),Style(kCyan,-1,3001,"e2"))+"amc"+"amctt"+"vv"+"wjets"+"tt";
   samples["sim"]=Sample("simulation",Sample::Type::SUM,Style(kRed,22,3001,"e2"),Style(kCyan,-1,3001,"e2"))+"amc"+"amctt"+"vv"+"wjets"+"tt";
