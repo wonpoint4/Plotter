@@ -24,6 +24,7 @@ public:
   void Reset();
   const Sample& GetEntry(TString entrytitle) const;
   void AddEntry(TString key);
+  void AddEntry(const Sample& sample);
 
   //Print
   void PrintFiles(bool detail=false,TRegexp regexp=".*");
@@ -134,6 +135,7 @@ Plotter::~Plotter(){
 ////////////////////////////// Setup ////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 void Plotter::AddFile(TString key,TString file){
+  Sample sample=Sample(file,Sample::Type::FILE);
   if(samples.find(key)==samples.end()){
     TFile f(file);
     if(f.IsZombie()) PError("[Plotter::AddFile] Wrong file "+file);
@@ -145,9 +147,9 @@ void Plotter::AddFile(TString key,TString file){
 	PWarning("[Plotter::AddFile] potentially corrupted file... recover using hadd");
 	system("TEMPDIR=$(mktemp -d);hadd $TEMPDIR/temp.root "+file+";cp $TEMPDIR/temp.root "+file+";rm -r $TEMPDIR");
       }
-      samples[key]=Sample(file,Sample::Type::FILE);
+      samples[key]=sample;
     }
-  }else PError("[Plotter::AddFile] sample "+key+" already exists");
+  }else if(samples[key].type!=Sample::Type::FILE||samples[key].title!=file) PError("[Plotter::AddFile] sample "+key+" already exists");
 }
 void Plotter::ScanFiles(TString path){
   vector<TString> files=Split(gSystem->GetFromPipe("find "+path+" -type f -name '*.root'"),"\n");
@@ -162,10 +164,7 @@ void Plotter::SetupEntries(TString mode){
   if(Verbosity) std::cout<<"[Plotter::SetupEntries] mode = '"<<mode<<"'"<<endl;
   entries.clear();
   vector<TString> entry_keys=Split(mode," ");
-  for(auto entry_key:entry_keys){
-    AddEntry(entry_key);
-  }
-  return;
+  for(auto entry_key:entry_keys) AddEntry(entry_key);
 }
 void Plotter::Reset(){
   entries.clear();
@@ -182,15 +181,44 @@ const Sample& Plotter::GetEntry(TString entrytitle) const {
   return entries.at(0);
 }
 void Plotter::AddEntry(TString key){
-  if(samples.find(key)!=samples.end()){
-    if(samples[key].IsFile()){
-      Sample sample(key,Sample::Type::UNDEF,GetAutoColor());
-      sample=sample+samples[key];
-      entries.push_back(sample);
-    }else entries.push_back(samples[key]);
-  }else{
-    PError("[Plotter::AddEntry] no sample with key "+key);
+  TPRegexp("([+-])").Substitute(key," $1","g");
+  Sample entry;
+  if(key.BeginsWith("^")){
+    entry=Sample("simulation",Sample::Type::STACK);
+    key=key(1,key.Length()-1);
+  }else entry=Sample("simulation",Sample::Type::SUM);
+  vector<TString> sample_keys=Split(key," ");
+  for(int i=0;i<(int)sample_keys.size();i++){
+    TObjArray *array=TPRegexp("^([+-]?[0-9.]*)[*]?(.*)$").MatchS(sample_keys[i]);
+    TString sweight=((TObjString*)array->At(1))->GetString();
+    if(sweight=="+"||sweight=="-") sweight+="1";
+    else if(sweight=="") sweight="+1";
+    double weight=sweight.Atof();
+    TString sample_key=((TObjString*)array->At(2))->GetString();
+    delete array;
+    if(samples.find(sample_key)!=samples.end()){
+      Sample sample=samples[sample_key];
+      if(sample_keys.size()==1&&entry.type!=Sample::Type::STACK){
+	entry=sample*weight;
+      }else{
+	if(i==0){
+	  entry.style=sample.style;
+	  entry.style_alt=sample.style_alt;
+	}
+	entry+=weight*sample;
+      }
+    }else PError("[Plotter::AddEntry] no sample with key "+sample_key);
   }
+  AddEntry(entry);
+}
+void Plotter::AddEntry(const Sample& sample){
+  if(sample.IsFile()){
+    Sample s(sample.title,Sample::Type::UNDEF,GetAutoColor());
+    s.weight=sample.weight;
+    s.replace=sample.replace;
+    s+=sample;
+    entries.push_back(s);
+  }else entries.push_back(sample);
 }
 
 /////////////////////////////////////////////////////////////////////////////

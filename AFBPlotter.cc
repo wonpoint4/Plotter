@@ -3,12 +3,11 @@
 #include"Plotter.cc"
 class AFBPlotter:public Plotter{
 public:
-  void SetupEntries(TString mode);
   void SetupSystematics();
   int Setup(TString mode_);
   TString mode;
   TString analyzer;
-  AFBPlotter(TString mode_="data *amc+bg");
+  AFBPlotter(TString mode_="data ^amc+tau_amc+vv+wjets+tt");
 
   double GetChi2(TH1* h1,TH1* h2=NULL);
   void SetupTH4D();
@@ -258,7 +257,7 @@ TH1* AFBPlotter::GetHistAFB(TH1* hist_forward,TH1* hist_backward){
   return hist;
 }  
 
-AFBPlotter::AFBPlotter(TString mode_="dab"){
+AFBPlotter::AFBPlotter(TString mode_){
   SetupTH4D();
   ScanFiles(TString()+getenv("SKFlatOutputDir")+getenv("SKFlatV")+"/AFBAnalyzer/");
   
@@ -278,12 +277,14 @@ AFBPlotter::AFBPlotter(TString mode_="dab"){
   samples["vv"]=Sample("Diboson",Sample::Type::BG,kBlue)+TRegexp("/AFBAnalyzer_.*[W-Z][W-Z]_pythia");
   samples["wjets"]=Sample("W",Sample::Type::BG,kYellow)+TRegexp("/AFBAnalyzer_.*WJets_MG");
   samples["tt"]=Sample("t#bar{t}",Sample::Type::BG,kMagenta)+TRegexp("/AFBAnalyzer_.*TTLL_powheg");
+  samples["ttlj"]=Sample("TTLJ",Sample::Type::BG,kMagenta+6)+TRegexp("/AFBAnalyzer_.*TTLJ_powheg");
 
   samples["amc"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets$");
   samples["amcJet"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DY[0-9]Jets$");
   samples["amcPt"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets_Pt-[0-9]*To[0-9Inf]*$");
   samples["amcM"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets_M-[0-9]*to[0-9Inf]*$");
   samples["mg"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets_MG$");
+  samples["powheg"]=Sample("#gamma*/Z#rightarrowll (POWHEG)",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*ZToEE_M_50_120$");
   TString dysamples[]={"amc","amcJet","amcPt","amcM","mg"};
   for(auto dysample:dysamples){
     samples["tau_"+dysample]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::BG,kGreen)+dysample);
@@ -353,98 +354,6 @@ int AFBPlotter::Setup(TString mode_){
 
   return 1;
 }
- 
-void AFBPlotter::SetupEntries(TString mode){
-  if(Verbosity) std::cout<<"[AFBPlotter::SetupEntries] mode="<<mode<<endl;
-  entries.clear();
-  if(mode.Contains(TRegexp("muon$"))||mode.Contains(TRegexp("electron$"))){
-    TString schannel;
-    if(mode.Contains(TRegexp("muon$"))) schannel="muon";
-    else if(mode.Contains(TRegexp("electron$"))) schannel="electron";
-    vector<TString> syears={"2016","2017","2018"};
-    for(int i=0;i<syears.size();i++){
-      if(mode.Contains(TRegexp("^amc_"))) entries.push_back(Sample("amc"+syears[i],Sample::Type::SIGNAL,i+2)+TRegexp("^amc"+syears[i]+"$"));
-      else if(mode.Contains(TRegexp("^genamc_"))) entries.push_back(Sample("genamc"+syears[i],Sample::Type::SIGNAL,i+2)+TRegexp("^genamc"+syears[i]+"$"));
-      else if(mode.Contains(TRegexp("^amcJet_"))) entries.push_back(Sample("amcJet"+syears[i],Sample::Type::SIGNAL,i+2)+TRegexp("^amcJet"+syears[i]+"$"));
-      else entries.push_back(Sample(schannel+syears[i],Sample::Type::DATA,i+2)+TRegexp("^"+schannel+syears[i]+"$"));
-      entries.back().style.markerstyle=20+i;
-      //entries.back().prefix=schannel+syears[i]+"/";
-    }
-  }else if(mode=="wr"){
-    entries.push_back(Sample("W_{R}#rightarrowlN#rightarrowlljj",Sample::Type::B,kCyan+1)+TRegexp("WRtoNLtoLLJJ_WR1600_N200"));
-    entries.back().style.fillcolor=0;
-    entries.back().style.linewidth=2;
-    entries.back().style.drawoption="hist e";
-    entries.push_back(Sample("standard model",Sample::Type::STACK,kRed)+TRegexp("^amcJet201[6-8]$")+TRegexp("^amcJettt201[6-8]$")+TRegexp("^vv201[6-8]$")+TRegexp("^wjets201[6-8]$")+TRegexp("^tt201[6-8]$"));
-    //entries.push_back(Sample("data",Sample::Type::DATA,kBlack)+TRegexp("^muon201[6-8]$")+TRegexp("^electron201[6-8]$"));
-  }else if(mode=="amc_pp:amc_mm"){
-    entries.push_back("pp_"%(Sample("e^{+}e^{+}",Sample::Type::SIGNAL,kRed)+TRegexp("^amcJet201[6-8]$")));
-    entries.back().style.linewidth=2;
-    entries.back().style.fillcolor=0;
-    entries.back().style.drawoption="hist e";
-    entries.push_back("mm_"%(Sample("e^{-}e^{-}",Sample::Type::SIGNAL,kBlue)+TRegexp("^amcJet201[6-8]$")));
-    entries.back().style.linewidth=2;
-    entries.back().style.fillcolor=0;
-    entries.back().style.drawoption="hist e";
-  }else if(mode=="mc"){
-    entries.push_back(samples["amc2016"]+samples["amc2017"]+samples["amc2018"]);
-    //entries.push_back(samples["amctt2016"]+samples["amctt2017"]+samples["amctt2018"]);
-    entries.push_back(samples["tt2016"]+samples["tt2017"]+samples["tt2018"]);
-    //entries.push_back(samples["vv2016"]+samples["vv2017"]+samples["vv2018"]);
-    entries.push_back(samples["ww2016"]+samples["ww2017"]+samples["ww2018"]);
-    //entries.push_back(samples["wz2016"]+samples["wz2017"]+samples["wz2018"]);
-    //entries.push_back(samples["zz2016"]+samples["zz2017"]+samples["zz2018"]);
-    //entries.push_back(samples["wjets2016"]+samples["wjets2017"]+samples["wjets2018"]);
-  }else{
-    vector<TString> entry_keys=Split(mode," ");
-    for(auto entry_key:entry_keys){
-      Sample entry;
-      if(entry_key.BeginsWith("*")) entry=Sample("simulation",Sample::Type::STACK);
-      else entry=Sample("sum",Sample::Type::SUM);
-      TPRegexp("^\\*").Substitute(entry_key,"");
-      TPRegexp("([+-])").Substitute(entry_key," $1","g");
-      vector<TString> sample_keys=Split(entry_key," ");
-      if(sample_keys.size()==1){
-	AddEntry(entry_key);
-	continue;
-      }
-      for(int i=0;i<(int)sample_keys.size();i++){
-	TString sample_key=Replace(sample_keys[i],"[+-]","");
-	Sample sample;
-	if(samples.find(sample_key)!=samples.end()){
-	  sample=samples[sample_key];
-	}else if(sample_key=="bg"){
-	  sample=Sample("bg",Sample::Type::STACK,kBlue);
-	  if(mode.Contains("amcPt")) sample=sample+"tau_amcPt";
-	  else if(mode.Contains("amcM")) sample=sample+"tau_amcM";
-	  else if(mode.Contains("amc")) sample=sample+"tau_amc";
-	  sample=sample+"vv"+"wjets"+"tt";
-	}else if(sample_key=="ss"){
-	  sample=Sample("QCD dijet",Sample::Type::BG,kCyan)+"data";
-	  if(mode.Contains("amcPt")) sample=sample-"tau_amcPt";
-	  else if(mode.Contains("amcM")) sample=sample-"tau_amcM";
-	  else if(mode.Contains("amc")) sample=sample-"tau_amc";
-	  sample="ss_"%(sample-"vv"-"wjets"-"tt");
-	}else{
-	  PError("[AFBPlotter::SetupEntries] No "+entry_key+" in samples");
-	  exit(1);
-	}
-	if(i==0){
-	  if(entry.type==Sample::Type::SUM) entry.title=sample.title;
-	  entry.style=sample.style;
-	  entry=entry+sample;
-	}else if(sample_keys[i].BeginsWith("+")) entry=entry+sample;
-	else if(sample_keys[i].BeginsWith("-")) entry=entry-sample;
-	else{
-	  PError("###ERROR### [AFBPlotter::SetupEntries] Wrong syntax "+entry_key);
-	  exit(1);
-	}
-      }
-      entries.push_back(entry);
-    }
-  }
-}
-  
   
 void AFBPlotter::SetupSystematics(){
   if(Verbosity)  std::cout<<"[AFBPlotter::SetupSystematics]"<<endl;

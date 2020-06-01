@@ -36,10 +36,12 @@ public:
   Sample operator+(const char* key);
   Sample operator+(const TString key);
   Sample operator+(const TRegexp reg);
+  template<class T> Sample operator+=(T sam){*this=(*this)+sam;return *this;}
   Sample operator-(const Sample& sam);
   Sample operator-(const char* key);
   Sample operator-(const TString key);
   Sample operator-(const TRegexp reg);
+  template<class T> Sample operator-=(T sam){*this=(*this)-sam;return *this;}
   friend Sample operator%(const char* prefix,const Sample& sam);
   friend Sample operator%(const TString prefix,const Sample& sam);
   friend Sample operator%(const Sample& sam,const char* suffix);
@@ -47,6 +49,7 @@ public:
 
   Sample operator*(double w) const;
   friend Sample operator*(double w,const Sample& sam);
+  template<class T> Sample operator*=(T w){*this=(*this)*w;return *this;}
   void SetStyle(int color,int marker=-1,int fill=-1,TString drawoption="");
   void SetType(int type_);
   void Add(TRegexp sampleregexp,double weight=1.,TString prefix="",TString suffix="");
@@ -56,6 +59,8 @@ public:
   bool IsCollection() const;
   bool IsSample() const;
   bool IsFile() const;
+  void TurnOnFillColor();
+  void TurnOffFillColor();
   static bool CheckAttributes(const Sample& sam1, const Sample& sam2);
 };
 map<TString,Sample> samples;
@@ -105,12 +110,14 @@ bool Sample::CheckAttributes(const Sample& sam1,const Sample& sam2){
 Sample Sample::operator+(const Sample& sam){
   Sample temp(*this);
   if(temp.IsCollection()&&sam.IsCollection()){
-    if(!CheckAttributes(temp,sam))
-      PWarning("Some attributes of "+sam.title+" will be ignored");
-    temp.subs.insert(temp.subs.end(),sam.subs.begin(),sam.subs.end());
+    temp.subs.push_back(sam);
+    if(temp.type==Sample::Type::STACK){
+      if(temp.subs.back().type==Sample::Type::STACK) temp.subs.back().type=Sample::Type::SUM;
+      temp.subs.back().TurnOnFillColor();
+    }
   }else if(temp.IsCollection()&&sam.IsSample()){
     temp.subs.push_back(sam);
-    if(temp.type==Sample::Type::STACK) temp.subs.back().style.fillcolor=temp.subs.back().style.linecolor;
+    if(temp.type==Sample::Type::STACK) temp.subs.back().TurnOnFillColor();
   }else if(temp.IsCollection()&&sam.IsFile()){
     Sample sample(sam.title,Type::UNDEF);
     sample=sample+sam;
@@ -241,4 +248,16 @@ void Sample::Print(bool detail,TString pre) const{
     }
   }else cout<<pre<<"Title: "<<title<<" "<<"Type: "<<GetTypeString()<<endl;
 }
+void Sample::TurnOnFillColor(){
+  if(IsSample()) style.fillcolor=style.linecolor;
+  else if(IsCollection())
+    for(auto& sub:subs)
+      sub.TurnOnFillColor();
+}
+void Sample::TurnOffFillColor(){
+  if(IsSample()) style.fillcolor=-1;
+  else if(IsCollection())
+    for(auto& sub:subs)
+      sub.TurnOffFillColor();
+}  
 #endif
