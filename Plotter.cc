@@ -516,7 +516,6 @@ TH1* Plotter::GetEnvelope(TH1* central,const vector<TH1*>& variations){
   return syshist;
 }
 TH1* Plotter::GetEnvelope(TH1* central,TH1* variation1,TH1* variation2=NULL,TH1* variation3=NULL,TH1* variation4=NULL,TH1* variation5=NULL,TH1* variation6=NULL,TH1* variation7=NULL,TH1* variation8=NULL,TH1* variation9=NULL){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetEnvelope(TH1* central,TH1* variation1,TH1* variation2=NULL,TH1* variation3=NULL,TH1* variation4=NULL,TH1* variation5=NULL,TH1* variation6=NULL,TH1* variation7=NULL,TH1* variation8=NULL,TH1* variation9=NULL)]"<<endl;
   vector<TH1*> variations;
   if(variation1) variations.push_back(variation1);
   if(variation2) variations.push_back(variation2);
@@ -530,7 +529,7 @@ TH1* Plotter::GetEnvelope(TH1* central,TH1* variation1,TH1* variation2=NULL,TH1*
   return GetEnvelope(central,variations);
 }    
 TH1* Plotter::GetHessianError(TH1* central,const vector<TH1*>& variations){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHessianError(TH1* central,const vector<TH1*>& variations)]"<<endl;
+  PAll("[Plotter::GetHessianError]");
   if(strstr(central->ClassName(),"THStack")) central=GetTH1(central);
   TH1* syshist=(TH1*)central->Clone("sys");
   syshist->SetDirectory(pdir);
@@ -544,7 +543,7 @@ TH1* Plotter::GetHessianError(TH1* central,const vector<TH1*>& variations){
   return syshist;
 }  
 TH1* Plotter::GetRMSError(TH1* central,const vector<TH1*>& variations){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetRMSError(TH1* central,const vector<TH1*>& variations)]"<<endl;
+  PAll("[Plotter::GetRMSError]");
   if(strstr(central->ClassName(),"THStack")) central=GetTH1(central);
   TH1* syshist=(TH1*)central->Clone("sys");
   syshist->SetDirectory(pdir);
@@ -581,7 +580,6 @@ int Plotter::AddError(TH1* hist,TH1* sys){
 ////////////////////////////// Canvas ///////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 TCanvas* Plotter::GetCompare(vector<tuple<TH1*,TH1*>> histpairs,Plot plot){
-  plot.Print();
   PInfo("[Plotter::GetCompare] "+plot.option);_depth++;
   vector<TH1*> hists=VectorTH1(histpairs);
   TH1* axisowner=get<1>(histpairs[0]);
@@ -960,7 +958,7 @@ TCanvas* Plotter::GetDoubleRatio(Plot& plot){
     }
     return c;
   }else{
-    if(DEBUG>0) std::cout<<"###ERROR### not yet"<<endl;
+    PError("not supported");
     exit(1);
   }
 }
@@ -1021,7 +1019,7 @@ void Plotter::SavePlots(TRegexp plotkey){
     if(key.Contains(plotkey)) SavePlot(key);
 }  
 void Plotter::SavePlotAll(){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::SavePlotAll(TString plotkey)]"<<endl;
+  PAll("[Plotter::SavePlotAll(TString plotkey)]");
   for(const auto& [key,plot]:plots) SavePlot(key);
 }
 
@@ -1071,7 +1069,7 @@ TH1* Plotter::GetTH1(TH1* hstack,bool deleteorigin){
   return hist;
 }
 bool Plotter::CheckHists(vector<TH1*> hists){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::CheckHists(vector<TH1*> hists)]"<<endl;
+  PAll("[Plotter::CheckHists(vector<TH1*> hists)]");
   bool flag_data=false,flag_signal=false;
   for(unsigned int i=0;i<entries.size();i++){
     if(!hists.at(i)) continue;
@@ -1181,7 +1179,7 @@ void Plotter::WidthWeight(vector<TH1*> hists){
   for(auto& hist:hists) WidthWeight(hist);
 }
 bool Plotter::IsEntry(const Sample& sample){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::IsEntry(const Sample& sample)]"<<endl;  
+  PAll("[Plotter::IsEntry(const Sample& sample)]");
   for(const auto& entry:entries){
     if(&entry==&sample) return true;
   }
@@ -1290,7 +1288,7 @@ set<TString> Plotter::GetHistKeys(TString filename,TString regexp=".*"){
   }
 }
 set<TString> Plotter::GetHistKeys(const Sample& sample,TString regexp=".*"){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::GetHistKeys(const Sample& sample,TString regexp=\".*\")]"<<endl;
+  PAll("[Plotter::GetHistKeys]");
   set<TString> histkeys;
   if(sample.type==Sample::Type::FILE){
     set<TString> this_histkeys=GetHistKeys(sample.title,regexp);
@@ -1365,7 +1363,7 @@ void Plotter::AddPlot(TString plotkey,TString plotoption){
       if(k.Contains(TRegexp(plotkey+"$"))) plot.subplots.push_back(p);
     }
     if(plot.subplots.size()!=2){
-      if(DEBUG>0) std::cout<<"###ERROR### DoubleRatio should have 2 subplots ("<<plot.subplots.size()<<"!=2"<<endl;
+      PError(Form("[Plotter::AddPlot] DoubleRatio should have 2 subplots (%zu!=2)",plot.subplots.size()));
       plot.Print();
       exit(1);
     }
@@ -1393,7 +1391,7 @@ void Plotter::RemovePlots(TRegexp regexp){
 }   
   
 void Plotter::SetPlotRebinXminXmaxAuto(TString plotkey){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::SetPlotRebinXminXmaxAuto()]"<<endl;
+  PAll("[Plotter::SetPlotRebinXminXmaxAuto()]");
   Plot& plot=plots[plotkey];
   TH1 *hh=GetHist(entries[0],plot.histname);
   double maxrelerr=0;
@@ -1416,11 +1414,10 @@ void Plotter::SetPlotRebinXminXmaxAuto(TString plotkey){
   }
 }
 void Plotter::SetPlotsRebinXminXmaxAuto(){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::SetPlotsRebinXminXmaxAuto()]"<<endl;
   for(auto& [plotname,plot]:plots) SetPlotRebinXminXmaxAuto(plotname);
 }
 void Plotter::SetPlotOption(TString plotname,TString option,TString suffix){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::SetPlotOption(TString plotname,TString option)]"<<endl;
+  PAll("[Plotter::SetPlotOption(TString plotname,TString option)]");
   Plot temp(plots[plotname]);
   temp.SetOption(option);
   temp.SetOption(Form("name:%s",(temp.name+suffix).Data()));
@@ -1434,7 +1431,7 @@ void Plotter::SetPlotsOption(TRegexp plotname_,TString option,TString suffix){
   for(const auto& plotname:list) SetPlotOption(plotname,option,suffix);
 }
 void Plotter::RemovePlotOption(TString plotname,TString option){
-  if(DEBUG>3) std::cout<<"###DEBUG### [Plotter::RemovePlotOption(TString plotname,TString option)]"<<endl;
+  PAll("[Plotter::RemovePlotOption(TString plotname,TString option)]");
   plots[plotname].RemoveOption(option);
 }
 void Plotter::RemovePlotsOption(TRegexp plotname_,TString option){
