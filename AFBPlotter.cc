@@ -348,7 +348,7 @@ int AFBPlotter::Setup(TString mode_){
 
   SetupEntries(mode);
   SetupSystematics();
-  SetupPlots("plot_AFBAnalyzer/"+mode+"/plot.dat");
+  SetupPlots("fig/dummy.dat");
 
   if(Verbosity) std::cout<<"[AFBPlotter::Setup] nentries: "<<entries.size()<<endl;
   if(Verbosity) std::cout<<"[AFBPlotter::Setup] nsys: "<<systematics.size()<<endl;

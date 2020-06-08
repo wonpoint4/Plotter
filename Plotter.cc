@@ -1003,15 +1003,17 @@ vector<TCanvas*> Plotter::DrawPlots(TRegexp plotkey,TString additional_option){
 }
 void Plotter::SavePlot(TString plotkey,TString option,bool delete_canvas){
   PDebug("[Plotter::SavePlot(TString plotkey)]");
-  //pdir=new TDirectory;
+  pdir=new TDirectory;
   TString format="png";
   if(option.Contains("pdf")) format="pdf";
   TCanvas* c=DrawPlot(plotkey,option);
-  gSystem->Exec("mkdir -p "+plotdir+"/"+Dirname(plotkey));
-  c->SaveAs(plotdir+"/"+plotkey+"."+format);
-  if(delete_canvas){
-    delete c;
-    //pdir->Delete();
+  if(c){
+    gSystem->Exec("mkdir -p "+plotdir+"/"+Dirname(plotkey));
+    c->SaveAs(plotdir+"/"+plotkey+"."+format);
+    if(delete_canvas){
+      delete c;
+      pdir->Delete();
+    }
   }
 }
 void Plotter::SavePlots(TRegexp plotkey){
