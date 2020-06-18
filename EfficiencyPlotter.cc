@@ -37,7 +37,6 @@ int EfficiencyPlotter::Setup(TString mode_){
 
   SetupEntries(mode_);
   SetupSystematics();
-  SetupPlots("fig/dummy.dat");
 
   if(DEBUG) std::cout<<"[Setup] nentries: "<<entries.size()<<endl;
   if(DEBUG) std::cout<<"[Setup] nsys: "<<systematics.size()<<endl;
