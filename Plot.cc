@@ -5,15 +5,18 @@
 class Plot{
 public:
   enum Type{UNDEF,Compare,Ratio,Diff,Sig,CompareAndRatio,CompareAndDiff,CompareAndSig,DoubleRatio,Collection};
-  TString name;
+  TString name,title;
   TString histname;
   TString sysname;
+  TString classname;
   TString suffix;
   TString xtitle,ytitle;
+  TString project;
   int varibit=0;
   Type type=Type::CompareAndRatio;
   int rebin=0;
-  double xmin=0,xmax=0,ymin=0,ymax=0,zmin=0,zmax=0,umin=0,umax=0;
+  double xmin=0,xmax=0,ymin=0,ymax=0;
+  double Xmin=0,Xmax=0,Ymin=0,Ymax=0,Zmin=0,Zmax=0,Umin=0,Umax=0;
   TString option;
   vector<Plot> subplots;
   Plot(vector<TString> words);
@@ -48,6 +51,7 @@ Plot Plot::operator/(Plot p){
 void Plot::SetOption(TString option_){
   for(const auto& opt:SplitOptions(option_)){
     if(opt.Contains(TRegexp("^name:"))) name=opt(5,999);
+    else if(opt.Contains(TRegexp("^title:"))) title=opt(6,999);
     else if(opt.Contains(TRegexp("^histname:"))) histname=opt(9,999); 
     else if(opt.Contains(TRegexp("^type:"))) type=(Type)TString(opt(5,999)).Atoi();
     else if(opt.Contains(TRegexp("^rebin:"))) rebin=TString(opt(6,999)).Atoi();
@@ -55,15 +59,21 @@ void Plot::SetOption(TString option_){
     else if(opt.Contains(TRegexp("^xmax:"))) xmax=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^ymin:"))) ymin=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^ymax:"))) ymax=TString(opt(5,999)).Atof();
-    else if(opt.Contains(TRegexp("^zmin:"))) zmin=TString(opt(5,999)).Atof();
-    else if(opt.Contains(TRegexp("^zmax:"))) zmax=TString(opt(5,999)).Atof();
-    else if(opt.Contains(TRegexp("^umin:"))) umin=TString(opt(5,999)).Atof();
-    else if(opt.Contains(TRegexp("^umax:"))) umax=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^sysname:"))) sysname=opt(8,999);
     else if(opt.Contains(TRegexp("^suffix:"))) suffix=opt(7,999);
     else if(opt.Contains(TRegexp("^varibit:"))) varibit=TString(opt(8,999)).Atoi();
     else if(opt.Contains(TRegexp("^xtitle:"))) xtitle=opt(7,999);
     else if(opt.Contains(TRegexp("^ytitle:"))) ytitle=opt(7,999);
+    else if(opt.Contains(TRegexp("^Xmin:"))) Xmin=TString(opt(5,999)).Atof();
+    else if(opt.Contains(TRegexp("^Xmax:"))) Xmax=TString(opt(5,999)).Atof();
+    else if(opt.Contains(TRegexp("^Ymin:"))) Ymin=TString(opt(5,999)).Atof();
+    else if(opt.Contains(TRegexp("^Ymax:"))) Ymax=TString(opt(5,999)).Atof();
+    else if(opt.Contains(TRegexp("^Zmin:"))) Zmin=TString(opt(5,999)).Atof();
+    else if(opt.Contains(TRegexp("^Zmax:"))) Zmax=TString(opt(5,999)).Atof();
+    else if(opt.Contains(TRegexp("^Umin:"))) Umin=TString(opt(5,999)).Atof();
+    else if(opt.Contains(TRegexp("^Umax:"))) Umax=TString(opt(5,999)).Atof();
+    else if(opt.Contains(TRegexp("^classname:"))) classname=opt(10,999);
+    else if(opt.Contains(TRegexp("^project:"))) project=opt(8,999);
     else option+=" "+opt;
   }
 }   
@@ -77,10 +87,14 @@ void Plot::RemoveOption(TString option_){
     else if(remove=="xmax") xmax=0;
     else if(remove=="ymin") ymin=0;
     else if(remove=="ymax") ymax=0;
-    else if(remove=="zmin") zmin=0;
-    else if(remove=="zmax") zmax=0;
-    else if(remove=="umin") umin=0;
-    else if(remove=="umax") umax=0;
+    else if(remove=="Xmin") Xmin=0;
+    else if(remove=="Xmax") Xmax=0;
+    else if(remove=="Ymin") Ymin=0;
+    else if(remove=="Ymax") Ymax=0;
+    else if(remove=="Zmin") Zmin=0;
+    else if(remove=="Zmax") Zmax=0;
+    else if(remove=="Umin") Umin=0;
+    else if(remove=="Umax") Umax=0;
     else if(remove=="sysname") sysname="";
     else if(remove=="suffix") suffix="";
     else if(remove=="varibit") varibit=0;
@@ -124,10 +138,14 @@ void Plot::Print(std::ostream& out) const{
   if(xmax!=0) out<<" xmax:"<<xmax;
   if(ymin!=0) out<<" ymin:"<<ymin;
   if(ymax!=0) out<<" ymax:"<<ymax;
-  if(zmin!=0) out<<" zmin:"<<zmin;
-  if(zmax!=0) out<<" zmax:"<<zmax;
-  if(umin!=0) out<<" umin:"<<umin;
-  if(umax!=0) out<<" umax:"<<umax;
+  if(Xmin!=0) out<<" Xmin:"<<Xmin;
+  if(Xmax!=0) out<<" Xmax:"<<Xmax;
+  if(Ymin!=0) out<<" Ymin:"<<Ymin;
+  if(Ymax!=0) out<<" Ymax:"<<Ymax;
+  if(Zmin!=0) out<<" Zmin:"<<Zmin;
+  if(Zmax!=0) out<<" Zmax:"<<Zmax;
+  if(Umin!=0) out<<" Umin:"<<Umin;
+  if(Umax!=0) out<<" Umax:"<<Umax;
   if(sysname!="") out<<" sysname:"<<sysname;
   if(suffix!="") out<<" suffix:"<<suffix;
   if(varibit!=0) out<<" varibit:"<<varibit;
