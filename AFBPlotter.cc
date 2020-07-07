@@ -7,9 +7,8 @@ public:
   int Setup(TString mode_);
   TString mode;
   TString analyzer;
-  AFBPlotter(TString mode_="data ^amc+tau_amc+vv+wjets+tt");
+  AFBPlotter(TString mode_="data ^amc+tau_amc+vv+wjets+tttw+aa");
 
-  double GetChi2(TH1* h1,TH1* h2=NULL);
   void SetupTH4D();
   pair<double,double> GetRange(TString histname,TString axisname);
   pair<double,double> GetAFBAndError(TH1* costhetaCS);
@@ -22,9 +21,10 @@ public:
   TH1* GetHistWeightedAFB(TH1* hist_forward_num,TH1* hist_forward_den,TH1* hist_backward_num,TH1* hist_backward_den);
   TH1* GetHistAFB(TH1* hist_forward,TH1* hist_backward);
 
-  TCanvas* DrawPlot(TString plotkey,TString option="");
+  //TCanvas* DrawPlot(TString plotkey,TString option="");
   map<TString,TString> plot_axisnames;
 };
+/*
 TCanvas* AFBPlotter::DrawPlot(TString plotkey,TString option=""){
   TCanvas* c=Plotter::DrawPlot(plotkey,option);
   if(c){
@@ -95,7 +95,7 @@ TCanvas* AFBPlotter::DrawPlot(TString plotkey,TString option=""){
   }
   return c;
 }
-
+*/
 pair<double,double> AFBPlotter::GetRange(TString histname,TString axisname){
   TString rangestring=histname(TRegexp(axisname+"[[-+0-9.]*,[-+0-9.]*]"));
   TString first=rangestring(axisname.Length()+1,rangestring.Index(',')-axisname.Length()-1);
@@ -221,7 +221,23 @@ Plot AFBPlotter::MakePlot(TString plotkey,TString option){
     else if(plot.project(1)=='u'){plot.ymin=plot.Umin;plot.ymax=plot.Umax;}
   }
 
-  if(plot.histname.Contains("AFB")&&entries.size()>1) plot.SetOption(Form("type:%d",Plot::Type::CompareAndSig));
+  TString ll="ll";
+  if(plot.histname.Contains("mm201")) ll="#mu#mu";
+  else if(plot.histname.Contains("ee201")) ll="ee";
+
+  if(plot.project=="x") plot.SetOption("xtitle:'m("+ll+") [GeV]'");
+  else if(plot.project=="y") plot.SetOption("xtitle:y("+ll+")");
+  else if(plot.project=="z") plot.SetOption("xtitle:'p_{T}("+ll+") [GeV]'");
+  else if(plot.project=="u"){
+    if(plot.histname.Contains("costhetaCS")) plot.SetOption("xtitle:cos#theta_{CS}");
+  }
+  
+  if(plot.histname.Contains("AFB")) plot.SetOption("ytitle:A_{FB}");
+  else if(option.Contains("norm")) plot.SetOption("ytitle:Normalized");
+  else if(option.Contains("widthweight")) plot.SetOption("ytitle:'Events / 1 GeV'");
+  else plot.SetOption("ytitle:Events");
+
+  if(plot.histname.Contains("AFB")&&entries.size()>1&&!option.Contains("type:")) plot.SetOption(Form("type:%d",Plot::Type::CompareAndSig));
   return plot;
 }
 
@@ -316,6 +332,9 @@ AFBPlotter::AFBPlotter(TString mode_){
   samples["ttlj"]=Sample("TTLJ",Sample::Type::BG,kMagenta+6)+TRegexp("/AFBAnalyzer_.*TTLJ_powheg");
   samples["tw"]=Sample("tW",Sample::Type::BG,kMagenta+10)+TRegexp("/AFBAnalyzer_.*SingleTop_tW_.*top_NoFullyHad");
   samples["st"]=Sample("ST",Sample::Type::BG,kMagenta+12)+TRegexp("/AFBAnalyzer_.*SingleTop_[st]ch_.*");
+  samples["tttw"]=Sample("t#bar{t}, tW",Sample::Type::SUM,kMagenta)+"tt"+"tw";
+  samples["aa0j"]=Sample("#gamma#gamma#rightarrowll",Sample::Type::BG,kMagenta+12)+TRegexp("/AFBAnalyzer_.*GamGamToLL_0j$");
+  samples["aa"]=Sample("#gamma#gamma#rightarrowll",Sample::Type::BG,kYellow+1)+TRegexp("/AFBAnalyzer_.*GamGamToLL$");
 
   samples["amc"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets$");
   samples["amcJet"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DY[0-9]Jets$");
@@ -332,7 +351,7 @@ AFBPlotter::AFBPlotter(TString mode_){
     samples["truth_"+dysample]="truth_"%(Sample("#gamma*/Z#rightarrowll (truth)",Sample::Type::SIGNAL,kCyan)+dysample);
   }
     
-  samples["ss"]="ss_"%(Sample("QCD multi-jet",Sample::Type::SUM,kCyan)+"data"-"amc"-"tau_amc"-"vv"-"wjets"-"tt");
+  samples["ss"]="ss_"%(Sample("QCD multi-jet",Sample::Type::SUM,kCyan)+"data"-"amc"-"tau_amc"-"vv"-"wjets"-"tt"-"tw"-"aa");
 
   samples["amcPt_stack"]=Sample("DY Pt-binned",Sample::Type::STACK,kBlue)+TRegexp("/AFBAnalyzer_.*DYJets_Pt-[0-9]*To[0-9Inf]*$");
   for(auto& sub:samples["amcPt_stack"].subs) sub.title=sub.title(TRegexp("Pt-[0-9]*To[0-9Inf]*"));
@@ -431,20 +450,5 @@ void AFBPlotter::SetupTH4D(){
     gROOT->ProcessLine(".L TH4D/TH4D.cxx+");
   }
 }
-
-
-double AFBPlotter::GetChi2(TH1* h1,TH1* h2){
-  double chi2=0;
-  for(int i=h1->GetXaxis()->GetFirst();i<h1->GetXaxis()->GetLast()+1;i++){
-    double x1=h1->GetBinContent(i);
-    double ex1=h1->GetBinError(i);
-    double x2=h2?h2->GetBinContent(i):0.;
-    double ex2=h2?h2->GetBinError(i):0.;
-    chi2+=pow((x1-x2)/(ex1-ex2),2);
-  }
-  chi2/=h1->GetXaxis()->GetLast()-h1->GetXaxis()->GetFirst()+1;
-  return chi2;
-}
-    
   
 #endif
