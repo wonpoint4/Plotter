@@ -249,14 +249,14 @@ void Sample::Print(bool detail,TString pre) const{
   }else cout<<pre<<"Title: "<<title<<" "<<"Type: "<<GetTypeString()<<endl;
 }
 void Sample::TurnOnFillColor(){
-  if(IsSample()) style.fillcolor=style.linecolor;
-  else if(IsCollection())
+  if(type!=Type::STACK) style.fillcolor=style.linecolor;
+  else
     for(auto& sub:subs)
       sub.TurnOnFillColor();
 }
 void Sample::TurnOffFillColor(){
-  if(IsSample()) style.fillcolor=-1;
-  else if(IsCollection())
+  if(type!=Type::STACK) style.fillcolor=-1;
+  else
     for(auto& sub:subs)
       sub.TurnOffFillColor();
 }  

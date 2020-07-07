@@ -287,12 +287,12 @@ TH1* Plotter::GetHist(const Sample& sample,Plot plot,TString additional_option){
   return hist;
 }
 TH1* Plotter::GetHistFromSample(const Sample& sample,Plot plot,TString additional_option){
-  for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(plot.histname,newstr);
   PInfo("[Plotter::GetHistFromSample] "+sample.title+" "+plot.histname+" "+plot.option+" "+additional_option);_depth++;
   //plot.Print();
   plot.SetOption(additional_option);
   TH1* hist=NULL;
   if(sample.type==Sample::Type::STACK){
+    for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(plot.histname,newstr);
     for(int i=sample.subs.size()-1;i>=0;i--){
       TH1* this_hist=GetHistFromSample(sample.subs[i],plot);
       if(this_hist){
@@ -303,6 +303,7 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,Plot plot,TString additiona
       }
     }
   }else if(sample.type==Sample::Type::SUM){
+    for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(plot.histname,newstr);
     for(const auto& sub:sample.subs){
       TH1* this_hist=GetHistFromSample(sub,plot);
       if(this_hist){
@@ -340,6 +341,7 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,Plot plot,TString additiona
       }
     }
   }else{
+    for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(plot.histname,newstr);
     TString histname=plot.histname+((1<<sample.type)&plot.varibit?plot.suffix:"");
     for(const auto& file:sample.subs){
       TH1* this_hist=GetHistFromFile(file.title,histname);
@@ -646,7 +648,7 @@ TCanvas* Plotter::GetCompare(vector<tuple<TH1*,TH1*>> histpairs,Plot plot){
   if(plot.option.Contains("logy")){
     tuple<double,double> minmax=GetMinMax(hists);
     double minimum=get<0>(minmax),maximum=get<1>(minmax);
-    if(minimum<0) minimum=maximum/1000;
+    if(minimum<=0) minimum=maximum/1000;
     axisowner->GetYaxis()->SetRangeUser(minimum/100,maximum*20);
     c->SetLogy();
   }else{
@@ -654,6 +656,9 @@ TCanvas* Plotter::GetCompare(vector<tuple<TH1*,TH1*>> histpairs,Plot plot){
     double minimum=get<0>(minmax),maximum=get<1>(minmax);
     double range=fabs(maximum-minimum);
     axisowner->GetYaxis()->SetRangeUser(minimum/range<-0.01?minimum-0.1*range:0,maximum+0.1*range);
+  }
+  if(plot.ymin||plot.ymax){
+    axisowner->GetYaxis()->SetRangeUser(plot.ymin,plot.ymax);
   }
   axisowner->GetXaxis()->SetTitle(plot.xtitle);
   axisowner->GetYaxis()->SetTitle(plot.ytitle);
@@ -799,7 +804,6 @@ TCanvas* Plotter::GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,Plot plot){
   c->cd(1);
   c1temp->DrawClonePad();
   delete c1temp;
-  if(c->GetPad(1)->GetPrimitive("title")) ((TPaveText*)c->GetPad(1)->GetPrimitive("title"))->SetTextSize(0.075);
   gPad->SetPad(0,0.35,1,1);
   gPad->SetBottomMargin(0.02);
   TH1* axisparent=GetAxisParent(gPad);
@@ -808,6 +812,27 @@ TCanvas* Plotter::GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,Plot plot){
   axisparent->GetYaxis()->SetTitleOffset(1.2);
   axisparent->GetXaxis()->SetLabelSize(0);
   axisparent->GetXaxis()->SetTitle("");
+  if(plot.option.Contains("preliminary")){
+    axisparent->SetTitle("");
+    TLatex latex;
+    latex.SetTextSize(0.05);
+    latex.SetNDC();
+    latex.DrawLatex(0.15,0.92,"CMS #bf{#it{Preliminary}}");
+    if(plot.histname.Contains("2016")){
+      latex.DrawLatex(0.68,0.92,"35.92 fb^{-1} (13 TeV)");
+    }else if(plot.histname.Contains("2017/")){
+      latex.DrawLatex(0.68,0.92,"41.53 fb^{-1} (13 TeV)");
+    }else if(plot.histname.Contains("2018/")){
+      latex.DrawLatex(0.68,0.92,"59.74 fb^{-1} (13 TeV)");
+    }else if(plot.histname.Contains("201[6-8]")){
+      latex.DrawLatex(0.68,0.92,"137.2 fb^{-1} (13 TeV)");      
+    }
+    latex.SetTextSize(0.05);
+    latex.SetTextColor(2);
+    latex.DrawLatex(0.4,0.92,"#it{Working in progress}");
+  }else{
+    if(c->GetPad(1)->GetPrimitive("title")) ((TPaveText*)c->GetPad(1)->GetPrimitive("title"))->SetTextSize(0.075);
+  }
   gPad->Update();
   gPad->Modified();
 
@@ -878,7 +903,6 @@ TCanvas* Plotter::GetCompareAndSig(vector<tuple<TH1*,TH1*>> hists,Plot plot){
     axisparent->GetYaxis()->SetLabelSize(0.1);
     axisparent->GetYaxis()->SetTitleSize(0.12);
     axisparent->GetYaxis()->SetTitleOffset(0.6);
-    axisparent->GetXaxis()->SetTitle(axisparent->GetTitle());
     axisparent->GetXaxis()->SetTitleSize(0.12);
     axisparent->GetXaxis()->SetLabelSize(0.12);
   }
@@ -1387,7 +1411,7 @@ double Plotter::GetChi2(TH1* h1,TH1* h2) const {
     double ex1=h1->GetBinError(i);
     double x2=h2?h2->GetBinContent(i):0.;
     double ex2=h2?h2->GetBinError(i):0.;
-    chi2+=pow((x1-x2)/(ex1-ex2),2);
+    chi2+=pow(x1-x2,2)/(pow(ex1,2)+pow(ex2,2));
   }
   chi2/=h1->GetXaxis()->GetLast()-h1->GetXaxis()->GetFirst()+1;
   return chi2;
