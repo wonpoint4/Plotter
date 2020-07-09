@@ -19,6 +19,7 @@ public:
   double Xmin=0,Xmax=0,Ymin=0,Ymax=0,Zmin=0,Zmax=0,Umin=0,Umax=0;
   TString option;
   vector<Plot> subplots;
+  Plot GetSubPlot(int ipad);
   Plot(vector<TString> words);
   Plot(TString line=""):Plot(Split(line," ")){};
   ~Plot();
@@ -50,20 +51,20 @@ Plot Plot::operator/(Plot p){
 }
 void Plot::SetOption(TString option_){
   for(const auto& opt:SplitOptions(option_)){
-    if(opt.Contains(TRegexp("^name:"))) name=opt(5,999);
-    else if(opt.Contains(TRegexp("^title:"))) title=opt(6,999);
-    else if(opt.Contains(TRegexp("^histname:"))) histname=opt(9,999); 
+    if(opt.Contains(TRegexp("^name:"))) name=Strip(opt(5,999),"'");
+    else if(opt.Contains(TRegexp("^title:"))) title=Strip(opt(6,999),"'");
+    else if(opt.Contains(TRegexp("^histname:"))) histname=Strip(opt(9,999),"'"); 
     else if(opt.Contains(TRegexp("^type:"))) type=(Type)TString(opt(5,999)).Atoi();
     else if(opt.Contains(TRegexp("^rebin:"))) rebin=TString(opt(6,999)).Atoi();
     else if(opt.Contains(TRegexp("^xmin:"))) xmin=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^xmax:"))) xmax=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^ymin:"))) ymin=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^ymax:"))) ymax=TString(opt(5,999)).Atof();
-    else if(opt.Contains(TRegexp("^sysname:"))) sysname=opt(8,999);
-    else if(opt.Contains(TRegexp("^suffix:"))) suffix=opt(7,999);
+    else if(opt.Contains(TRegexp("^sysname:"))) sysname=Strip(opt(8,999),"'");
+    else if(opt.Contains(TRegexp("^suffix:"))) suffix=Strip(opt(7,999),"'");
     else if(opt.Contains(TRegexp("^varibit:"))) varibit=TString(opt(8,999)).Atoi();
-    else if(opt.Contains(TRegexp("^xtitle:"))) xtitle=opt(7,999);
-    else if(opt.Contains(TRegexp("^ytitle:"))) ytitle=opt(7,999);
+    else if(opt.Contains(TRegexp("^xtitle:"))) xtitle=Strip(opt(7,999),"'");
+    else if(opt.Contains(TRegexp("^ytitle:"))) ytitle=Strip(opt(7,999),"'");
     else if(opt.Contains(TRegexp("^Xmin:"))) Xmin=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^Xmax:"))) Xmax=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^Ymin:"))) Ymin=TString(opt(5,999)).Atof();
@@ -72,8 +73,8 @@ void Plot::SetOption(TString option_){
     else if(opt.Contains(TRegexp("^Zmax:"))) Zmax=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^Umin:"))) Umin=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^Umax:"))) Umax=TString(opt(5,999)).Atof();
-    else if(opt.Contains(TRegexp("^classname:"))) classname=opt(10,999);
-    else if(opt.Contains(TRegexp("^project:"))) project=opt(8,999);
+    else if(opt.Contains(TRegexp("^classname:"))) classname=Strip(opt(10,999),"'");
+    else if(opt.Contains(TRegexp("^project:"))) project=Strip(opt(8,999),"'");
     else option+=" "+opt;
   }
 }   
@@ -119,11 +120,6 @@ vector<TString> Plot::SplitOptions(TString option_){
   for(const auto& opt:options_raw){
     if(options_out.size()&&options_out.back().CountChar('\'')%2==1) options_out.back()+=" "+opt;
     else options_out.push_back(opt);
-  }
-  for(auto& opt:options_out){
-    if(opt.CountChar('\'')%2==0){
-      opt.ReplaceAll("'","");
-    }
   }
   return options_out;
 }
@@ -189,6 +185,16 @@ Plot::Plot(vector<TString> words){
   //this->Print();
 }  
 Plot::Plot(TString line="") : Plot(Split(line," ")){
+}
+Plot Plot::GetSubPlot(int i){
+  Plot sub=*this;
+  sub.option="";
+  for(const auto& opt:SplitOptions(option)){
+    if(opt.Contains(TRegexp("^[0-9]:"))){
+      if(opt.BeginsWith(Form("%d:",i))) sub.SetOption(Replace(opt,"^[0-9]:",""));
+    }else sub.SetOption(opt);
+  }
+  return sub;
 }
 bool Plot::IsMultiPad() const {
   if(type==Type::CompareAndRatio||type==Type::CompareAndDiff||type==Type::CompareAndSig) return true;

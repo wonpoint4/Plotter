@@ -232,10 +232,17 @@ Plot AFBPlotter::MakePlot(TString plotkey,TString option){
     if(plot.histname.Contains("costhetaCS")) plot.SetOption("xtitle:cos#theta_{CS}");
   }
   
-  if(plot.histname.Contains("AFB")) plot.SetOption("ytitle:A_{FB}");
-  else if(option.Contains("norm")) plot.SetOption("ytitle:Normalized");
-  else if(option.Contains("widthweight")) plot.SetOption("ytitle:'Events / 1 GeV'");
-  else plot.SetOption("ytitle:Events");
+  if(plot.type==Plot::Type::Compare){
+    if(plot.histname.Contains("AFB")) plot.SetOption("ytitle:A_{FB}");
+    else if(option.Contains("norm")) plot.SetOption("ytitle:Normalized");
+    else if(option.Contains("widthweight")) plot.SetOption("ytitle:'Events / 1 GeV'");
+    else plot.SetOption("ytitle:Events");
+  }else if(plot.IsMultiPad()){
+    if(plot.histname.Contains("AFB")) plot.SetOption("1:ytitle:A_{FB}");
+    else if(option.Contains("norm")) plot.SetOption("1:ytitle:Normalized");
+    else if(option.Contains("widthweight")) plot.SetOption("1:ytitle:'Events / 1 GeV'");
+    else plot.SetOption("1:ytitle:Events");
+  }    
 
   if(plot.histname.Contains("AFB")&&entries.size()>1&&!option.Contains("type:")) plot.SetOption(Form("type:%d",Plot::Type::CompareAndSig));
   return plot;

@@ -25,5 +25,10 @@ TString Replace(TString str,TString reg,TString repl){
   if(start>=0) return str.Replace(start,extent,repl);
   else return str;
 }
+TString Strip(TString str,TString c){
+  if(str.EndsWith(c)) str=str(0,str.Length()-c.Length());
+  if(str.BeginsWith(c)) str=str(c.Length(),str.Length()-c.Length());
+  return str;
+}
 
 #endif

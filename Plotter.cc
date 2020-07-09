@@ -699,8 +699,9 @@ TCanvas* Plotter::GetRatio(vector<tuple<TH1*,TH1*>> histpairs,Plot plot){
   vector<tuple<TH1*,TH1*>> histpairs_new=GetRatioHistPairs(histpairs,plot.option);
   TCanvas* c=GetCompare(histpairs_new,plot-"norm");
   TH1* axisowner=GetAxisParent(c);
+  plot.Print();
   if(axisowner){
-    axisowner->GetYaxis()->SetTitle("Ratio");
+    if(plot.ytitle=="") axisowner->GetYaxis()->SetTitle("Ratio");
     if(plot.option.Contains("widewidey")){
       axisowner->GetYaxis()->SetRangeUser(0.01,1.99);
       axisowner->GetYaxis()->SetNdivisions(506);
@@ -800,7 +801,7 @@ TCanvas* Plotter::GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,Plot plot){
     
   TCanvas* c=new TCanvas;
   c->Divide(1,2);
-  TCanvas* c1temp=GetCompare(hists,plot-"2:");
+  TCanvas* c1temp=GetCompare(hists,plot.GetSubPlot(1));
   c->cd(1);
   c1temp->DrawClonePad();
   delete c1temp;
@@ -817,15 +818,15 @@ TCanvas* Plotter::GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,Plot plot){
     TLatex latex;
     latex.SetTextSize(0.05);
     latex.SetNDC();
-    latex.DrawLatex(0.15,0.92,"CMS #bf{#it{Preliminary}}");
+    latex.DrawLatex(0.16,0.92,"CMS #bf{#it{Preliminary}}");
     if(plot.histname.Contains("2016")){
-      latex.DrawLatex(0.68,0.92,"35.92 fb^{-1} (13 TeV)");
+      latex.DrawLatex(0.71,0.92,"35.9 fb^{-1} (13 TeV)");
     }else if(plot.histname.Contains("2017/")){
-      latex.DrawLatex(0.68,0.92,"41.53 fb^{-1} (13 TeV)");
+      latex.DrawLatex(0.71,0.92,"41.5 fb^{-1} (13 TeV)");
     }else if(plot.histname.Contains("2018/")){
-      latex.DrawLatex(0.68,0.92,"59.74 fb^{-1} (13 TeV)");
+      latex.DrawLatex(0.71,0.92,"59.7 fb^{-1} (13 TeV)");
     }else if(plot.histname.Contains("201[6-8]")){
-      latex.DrawLatex(0.68,0.92,"137.2 fb^{-1} (13 TeV)");      
+      latex.DrawLatex(0.71,0.92,"137 fb^{-1} (13 TeV)");      
     }
     latex.SetTextSize(0.05);
     latex.SetTextColor(2);
@@ -836,7 +837,7 @@ TCanvas* Plotter::GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,Plot plot){
   gPad->Update();
   gPad->Modified();
 
-  TCanvas* c2temp=GetRatio(hists,plot-"1:"+"noleg");
+  TCanvas* c2temp=GetRatio(hists,(plot+"noleg").GetSubPlot(2));
   c->cd(2);
   if(c2temp){
     c2temp->DrawClonePad();
@@ -852,7 +853,7 @@ TCanvas* Plotter::GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,Plot plot){
     axisparent->SetTitle("");
     axisparent->SetStats(0);
     axisparent->GetYaxis()->SetLabelSize(0.1);
-    axisparent->GetYaxis()->SetTitle("Ratio");
+    //axisparent->GetYaxis()->SetTitle("Ratio");
     axisparent->GetYaxis()->SetTitleSize(0.12);
     axisparent->GetYaxis()->SetTitleOffset(0.6);
     axisparent->GetXaxis()->SetTitle(plot.xtitle);
