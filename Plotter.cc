@@ -316,6 +316,7 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,Plot plot,TString additiona
 	delete this_hist;
       }
     }
+    hist->Scale(sample.weight);
   }else if(plot.option.Contains("absy")){
     if(plot.project.Contains("y")) PError("[Plotter::GetHistFromSample] Not supported (absy + project:y)");
     else if(plot.Ymin==0&&plot.Ymax==0) PError("[Plotter::GetHistFromSample] absy needs Ymin and Ymax");

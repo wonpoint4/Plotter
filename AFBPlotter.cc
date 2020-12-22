@@ -340,6 +340,10 @@ AFBPlotter::AFBPlotter(TString mode_){
   samples["tw"]=Sample("tW",Sample::Type::BG,kMagenta+10)+TRegexp("/AFBAnalyzer_.*SingleTop_tW_.*top_NoFullyHad");
   samples["st"]=Sample("ST",Sample::Type::BG,kMagenta+12)+TRegexp("/AFBAnalyzer_.*SingleTop_[st]ch_.*");
   samples["tttw"]=Sample("t#bar{t}, tW",Sample::Type::SUM,kMagenta)+"tt"+"tw";
+  samples["qcdm"]=Sample("QCD Mu-enriched",Sample::Type::BG,kCyan)+TRegexp("/AFBAnalyzer_.*QCD_Pt.*MuEnrichedPt5$");
+  samples["qcde"]=Sample("QCD EM-enriched",Sample::Type::BG,kCyan+4)+TRegexp("/AFBAnalyzer_.*QCD_Pt.*EMEnriched$");
+  samples["qcdee"]=Sample("QCD bcToE",Sample::Type::BG,kCyan)+TRegexp("/AFBAnalyzer_.*QCD_Pt.*bcToE$");
+
   samples["aa0j"]=Sample("#gamma#gamma#rightarrowll",Sample::Type::BG,kMagenta+12)+TRegexp("/AFBAnalyzer_.*GamGamToLL_0j$");
   samples["aa"]=Sample("#gamma#gamma#rightarrowll",Sample::Type::BG,kYellow+1)+TRegexp("/AFBAnalyzer_.*GamGamToLL$");
 
