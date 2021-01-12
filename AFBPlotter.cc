@@ -7,9 +7,8 @@ public:
   int Setup(TString mode_);
   TString mode;
   TString analyzer;
-  AFBPlotter(TString mode_="data ^amc+tau_amc+vv+wjets+tt");
+  AFBPlotter(TString mode_="data ^amc+tau_amc+vv+wjets+tttw+aa");
 
-  double GetChi2(TH1* h1,TH1* h2=NULL);
   void SetupTH4D();
   pair<double,double> GetRange(TString histname,TString axisname);
   pair<double,double> GetAFBAndError(TH1* costhetaCS);
@@ -17,14 +16,15 @@ public:
   using Plotter::GetHist;
   virtual TH1* GetHist(const Sample& sample,Plot plot,TString additional_option="");
   virtual void GetHistActionForAdditionalClass(TObject*& obj,Plot plot);
-  virtual void AddPlot(TString plotkey,TString option="");
+  virtual Plot MakePlot(TString name,TString option="");
 
   TH1* GetHistWeightedAFB(TH1* hist_forward_num,TH1* hist_forward_den,TH1* hist_backward_num,TH1* hist_backward_den);
   TH1* GetHistAFB(TH1* hist_forward,TH1* hist_backward);
 
-  TCanvas* DrawPlot(TString plotkey,TString option="");
+  //TCanvas* DrawPlot(TString plotkey,TString option="");
   map<TString,TString> plot_axisnames;
 };
+/*
 TCanvas* AFBPlotter::DrawPlot(TString plotkey,TString option=""){
   TCanvas* c=Plotter::DrawPlot(plotkey,option);
   if(c){
@@ -95,7 +95,7 @@ TCanvas* AFBPlotter::DrawPlot(TString plotkey,TString option=""){
   }
   return c;
 }
-
+*/
 pair<double,double> AFBPlotter::GetRange(TString histname,TString axisname){
   TString rangestring=histname(TRegexp(axisname+"[[-+0-9.]*,[-+0-9.]*]"));
   TString first=rangestring(axisname.Length()+1,rangestring.Index(',')-axisname.Length()-1);
@@ -107,14 +107,14 @@ TH1* AFBPlotter::GetHist(const Sample& sample,Plot plot,TString additional_optio
   TH1* hist=NULL;
   plot.SetOption(additional_option);
   if(plot.histname.Contains("weightedAFB")){
-    TH1* hist_forward_num=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_num")+" umin:0 umax:1");
-    TH1* hist_forward_den=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_den")+" umin:0 umax:1");
-    TH1* hist_backward_num=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_num")+" umin:-1 umax:0");
-    TH1* hist_backward_den=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_den")+" umin:-1 umax:0");
+    TH1* hist_forward_num=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_num")+" Umin:0 Umax:1");
+    TH1* hist_forward_den=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_den")+" Umin:0 Umax:1");
+    TH1* hist_backward_num=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_num")+" Umin:-1 Umax:0");
+    TH1* hist_backward_den=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_den")+" Umin:-1 Umax:0");
     hist=GetHistWeightedAFB(hist_forward_num,hist_forward_den,hist_backward_num,hist_backward_den);
   }else if(plot.histname.Contains("AFB")){
-    TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFB","costhetaCS")+" umin:0 umax:1");
-    TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFB","costhetaCS")+" umin:-1 umax:0");
+    TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFB","costhetaCS")+" Umin:0 Umax:1");
+    TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFB","costhetaCS")+" Umin:-1 Umax:0");
     hist=GetHistAFB(hist_forward,hist_backward);
   }
   if(hist){
@@ -132,28 +132,44 @@ void AFBPlotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot){
     TH4D* hist4d=(TH4D*)obj;
     int ixmin=0,iymin=0,izmin=0,iumin=0;
     int ixmax=-1,iymax=-1,izmax=-1,iumax=-1;
-    if(plot.xmin||plot.xmax){
-      ixmin=hist4d->GetXaxis()->FindBin(plot.xmin);
-      ixmax=hist4d->GetXaxis()->FindBin(plot.xmax-0.00001);
+    if(plot.Xmin||plot.Xmax){
+      ixmin=hist4d->GetXaxis()->FindBin(plot.Xmin);
+      ixmax=hist4d->GetXaxis()->FindBin(plot.Xmax-0.00001);
+      if(fabs(plot.Xmin-hist4d->GetXaxis()->GetBinLowEdge(ixmin))>0.00001)
+	PWarning(Form("[Plotter::GetHistFromSample] Xmin=%f is not exact edge... use %f",plot.Xmin,hist4d->GetXaxis()->GetBinLowEdge(ixmin)));
+      if(fabs(plot.Xmax-hist4d->GetXaxis()->GetBinUpEdge(ixmax))>0.00001)
+	PWarning(Form("[Plotter::GetHistFromSample] Xmax=%f is not exact edge... use %f",plot.Xmax,hist4d->GetXaxis()->GetBinUpEdge(ixmax)));
     }
-    if(plot.ymin||plot.ymax){
-      iymin=hist4d->GetYaxis()->FindBin(plot.ymin);
-      iymax=hist4d->GetYaxis()->FindBin(plot.ymax-0.00001);
+    if(plot.Ymin||plot.Ymax){
+      iymin=hist4d->GetYaxis()->FindBin(plot.Ymin);
+      iymax=hist4d->GetYaxis()->FindBin(plot.Ymax-0.00001);
+      if(fabs(plot.Ymin-hist4d->GetYaxis()->GetBinLowEdge(iymin))>0.00001)
+	PWarning(Form("[Plotter::GetHistFromSample] Ymin=%f is not exact edge... use %f",plot.Ymin,hist4d->GetYaxis()->GetBinLowEdge(iymin)));
+      if(fabs(plot.Ymax-hist4d->GetYaxis()->GetBinUpEdge(iymax))>0.00001)
+	PWarning(Form("[Plotter::GetHistFromSample] Ymax=%f is not exact edge... use %f",plot.Ymax,hist4d->GetYaxis()->GetBinUpEdge(iymax)));
     }
-    if(plot.zmin||plot.zmax){
-      izmin=hist4d->GetZaxis()->FindBin(plot.zmin);
-      izmax=hist4d->GetZaxis()->FindBin(plot.zmax-0.00001);
+    if(plot.Zmin||plot.Zmax){
+      izmin=hist4d->GetZaxis()->FindBin(plot.Zmin);
+      izmax=hist4d->GetZaxis()->FindBin(plot.Zmax-0.00001);
+      if(fabs(plot.Zmin-hist4d->GetZaxis()->GetBinLowEdge(izmin))>0.00001)
+	PWarning(Form("[Plotter::GetHistFromSample] Zmin=%f is not exact edge... use %f",plot.Zmin,hist4d->GetZaxis()->GetBinLowEdge(izmin)));
+      if(fabs(plot.Zmax-hist4d->GetZaxis()->GetBinUpEdge(izmax))>0.00001)
+	PWarning(Form("[Plotter::GetHistFromSample] Zmax=%f is not exact edge... use %f",plot.Zmax,hist4d->GetZaxis()->GetBinUpEdge(izmax)));
     }
-    if(plot.umin||plot.umax){
-      iumin=hist4d->GetUaxis()->FindBin(plot.umin);
-      iumax=hist4d->GetUaxis()->FindBin(plot.umax-0.00001);
+    if(plot.Umin||plot.Umax){
+      iumin=hist4d->GetUaxis()->FindBin(plot.Umin);
+      iumax=hist4d->GetUaxis()->FindBin(plot.Umax-0.00001);
+      if(fabs(plot.Umin-hist4d->GetUaxis()->GetBinLowEdge(iumin))>0.00001)
+	PWarning(Form("[Plotter::GetHistFromSample] Umin=%f is not exact edge... use %f",plot.Umin,hist4d->GetUaxis()->GetBinLowEdge(iumin)));
+      if(fabs(plot.Umax-hist4d->GetUaxis()->GetBinUpEdge(iumax))>0.00001)
+	PWarning(Form("[Plotter::GetHistFromSample] Umax=%f is not exact edge... use %f",plot.Umax,hist4d->GetUaxis()->GetBinUpEdge(iumax)));
     }
-    TString axisstring=plot.histname(TRegexp("([x-zu]*)$"));
-    if(axisstring=="") obj=(TObject*)hist4d->ProjectionU("_pu",ixmin,ixmax,iymin,iymax,izmin,izmax);
-    else if(axisstring=="(x)") obj=(TObject*)hist4d->ProjectionX("_px",iymin,iymax,izmin,izmax,iumin,iumax);
-    else if(axisstring=="(y)") obj=(TObject*)hist4d->ProjectionY("_py",ixmin,ixmax,izmin,izmax,iumin,iumax);
-    else if(axisstring=="(z)") obj=(TObject*)hist4d->ProjectionZ("_pz",ixmin,ixmax,iymin,iymax,iumin,iumax);
-    else if(axisstring=="(u)") obj=(TObject*)hist4d->ProjectionU("_pu",ixmin,ixmax,iymin,iymax,izmin,izmax);
+    if(plot.project=="") obj=(TObject*)hist4d->ProjectionU("_pu",ixmin,ixmax,iymin,iymax,izmin,izmax);
+    else if(plot.project=="x") obj=(TObject*)hist4d->ProjectionX("_px",iymin,iymax,izmin,izmax,iumin,iumax);
+    else if(plot.project=="y") obj=(TObject*)hist4d->ProjectionY("_py",ixmin,ixmax,izmin,izmax,iumin,iumax);
+    else if(plot.project=="z") obj=(TObject*)hist4d->ProjectionZ("_pz",ixmin,ixmax,iymin,iymax,iumin,iumax);
+    else if(plot.project=="u") obj=(TObject*)hist4d->ProjectionU("_pu",ixmin,ixmax,iymin,iymax,izmin,izmax);
+    //else if(plot.project=="xz") obj=(TObject*)hist4d->ProjectionXZ("_pxz",iymin,iymax,iumin,iumax);
     else{
       PError("[Plotter::GetHist] wrong axisstring or classname");
     }
@@ -162,31 +178,74 @@ void AFBPlotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot){
     PError((TString)"[AFBPlotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot)] Unsupported class name "+obj->ClassName());
   }
 }
-void AFBPlotter::AddPlot(TString plotkey,TString option){
-  Plotter::AddPlot(plotkey,option);
-  Plot& plot=plots[plotkey];
+Plot AFBPlotter::MakePlot(TString plotkey,TString option){
+  Plot plot=Plotter::MakePlot(plotkey,option);
   if(plot.histname.Contains(TRegexp("m[[-+0-9.]*,[-+0-9.]*]/"))){
     auto range=GetRange(plot.histname,"m");
-    plot.SetOption(Form("xmin:%f xmax:%f",range.first,range.second));
+    plot.SetOption(Form("Xmin:%f Xmax:%f",range.first,range.second));
     plot.histname=Replace(plot.histname,"m[[-+0-9.]*,[-+0-9.]*]/","");
   }
   if(plot.histname.Contains(TRegexp("y[[-+0-9.]*,[-+0-9.]*]/"))){
     auto range=GetRange(plot.histname,"y");
-    plot.SetOption(Form("ymin:%f ymax:%f",range.first,range.second));
+    plot.SetOption(Form("Ymin:%f Ymax:%f",range.first,range.second));
     plot.histname=Replace(plot.histname,"y[[-+0-9.]*,[-+0-9.]*]/","");
   }
   if(plot.histname.Contains(TRegexp("pt[[-+0-9.]*,[-+0-9.]*]/"))){
     auto range=GetRange(plot.histname,"pt");
-    plot.SetOption(Form("zmin:%f zmax:%f",range.first,range.second));
+    plot.SetOption(Form("Zmin:%f Zmax:%f",range.first,range.second));
     plot.histname=Replace(plot.histname,"pt[[-+0-9.]*,[-+0-9.]*]/","");
   }
-  plot.histname=Replace(plot.histname,"(m)","(x)");
-  plot.histname=Replace(plot.histname,"(pt)","(z)");
-  //if(plot.histname.Contains("costhetaCS")){plot.histname+="(u)";}
-  if(plot.histname.Contains("dimass")){plot.histname=Replace(plot.histname,"dimass","costhetaCS");plot.histname+="(x)";}
-  if(plot.histname.Contains("dirap")){plot.histname=Replace(plot.histname,"dirap","costhetaCS");plot.histname+="(y)";}
-  if(plot.histname.Contains("dipt")){plot.histname=Replace(plot.histname,"dipt","costhetaCS");plot.histname+="(z)";}
-  if(plot.histname.Contains("AFB")&&entries.size()>1) plot.SetOption(Form("type:%d",Plot::Type::CompareAndSig));
+  if(plot.histname.Contains(TRegexp("(m)$"))) plot.histname=Replace(plot.histname,"(m)$","(x)");
+  if(plot.histname.Contains(TRegexp("(pt)$"))) plot.histname=Replace(plot.histname,"(pt)$","(z)");
+
+  if(plot.histname.Contains(TRegexp("(x)$"))){plot.histname=Replace(plot.histname,"(x)$","");plot.SetOption("project:x");}
+  if(plot.histname.Contains(TRegexp("(y)$"))){plot.histname=Replace(plot.histname,"(y)$","");plot.SetOption("project:y");}
+  if(plot.histname.Contains(TRegexp("(z)$"))){plot.histname=Replace(plot.histname,"(z)$","");plot.SetOption("project:z");}
+  if(plot.histname.Contains(TRegexp("(u)$"))){plot.histname=Replace(plot.histname,"(u)$","");plot.SetOption("project:u");}
+  if(plot.histname.Contains(TRegexp("(x,z)$"))){plot.histname=Replace(plot.histname,"(x,z)$","");plot.SetOption("project:xz");}
+
+  if(plot.histname.Contains("dimass")){plot.histname=Replace(plot.histname,"dimass","costhetaCS");plot.SetOption("project:x");}
+  if(plot.histname.Contains("dirap")){plot.histname=Replace(plot.histname,"dirap","costhetaCS");plot.SetOption("project:y");}
+  if(plot.histname.Contains("dipt")){plot.histname=Replace(plot.histname,"dipt","costhetaCS");plot.SetOption("project:z");}
+
+  if(plot.xmin==0&&plot.xmax==0){
+    if(plot.project(0)=='x'){plot.xmin=plot.Xmin;plot.xmax=plot.Xmax;}
+    else if(plot.project(0)=='y'){plot.xmin=plot.Ymin;plot.xmax=plot.Ymax;}
+    else if(plot.project(0)=='z'){plot.xmin=plot.Zmin;plot.xmax=plot.Zmax;}
+    else if(plot.project(0)=='u'){plot.xmin=plot.Umin;plot.xmax=plot.Umax;}
+  }
+  if(plot.ymin==0&&plot.ymax==0){
+    if(plot.project(1)=='x'){plot.ymin=plot.Xmin;plot.ymax=plot.Xmax;}
+    else if(plot.project(1)=='y'){plot.ymin=plot.Ymin;plot.ymax=plot.Ymax;}
+    else if(plot.project(1)=='z'){plot.ymin=plot.Zmin;plot.ymax=plot.Zmax;}
+    else if(plot.project(1)=='u'){plot.ymin=plot.Umin;plot.ymax=plot.Umax;}
+  }
+
+  TString ll="ll";
+  if(plot.histname.Contains("mm201")) ll="#mu#mu";
+  else if(plot.histname.Contains("ee201")) ll="ee";
+
+  if(plot.project=="x") plot.SetOption("xtitle:'m("+ll+") [GeV]'");
+  else if(plot.project=="y") plot.SetOption("xtitle:y("+ll+")");
+  else if(plot.project=="z") plot.SetOption("xtitle:'p_{T}("+ll+") [GeV]'");
+  else if(plot.project=="u"){
+    if(plot.histname.Contains("costhetaCS")) plot.SetOption("xtitle:cos#theta_{CS}");
+  }
+  
+  if(plot.type==Plot::Type::Compare){
+    if(plot.histname.Contains("AFB")) plot.SetOption("ytitle:A_{FB}");
+    else if(option.Contains("norm")) plot.SetOption("ytitle:Normalized");
+    else if(option.Contains("widthweight")) plot.SetOption("ytitle:'Events / 1 GeV'");
+    else plot.SetOption("ytitle:Events");
+  }else if(plot.IsMultiPad()){
+    if(plot.histname.Contains("AFB")) plot.SetOption("1:ytitle:A_{FB}");
+    else if(option.Contains("norm")) plot.SetOption("1:ytitle:Normalized");
+    else if(option.Contains("widthweight")) plot.SetOption("1:ytitle:'Events / 1 GeV'");
+    else plot.SetOption("1:ytitle:Events");
+  }    
+
+  if(plot.histname.Contains("AFB")&&entries.size()>1&&!option.Contains("type:")) plot.SetOption(Form("type:%d",Plot::Type::CompareAndSig));
+  return plot;
 }
 
 pair<double,double> AFBPlotter::GetAFBAndError(TH1* hist){
@@ -242,7 +301,7 @@ TH1* AFBPlotter::GetHistAFB(TH1* hist_forward,TH1* hist_backward){
   TH1* hist=(TH1*)hist_forward->Clone();
   hist->SetDirectory(pdir);
   hist->Reset();
-  for(int i=0;i<hist->GetNbinsX()+2;i++){
+  for(int i=0;i<hist->GetNcells();i++){
     double valf=hist_forward->GetBinContent(i);
     double ef=hist_forward->GetBinError(i);
     double valb=hist_backward->GetBinContent(i);
@@ -278,6 +337,15 @@ AFBPlotter::AFBPlotter(TString mode_){
   samples["wjets"]=Sample("W",Sample::Type::BG,kYellow)+TRegexp("/AFBAnalyzer_.*WJets_MG");
   samples["tt"]=Sample("t#bar{t}",Sample::Type::BG,kMagenta)+TRegexp("/AFBAnalyzer_.*TTLL_powheg");
   samples["ttlj"]=Sample("TTLJ",Sample::Type::BG,kMagenta+6)+TRegexp("/AFBAnalyzer_.*TTLJ_powheg");
+  samples["tw"]=Sample("tW",Sample::Type::BG,kMagenta+10)+TRegexp("/AFBAnalyzer_.*SingleTop_tW_.*top_NoFullyHad");
+  samples["st"]=Sample("ST",Sample::Type::BG,kMagenta+12)+TRegexp("/AFBAnalyzer_.*SingleTop_[st]ch_.*");
+  samples["tttw"]=Sample("t#bar{t}, tW",Sample::Type::SUM,kMagenta)+"tt"+"tw";
+  samples["qcdm"]=Sample("QCD Mu-enriched",Sample::Type::BG,kCyan)+TRegexp("/AFBAnalyzer_.*QCD_Pt.*MuEnrichedPt5$");
+  samples["qcde"]=Sample("QCD EM-enriched",Sample::Type::BG,kCyan+4)+TRegexp("/AFBAnalyzer_.*QCD_Pt.*EMEnriched$");
+  samples["qcdee"]=Sample("QCD bcToE",Sample::Type::BG,kCyan)+TRegexp("/AFBAnalyzer_.*QCD_Pt.*bcToE$");
+
+  samples["aa0j"]=Sample("#gamma#gamma#rightarrowll",Sample::Type::BG,kMagenta+12)+TRegexp("/AFBAnalyzer_.*GamGamToLL_0j$");
+  samples["aa"]=Sample("#gamma#gamma#rightarrowll",Sample::Type::BG,kYellow+1)+TRegexp("/AFBAnalyzer_.*GamGamToLL$");
 
   samples["amc"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets$");
   samples["amcJet"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DY[0-9]Jets$");
@@ -294,7 +362,7 @@ AFBPlotter::AFBPlotter(TString mode_){
     samples["truth_"+dysample]="truth_"%(Sample("#gamma*/Z#rightarrowll (truth)",Sample::Type::SIGNAL,kCyan)+dysample);
   }
     
-  samples["ss"]="ss_"%(Sample("QCD multi-jet",Sample::Type::SUM,kCyan)+"data"-"amc"-"tau_amc"-"vv"-"wjets"-"tt");
+  samples["ss"]="ss_"%(Sample("QCD multi-jet",Sample::Type::SUM,kCyan)+"data"-"amc"-"tau_amc"-"vv"-"wjets"-"tt"-"tw"-"aa");
 
   samples["amcPt_stack"]=Sample("DY Pt-binned",Sample::Type::STACK,kBlue)+TRegexp("/AFBAnalyzer_.*DYJets_Pt-[0-9]*To[0-9Inf]*$");
   for(auto& sub:samples["amcPt_stack"].subs) sub.title=sub.title(TRegexp("Pt-[0-9]*To[0-9Inf]*"));
@@ -348,17 +416,16 @@ int AFBPlotter::Setup(TString mode_){
 
   SetupEntries(mode);
   SetupSystematics();
-  SetupPlots("plot_AFBAnalyzer/"+mode+"/plot.dat");
 
-  if(Verbosity) std::cout<<"[AFBPlotter::Setup] nentries: "<<entries.size()<<endl;
-  if(Verbosity) std::cout<<"[AFBPlotter::Setup] nsys: "<<systematics.size()<<endl;
-  if(Verbosity) std::cout<<"[AFBPlotter::Setup] nplot: "<<plots.size()<<endl;
+  if(Verbosity>VERBOSITY::WARNING) std::cout<<"[AFBPlotter::Setup] nentries: "<<entries.size()<<endl;
+  if(Verbosity>VERBOSITY::WARNING) std::cout<<"[AFBPlotter::Setup] nsys: "<<systematics.size()<<endl;
+  if(Verbosity>VERBOSITY::WARNING) std::cout<<"[AFBPlotter::Setup] nplot: "<<plots.size()<<endl;
 
   return 1;
 }
   
 void AFBPlotter::SetupSystematics(){
-  if(Verbosity)  std::cout<<"[AFBPlotter::SetupSystematics]"<<endl;
+  if(Verbosity>VERBOSITY::WARNING)  std::cout<<"[AFBPlotter::SetupSystematics]"<<endl;
   systematics["RECOSF"]=MakeSystematic("RECOSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_RECOSF_up _RECOSF_down");
   systematics["IDSF"]=MakeSystematic("IDSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_IDSF_up _IDSF_down");
   systematics["ISOSF"]=MakeSystematic("ISOSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_ISOSF_up _ISOSF_down");
@@ -394,20 +461,5 @@ void AFBPlotter::SetupTH4D(){
     gROOT->ProcessLine(".L TH4D/TH4D.cxx+");
   }
 }
-
-
-double AFBPlotter::GetChi2(TH1* h1,TH1* h2){
-  double chi2=0;
-  for(int i=h1->GetXaxis()->GetFirst();i<h1->GetXaxis()->GetLast()+1;i++){
-    double x1=h1->GetBinContent(i);
-    double ex1=h1->GetBinError(i);
-    double x2=h2?h2->GetBinContent(i):0.;
-    double ex2=h2?h2->GetBinError(i):0.;
-    chi2+=pow((x1-x2)/(ex1-ex2),2);
-  }
-  chi2/=h1->GetXaxis()->GetLast()-h1->GetXaxis()->GetFirst()+1;
-  return chi2;
-}
-    
   
 #endif
