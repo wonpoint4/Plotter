@@ -421,6 +421,12 @@ TH1* Plotter::GetHistFromFile(TString filename,TString histname){
       hist->SetDirectory(pdir);
       if(!hist->GetSumw2N()) hist->Sumw2();
       PInfo("[Plotter::GetHistFromFile] get "+histname+" from "+filename);
+      if(histname.Contains("bjetCharge")){
+	double total_yield = hist->Integral(0,-1);
+	double SLminus_yield = hist->Integral(hist->GetXaxis()->FindBin(-3),hist->GetXaxis()->FindBin(-1));
+	double SLplus_yield = hist->Integral(hist->GetXaxis()->FindBin(1),hist->GetXaxis()->FindBin(3));
+	cout<<"Total yield : "<<total_yield<<", SL_yield : "<<SLminus_yield+SLplus_yield<<endl;
+      }
     }
     f->Close();
     delete f;
