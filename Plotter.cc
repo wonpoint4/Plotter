@@ -43,7 +43,7 @@ public:
   virtual TH1* GetHistFromFile(TString filename,TString histname);
   virtual void GetHistActionForAdditionalClass(TObject*& obj,Plot plot);
   tuple<TH1*,TH1*> GetHistPair(const Sample& sample,const Plot& plot);
-  vector<tuple<TH1*,TH1*>> GetHistPairs(const Plot& plot);
+  vector<tuple<TH1*,TH1*>> GetHistPairs(Plot& plot);
 
   //Uncertainty
   TH1* GetEnvelope(TH1* central,const vector<TH1*>& variations);
@@ -77,8 +77,9 @@ public:
   static vector<TH1*> VectorTH1(vector<tuple<TH1*,TH1*>>& hists);
   tuple<double,double> GetMinMax(const vector<TH1*>& hists);
   void RebinXminXmax(TH1* hist,Plot plot);
-  void Normalize(TH1* hists,double val=1.);
-  void Normalize(vector<TH1*> hists,double val=1.);
+  double Normalize(TH1* hists,double val=1.);
+  vector<double> Normalize(vector<TH1*> hists,double val=1.);
+  vector<tuple<double,double>> Normalize(vector<tuple<TH1*,TH1*>> histpairs,double val=1.);
   void WidthWeight(TH1* hist);
   void WidthWeight(vector<TH1*> hists);
   bool IsEntry(const Sample& sample);
@@ -519,16 +520,30 @@ tuple<TH1*,TH1*> Plotter::GetHistPair(const Sample& sample,const Plot& plot){
     }
     sample.ApplyStyle(total,true);
   }
-  if(plot.option.Contains("norm")){
-    Normalize(total);
-    Normalize(central);
-  }
+  //if(plot.option.Contains("norm")){
+  //Normalize(total);
+  //Normalize(central);
+  //}
   _depth--;
   return make_tuple(central,total);
 }
-vector<tuple<TH1*,TH1*>> Plotter::GetHistPairs(const Plot& plot){
+vector<tuple<TH1*,TH1*>> Plotter::GetHistPairs(Plot& plot){
   vector<tuple<TH1*,TH1*>> histpairs;
   for(const auto& entry:entries) histpairs.push_back(GetHistPair(entry,plot));
+  if(plot.option.Contains("norm")&&histpairs.size()>1){
+    TH1* h=GetTH1(get<0>(histpairs.at(0)));
+    if(h){
+      double val=h->Integral();
+      delete h;
+      vector<tuple<double,double>> scales=Normalize(histpairs,val);
+      if(scales.size()>1){
+	TString newytitle="'"+plot.ytitle+Form(" (Norm. SF=%.3f",get<0>(scales.at(1)));
+	for(unsigned int i=2;i<scales.size();i++) newytitle+=Form(",%.3f",get<0>(scales.at(i)));
+	newytitle+=")'";
+	plot.SetOption("1:ytitle:"+newytitle);
+      }
+    }
+  }
   return histpairs;
 }  
 
@@ -1200,23 +1215,35 @@ void Plotter::RebinXminXmax(TH1* hist,Plot plot){
   }
 }
 
-void Plotter::Normalize(TH1* hist,double val){
+double Plotter::Normalize(TH1* hist,double val){
   PAll("[Plotter::Normalize(TH1* hists,double val=1.)]");
+  double scale=1.;
   if(hist){
     if(strstr(hist->ClassName(),"THStack")){
       TH1* hsim=GetTH1(hist);
-      double scale=val/hsim->Integral();
+      scale=val/hsim->Integral();
       for(auto obj:*((THStack*)hist)->GetHists()){
 	TH1* hsim_sub=(TH1*)obj;
 	hsim_sub->Scale(scale);
       }
     }else{
-      hist->Scale(val/hist->Integral());
+      scale=val/hist->Integral();
+      hist->Scale(scale);
     }
   }
+  //cout<<"[Plotter::Normalize] "<<hist->GetName()<<" "<<scale<<endl;
+  return scale;
 }
-void Plotter::Normalize(vector<TH1*> hists,double val){
-  for(auto& hist:hists) Normalize(hist,val);
+vector<double> Plotter::Normalize(vector<TH1*> hists,double val){
+  vector<double> scales;
+  for(auto& hist:hists) scales.push_back(Normalize(hist,val));
+  return scales;
+}
+vector<tuple<double,double>> Plotter::Normalize(vector<tuple<TH1*,TH1*>> histpairs,double val){
+  vector<tuple<double,double>> scales;
+  for(auto& pair:histpairs)
+    scales.push_back(make_tuple(Normalize(get<0>(pair),val),Normalize(get<1>(pair),val)));
+  return scales;
 }
 void Plotter::WidthWeight(TH1* hist){
   PAll("[Plotter::WidthWeight(TH1* hist)]");

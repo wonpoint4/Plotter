@@ -341,6 +341,12 @@ AFBPlotter::AFBPlotter(TString mode_){
   samples["st"]=Sample("ST",Sample::Type::BG,kMagenta+12)+TRegexp("/AFBAnalyzer_.*SingleTop_[st]ch_.*");
   samples["tttw"]=Sample("t#bar{t}, tW",Sample::Type::SUM,kMagenta)+"tt"+"tw";
   samples["qcdm"]=Sample("QCD Mu-enriched",Sample::Type::BG,kCyan)+TRegexp("/AFBAnalyzer_.*QCD_Pt.*MuEnrichedPt5$");
+  samples["qcdm1"]=Sample("QCD Mu-enriched 10to20",Sample::Type::BG,1)+TRegexp("/AFBAnalyzer_.*QCD_Pt-15to20.*MuEnrichedPt5$");
+  samples["qcdm2"]=Sample("QCD Mu-enriched 20to30",Sample::Type::BG,2)+TRegexp("/AFBAnalyzer_.*QCD_Pt-20to30.*MuEnrichedPt5$");
+  samples["qcdm3"]=Sample("QCD Mu-enriched 30to50",Sample::Type::BG,3)+TRegexp("/AFBAnalyzer_.*QCD_Pt-30to50.*MuEnrichedPt5$");
+  samples["qcdm4"]=Sample("QCD Mu-enriched 50to80",Sample::Type::BG,4)+TRegexp("/AFBAnalyzer_.*QCD_Pt-50to80.*MuEnrichedPt5$");
+  samples["qcdm5"]=Sample("QCD Mu-enriched 80to120",Sample::Type::BG,5)+TRegexp("/AFBAnalyzer_.*QCD_Pt-80to120.*MuEnrichedPt5$");
+  samples["qcdm6"]=Sample("QCD Mu-enriched 120to170",Sample::Type::BG,6)+TRegexp("/AFBAnalyzer_.*QCD_Pt-120to170.*MuEnrichedPt5$");
   samples["qcde"]=Sample("QCD EM-enriched",Sample::Type::BG,kCyan+4)+TRegexp("/AFBAnalyzer_.*QCD_Pt.*EMEnriched$");
   samples["qcdee"]=Sample("QCD bcToE",Sample::Type::BG,kCyan)+TRegexp("/AFBAnalyzer_.*QCD_Pt.*bcToE$");
 
@@ -434,6 +440,10 @@ void AFBPlotter::SetupSystematics(){
   systematics["prefireweight"]=MakeSystematic("prefireweight",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_prefireweight_up _prefireweight_down");
   systematics["scale"]=MakeSystematic("scale",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_scale_up _scale_down");
   systematics["smear"]=MakeSystematic("smear",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_smear_up _smear_down");
+  systematics["JER"]=MakeSystematic("JER",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_JER_up _JER_down");
+  systematics["JES"]=MakeSystematic("JES",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_JES_up _JES_down");
+  systematics["uncl"]=MakeSystematic("uncl",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_uncl_up _uncl_down");
+  systematics["metsys"]=MakeSystematic("totalsys",Systematic::Type::MULTI,0,"JER uncl JES");
   systematics["alphaS"]=MakeSystematic("alphaS",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL),"_alphaS_up _alphaS_down");
   systematics["scalevariation"]=MakeSystematic("scalevariation",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL),"_scalevariation0 _scalevariation1 _scalevariation2 _scalevariation3 _scalevariation4 _scalevariation6 _scalevariation8");
 
