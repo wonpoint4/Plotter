@@ -170,7 +170,7 @@ void Plotter::AddEntry(TString key){
   TPRegexp("([+-])").Substitute(key," $1","g");
   Sample entry;
   if(key.BeginsWith("^")){
-    entry=Sample("simulation",Sample::Type::STACK);
+    entry=Sample("simulation",Sample::Type::STACK,Style(kRed,-1,3001,"e2"),Style(kCyan,-1,3001,"e2"));
     key=key(1,key.Length()-1);
   }else entry=Sample("simulation",Sample::Type::SUM);
   vector<TString> sample_keys=Split(key," ");
@@ -188,8 +188,8 @@ void Plotter::AddEntry(TString key){
 	entry=sample*weight;
       }else{
 	if(i==0){
-	  entry.style=sample.style;
-	  entry.style_alt=sample.style_alt;
+	  //entry.style=sample.style;
+	  //entry.style_alt=sample.style_alt;
 	}
 	entry+=weight*sample;
       }
@@ -317,7 +317,7 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,Plot plot,TString additiona
 	delete this_hist;
       }
     }
-    hist->Scale(sample.weight);
+    if(hist) hist->Scale(sample.weight);
   }else if(plot.option.Contains("absy")){
     if(plot.project.Contains("y")) PError("[Plotter::GetHistFromSample] Not supported (absy + project:y)");
     else if(plot.Ymin==0&&plot.Ymax==0) PError("[Plotter::GetHistFromSample] absy needs Ymin and Ymax");

@@ -6,7 +6,7 @@ public:
   void SetupSystematics();
   int Setup(TString mode_);
   TString mode;
-  EfficiencyPlotter(TString mode_="data sim_stack");
+  EfficiencyPlotter(TString mode_="data ^amc+tau_amc+vv+wjets+tttw");
 };
 EfficiencyPlotter::EfficiencyPlotter(TString mode_){
   ScanFiles((TString)getenv("SKFlatOutputDir")+getenv("SKFlatV")+"/EfficiencyValidation/");
@@ -15,15 +15,17 @@ EfficiencyPlotter::EfficiencyPlotter(TString mode_){
   samples["electron"]=Sample("data (ee)",Sample::Type::DATA,kBlack,20)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_.*EG.*_[A-Z]")+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_SingleElectron_[A-Z]");
   samples["data"]=Sample("data",Sample::Type::DATA,kBlack,20)+"muon"+"electron";
   samples["amc"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJets$");
-  samples["amctt"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::BG,kGreen)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJets$"));
+  samples["tau_amc"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::BG,kGreen)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJets$"));
   samples["vv"]=Sample("Diboson",Sample::Type::BG,kBlue)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_[W-Z][W-Z]_pythia$");
   samples["wjets"]=Sample("W",Sample::Type::BG,kYellow)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_WJets_MG$");
   samples["tt"]=Sample("t#bar{t}",Sample::Type::BG,kMagenta)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_TTLL_powheg$");
-  samples["ss"]="ss_"%(Sample("QCD multi-jet",Sample::Type::SUM,kCyan)+"data"-"amc"-"amctt"-"vv"-"wjets"-"tt");
+  samples["tw"]=Sample("t#bar{t}",Sample::Type::BG,kMagenta+10)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_SingleTop_tW_.*top_NoFullyHad$");
+  samples["tttw"]=Sample("t#bar{t}, tW",Sample::Type::SUM,kMagenta)+"tt"+"tw";
+  samples["ss"]="ss_"%(Sample("QCD multi-jet",Sample::Type::SUM,kCyan)+"data"-"amc"-"tau_amc"-"vv"-"wjets"-"tttw");
 
-  samples["sim_stack"]=Sample("sim",Sample::Type::STACK,Style(kRed,-1,3001,"e2"),Style(kCyan,-1,3001,"e2"))+"amc"+"amctt"+"vv"+"wjets"+"tt";
-  samples["sim"]=Sample("simulation",Sample::Type::SUM,Style(kRed,22,3001,"e2"),Style(kCyan,-1,3001,"e2"))+"amc"+"amctt"+"vv"+"wjets"+"tt";
-  samples["sim_noSF"]=(Sample("w/o efficiency SF",Sample::Type::SUM,kBlue)+"amc"+"amctt"+"vv"+"wjets"+"tt")%"_noefficiencySF";
+  samples["sim_stack"]=Sample("sim",Sample::Type::STACK,Style(kRed,-1,3001,"e2"),Style(kCyan,-1,3001,"e2"))+"amc"+"tau_amc"+"vv"+"wjets"+"tttw";
+  samples["sim"]=Sample("simulation",Sample::Type::SUM,Style(kRed,22,3001,"e2"),Style(kCyan,-1,3001,"e2"))+"amc"+"tau_amc"+"vv"+"wjets"+"tttw";
+  samples["sim_noSF"]=(Sample("w/o efficiency SF",Sample::Type::SUM,kBlue)+"amc"+"tau_amc"+"vv"+"wjets"+"tttw")%"_noefficiencySF";
   for(auto& sub:samples["sim_noSF"].subs) sub.type=Sample::Type::A;
   samples["sim_noSF"].style.linewidth=1;
 
