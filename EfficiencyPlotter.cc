@@ -16,6 +16,8 @@ EfficiencyPlotter::EfficiencyPlotter(TString mode_){
   samples["data"]=Sample("data",Sample::Type::DATA,kBlack,20)+"muon"+"electron";
   samples["amc"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJets$");
   samples["tau_amc"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::BG,kGreen)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJets$"));
+  samples["amcS20"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/EfficiencyValidation_DYJets_Summer20$");
+  samples["tau_amcS20"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::BG,kGreen)+TRegexp("/EfficiencyValidation_DYJets_Summer20$"));
   samples["minnlo"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJetsTo.*MiNNLO$");
   samples["tau_minnlo"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::BG,kGreen)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJetsTo.*MiNNLO$"));
   samples["mg"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJets_MG$");

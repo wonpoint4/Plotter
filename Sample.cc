@@ -42,26 +42,31 @@ public:
   Sample operator-(const TString key);
   Sample operator-(const TRegexp reg);
   template<class T> Sample operator-=(T sam){*this=(*this)-sam;return *this;}
-  friend Sample operator%(const char* prefix,const Sample& sam);
-  friend Sample operator%(const TString prefix,const Sample& sam);
+  friend Sample operator%(const char* hprefix,const Sample& sam);
+  friend Sample operator%(const TString hprefix,const Sample& sam);
   friend Sample operator%(const Sample& sam,const char* suffix);
   friend Sample operator%(const Sample& sam,const TString suffix);
-
   Sample operator*(double w) const;
   friend Sample operator*(double w,const Sample& sam);
   template<class T> Sample operator*=(T w){*this=(*this)*w;return *this;}
-  void SetStyle(int color,int marker=-1,int fill=-1,TString drawoption="");
-  void SetType(int type_);
-  void Add(TRegexp sampleregexp,double weight=1.,TString prefix="",TString suffix="");
+  void Add(TRegexp sampleregexp,double weight=1.,TString hprefix="",TString suffix="");
   void ApplyStyle(TH1* hist,bool alt=false) const;
-  void Print(bool detail=false,TString prefix="") const;
-  TString ReplaceToString() const;
+  static bool CheckAttributes(const Sample& sam1, const Sample& sam2);
+  TString GetHistPrefix() const;
+  TString GetPrefix() const;
+  TString GetSuffix() const;
   bool IsCollection() const;
   bool IsSample() const;
   bool IsFile() const;
-  void TurnOnFillColor();
+  void Print(bool detail=false,TString pre="") const;
+  TString ReplaceToString() const;
+  void SetHistPrefix(TString hprefix);
+  void SetPrefix(TString prefix);
+  void SetSuffix(TString suffix);
+  void SetStyle(int color,int marker=-1,int fill=-1,TString drawoption="");
+  void SetType(int type_);
   void TurnOffFillColor();
-  static bool CheckAttributes(const Sample& sam1, const Sample& sam2);
+  void TurnOnFillColor();
 };
 map<TString,Sample> samples;
 
@@ -75,37 +80,6 @@ Sample::Sample(TString title_,Sample::Type type_,int color,int marker,int fill,T
   title=title_;
   type=type_;
   SetStyle(color,marker,fill,drawoption);
-}
-TString Sample::ReplaceToString() const {
-  TString out;
-  for(const auto& [reg,newstr]:replace){
-    out+="{'"+reg+"'->'"+newstr+"'} ";
-  }
-  return out;
-}
-bool Sample::IsCollection() const {
-  if(type==Sample::Type::STACK||type==Sample::Type::SUM) return true;
-  else return false;
-}
-bool Sample::IsFile() const {
-  if(type==Sample::Type::FILE) return true;
-  return false;
-}
-bool Sample::IsSample() const{
-  if(!IsCollection()&&!IsFile()) return true;
-  return false;
-}
-bool Sample::CheckAttributes(const Sample& sam1,const Sample& sam2){
-  bool ret=true;
-  if(sam1.weight!=sam2.weight){
-    PWarning("[Sample::CheckAttributes] "+sam1.title+Form("%f",sam1.weight)+" != "+sam2.title+Form("%f",sam2.weight));
-    ret=false;
-  }
-  if(sam1.replace!=sam2.replace){
-    PWarning("[Sample::CheckAttributes] "+sam1.title+" "+sam1.ReplaceToString()+" != "+sam2.title+" "+sam2.ReplaceToString());
-    ret=false;
-  }
-  return ret;
 }
 Sample Sample::operator+(const Sample& sam){
   Sample temp(*this);
@@ -169,23 +143,13 @@ Sample Sample::operator-(const TRegexp reg){
     if(key.Contains(reg)) temp=temp-sample;
   return temp;
 }
-Sample operator%(const char* prefix,const Sample& sam){
+Sample operator%(const char* hprefix,const Sample& sam){
   Sample temp(sam);
-  if(temp.replace.find("/([^/]*)$")==temp.replace.end())
-    temp.replace["/([^/]*)$"]="/"+TString(prefix)+"$1";
-  else if(TPRegexp("/(.*)\\$1$").MatchB(temp.replace["/([^/]*)$"])){
-    TObjArray* array=TPRegexp("/(.*)\\$1$").MatchS(temp.replace["/([^/]*)$"]);
-    TString old_prefix=((TObjString*)array->At(1))->GetString();
-    temp.replace["/([^/]*)$"]="/"+TString(prefix)+old_prefix+"$1";
-    array->Delete();
-  }else{
-    PWarning("[Sample::operator%] Cannot add prefix... Overwrite...");
-    temp.replace["/([^/]*)$"]="/"+TString(prefix)+"$1";    
-  }
+  temp.SetHistPrefix(hprefix+temp.GetHistPrefix());
   return temp;
 }  
-Sample operator%(const TString prefix,const Sample& sam){
-  return prefix.Data()%sam;
+Sample operator%(const TString hprefix,const Sample& sam){
+  return hprefix.Data()%sam;
 }  
 Sample operator%(const Sample& sam,const char* suffix){
   Sample temp(sam);
@@ -203,23 +167,9 @@ Sample Sample::operator*(double f) const {
 Sample operator*(double f,const Sample& sam){
   return sam*f;
 }
-void Sample::SetStyle(int color,int marker,int fill,TString drawoption){
-  style=Style(color,marker,fill,drawoption);
-  
-  if(type==Type::STACK){
-    style.drawoption="e";
-  }
-}
-void Sample::SetType(int type_){
-  if(type==Type::STACK){
-    for(auto& sub:subs){
-      sub.SetType(type_);
-    }
-  }else type=(Type)type_;
-}
-void Sample::Add(TRegexp regexp,double weight,TString prefix,TString suffix){
+void Sample::Add(TRegexp regexp,double weight,TString hprefix,TString suffix){
   for(auto it=samples.begin();it!=samples.end();it++){
-    if(it->first.Contains(regexp)) (*this)=(*this)+weight*(prefix%(it->second)%suffix);
+    if(it->first.Contains(regexp)) (*this)=(*this)+weight*(hprefix%(it->second)%suffix);
   }
 }
 void Sample::ApplyStyle(TH1* hist,bool alt) const {
@@ -230,6 +180,49 @@ void Sample::ApplyStyle(TH1* hist,bool alt) const {
   if(hist){
     hist->SetName(title);
   }
+}
+bool Sample::CheckAttributes(const Sample& sam1,const Sample& sam2){
+  bool ret=true;
+  if(sam1.weight!=sam2.weight){
+    PWarning("[Sample::CheckAttributes] "+sam1.title+Form("%f",sam1.weight)+" != "+sam2.title+Form("%f",sam2.weight));
+    ret=false;
+  }
+  if(sam1.replace!=sam2.replace){
+    PWarning("[Sample::CheckAttributes] "+sam1.title+" "+sam1.ReplaceToString()+" != "+sam2.title+" "+sam2.ReplaceToString());
+    ret=false;
+  }
+  return ret;
+}
+TString Sample::GetHistPrefix() const {
+  auto it=replace.find("/([^/]*)$");
+  if(it!=replace.end()){
+    TObjArray* array=TPRegexp("/(.*)\\$1$").MatchS(it->second);
+    TString hprefix=((TObjString*)array->At(1))->GetString();
+    array->Delete();
+    return hprefix;
+  }else return "";
+}
+TString Sample::GetPrefix() const {
+  auto it=replace.find("^");
+  if(it!=replace.end()) return it->second;
+  else return "";
+}
+TString Sample::GetSuffix() const {
+  auto it=replace.find("$");
+  if(it!=replace.end()) return it->second;
+  else return "";
+}
+bool Sample::IsCollection() const {
+  if(type==Sample::Type::STACK||type==Sample::Type::SUM) return true;
+  else return false;
+}
+bool Sample::IsFile() const {
+  if(type==Sample::Type::FILE) return true;
+  return false;
+}
+bool Sample::IsSample() const{
+  if(!IsCollection()&&!IsFile()) return true;
+  return false;
 }
 void Sample::Print(bool detail,TString pre) const{
   if(type==Type::FILE){
@@ -248,11 +241,35 @@ void Sample::Print(bool detail,TString pre) const{
     }
   }else cout<<pre<<"Title: "<<title<<" "<<"Type: "<<GetTypeString()<<endl;
 }
-void Sample::TurnOnFillColor(){
-  if(type!=Type::STACK) style.fillcolor=style.linecolor;
-  else
-    for(auto& sub:subs)
-      sub.TurnOnFillColor();
+TString Sample::ReplaceToString() const {
+  TString out;
+  for(const auto& [reg,newstr]:replace){
+    out+="{'"+reg+"'->'"+newstr+"'} ";
+  }
+  return out;
+}
+void Sample::SetHistPrefix(TString hprefix){
+  replace["/([^/]*)$"]="/"+hprefix+"$1";
+}
+void Sample::SetPrefix(TString prefix){
+  replace["^"]=prefix;
+}
+void Sample::SetSuffix(TString suffix){
+  replace["$"]=suffix;
+}
+void Sample::SetStyle(int color,int marker,int fill,TString drawoption){
+  style=Style(color,marker,fill,drawoption);
+  
+  if(type==Type::STACK){
+    style.drawoption="e";
+  }
+}
+void Sample::SetType(int type_){
+  if(type==Type::STACK){
+    for(auto& sub:subs){
+      sub.SetType(type_);
+    }
+  }else type=(Type)type_;
 }
 void Sample::TurnOffFillColor(){
   if(type!=Type::STACK) style.fillcolor=-1;
@@ -260,4 +277,10 @@ void Sample::TurnOffFillColor(){
     for(auto& sub:subs)
       sub.TurnOffFillColor();
 }  
+void Sample::TurnOnFillColor(){
+  if(type!=Type::STACK) style.fillcolor=style.linecolor;
+  else
+    for(auto& sub:subs)
+      sub.TurnOnFillColor();
+}
 #endif

@@ -320,7 +320,7 @@ AFBPlotter::AFBPlotter(TString mode_){
   SetupTH4D();
   ScanFiles(TString()+getenv("SKFlatOutputDir")+getenv("SKFlatV")+"/AFBAnalyzer/");
   
-  samples["data"]=Sample("data",Sample::Type::DATA,kBlack,20)+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]")+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_.*EG.*_[A-Z]")+TRegexp("/DATA/AFBAnalyzer_.*Electron.*_[A-Z]");
+  samples["data"]=Sample("data",Sample::Type::DATA,kBlack,20)+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]")+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_SingleMuon_[A-Z]")+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_SingleElectron_[A-Z]")+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleEG_[A-Z]")+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_EGamma_[A-Z]");
   samples["mm2016"]=Sample("data (#mu#mu2016)",Sample::Type::DATA,kBlack,20)+TRegexp("2016.*/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]");
   samples["mm2017"]=Sample("data (#mu#mu2017)",Sample::Type::DATA,kRed,20)+TRegexp("2017.*/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]");
   samples["mm2018"]=Sample("data (#mu#mu2018)",Sample::Type::DATA,kBlue,20)+TRegexp("2018.*/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]");
@@ -359,7 +359,8 @@ AFBPlotter::AFBPlotter(TString mode_){
   samples["amcM"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets_M-[0-9]*to[0-9Inf]*$");
   samples["mg"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets_MG$");
   samples["powheg"]=Sample("#gamma*/Z#rightarrowll (POWHEG)",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*ZToEE_M_50_120$");
-  TString dysamples[]={"amc","amcJet","amcPt","amcM","mg"};
+  samples["minnlo"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJetsTo[EMuTau]*_MiNNLO$");
+  TString dysamples[]={"amc","amcJet","amcPt","amcM","mg","minnlo"};
   for(auto dysample:dysamples){
     samples["tau_"+dysample]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::BG,kGreen)+dysample);
     samples["lhe_"+dysample]="lhe_"%(Sample("#gamma*/Z#rightarrowll (LHE)",Sample::Type::SIGNAL,kBlue)+dysample);

@@ -297,6 +297,7 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,Plot plot,TString additiona
     for(int i=sample.subs.size()-1;i>=0;i--){
       TH1* this_hist=GetHistFromSample(sample.subs[i],plot);
       if(this_hist){
+	this_hist->Scale(sample.weight);
 	if(!hist){
 	  hist=(TH1*)new THStack(sample.title,sample.title);
 	}
