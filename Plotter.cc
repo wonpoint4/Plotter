@@ -276,10 +276,13 @@ TH1* Plotter::GetHist(int ientry,TString plotkey,TString additional_option){
 } 
 TH1* Plotter::GetHist(const Sample& sample,Plot plot,TString additional_option){
   PInfo("[Plotter::GetHist] "+sample.title+" "+plot.histname+" "+plot.option+" "+additional_option);_depth++;
-  //plot.Print();
   TH1* hist=GetHistFromSample(sample,plot,additional_option);
   if(hist){
-    hist->SetTitle(plot.name+plot.suffix);
+    hist->SetTitle(plot.title);
+    if(plot.option.Contains("xtitle++")) hist->SetTitleSize(hist->GetTitleSize("x")*1.5,"x");
+    else if(plot.option.Contains("xtitle+")) hist->SetTitleSize(hist->GetTitleSize("x")*1.2,"x");
+    if(plot.option.Contains("ytitle++")) hist->SetTitleSize(hist->GetTitleSize("y")*1.5,"y");
+    else if(plot.option.Contains("ytitle+")) hist->SetTitleSize(hist->GetTitleSize("y")*1.2,"y");
     RebinXminXmax(hist,plot);
     if(plot.option.Contains("widthweight")) WidthWeight(hist);
     //if(plot.option.Contains("norm")) Normalize(hist);
@@ -634,15 +637,12 @@ TCanvas* Plotter::GetCompare(vector<tuple<TH1*,TH1*>> histpairs,Plot plot){
   if(strstr(axisowner->ClassName(),"THStack")==NULL){
     axisowner->SetStats(0);
     axisowner->Draw(axisowner->GetOption());
-    cout<<axisowner->GetOption()<<endl;
   }else{
     axisowner->Draw();
     axisowner=((THStack*)axisowner)->GetHistogram();
     axisowner->SetName("hframe");
     axisowner->Draw();
   }
-  if(c->GetPrimitive("title")) ((TPaveText*)c->GetPrimitive("title"))->SetTextSize(0.075);
-
   for(const auto& hist:hists)
     if(strstr(hist->ClassName(),"THStack")){
       hist->Draw("same");
@@ -666,7 +666,7 @@ TCanvas* Plotter::GetCompare(vector<tuple<TH1*,TH1*>> histpairs,Plot plot){
     tuple<double,double> minmax=GetMinMax(hists);
     double minimum=get<0>(minmax),maximum=get<1>(minmax);
     if(minimum<=0) minimum=maximum/1000;
-    axisowner->GetYaxis()->SetRangeUser(minimum/100,maximum*20);
+    axisowner->GetYaxis()->SetRangeUser(minimum/200,maximum*20);
     c->SetLogy();
   }else{
     tuple<double,double> minmax=GetMinMax(hists);
@@ -680,6 +680,13 @@ TCanvas* Plotter::GetCompare(vector<tuple<TH1*,TH1*>> histpairs,Plot plot){
   axisowner->GetXaxis()->SetTitle(plot.xtitle);
   axisowner->GetYaxis()->SetTitle(plot.ytitle);
   gPad->RedrawAxis();
+  gPad->Update();
+  if(gPad->GetPrimitive("title")){
+    TPaveText* pt=(TPaveText*)gPad->GetPrimitive("title");
+    pt->SetTextSize(0.05);
+    if(plot.option.Contains("title++")) pt->SetTextSize(pt->GetTextSize()*1.4);
+    else if(plot.option.Contains("title+")) pt->SetTextSize(pt->GetTextSize()*1.2);
+  }
   _depth--;
   return c;
 }
@@ -716,10 +723,11 @@ TCanvas* Plotter::GetRatio(vector<tuple<TH1*,TH1*>> histpairs,Plot plot){
   vector<tuple<TH1*,TH1*>> histpairs_new=GetRatioHistPairs(histpairs,plot.option);
   TCanvas* c=GetCompare(histpairs_new,plot-"norm");
   TH1* axisowner=GetAxisParent(c);
-  plot.Print();
   if(axisowner){
     if(plot.ytitle=="") axisowner->GetYaxis()->SetTitle("Ratio");
-    if(plot.option.Contains("widewidey")){
+    if(plot.ymin||plot.ymax){
+      axisowner->GetYaxis()->SetRangeUser(plot.ymin,plot.ymax);
+    }else if(plot.option.Contains("widewidey")){
       axisowner->GetYaxis()->SetRangeUser(0.01,1.99);
       axisowner->GetYaxis()->SetNdivisions(506);
     }else if(plot.option.Contains("widey")){
@@ -836,20 +844,31 @@ TCanvas* Plotter::GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,Plot plot){
     latex.SetTextSize(0.05);
     latex.SetNDC();
     latex.DrawLatex(0.16,0.92,"CMS #bf{#it{Preliminary}}");
-    if(plot.histname.Contains("2016")){
+    if(plot.histname.Contains("2016a/")){
+      latex.DrawLatex(0.71,0.92,"19.7 fb^{-1} (13 TeV)");
+    }else if(plot.histname.Contains("2016b/")){
+      latex.DrawLatex(0.71,0.92,"16.2 fb^{-1} (13 TeV)");
+    }else if(plot.histname.Contains("2016[ab]/")){
       latex.DrawLatex(0.71,0.92,"35.9 fb^{-1} (13 TeV)");
     }else if(plot.histname.Contains("2017/")){
       latex.DrawLatex(0.71,0.92,"41.5 fb^{-1} (13 TeV)");
     }else if(plot.histname.Contains("2018/")){
-      latex.DrawLatex(0.71,0.92,"59.7 fb^{-1} (13 TeV)");
-    }else if(plot.histname.Contains("201[6-8]")){
+      latex.DrawLatex(0.71,0.92,"59.8 fb^{-1} (13 TeV)");
+    }else if(plot.histname.Contains("201[6-8]/")||plot.histname.Contains("201[678ab]+/")){
       latex.DrawLatex(0.71,0.92,"137 fb^{-1} (13 TeV)");      
     }
     latex.SetTextSize(0.05);
     latex.SetTextColor(2);
     latex.DrawLatex(0.4,0.92,"#it{Working in progress}");
   }else{
-    if(c->GetPad(1)->GetPrimitive("title")) ((TPaveText*)c->GetPad(1)->GetPrimitive("title"))->SetTextSize(0.075);
+    if(c->GetPad(1)->GetPrimitive("title")){
+      TPaveText* pt=(TPaveText*)c->GetPad(1)->GetPrimitive("title");
+      pt->SetTextSize(0.075);
+      pt->SetY1NDC(pt->GetY1NDC()-0.02);
+      pt->SetY2NDC(pt->GetY2NDC()-0.02);
+      if(plot.option.Contains("title++")) pt->SetTextSize(pt->GetTextSize()*1.4);
+      else if(plot.option.Contains("title+")) pt->SetTextSize(pt->GetTextSize()*1.2);
+    }
   }
   gPad->Update();
   gPad->Modified();
@@ -1012,7 +1031,7 @@ TCanvas* Plotter::GetDoubleRatio(Plot& plot){
     }
     TCanvas* c=GetCompare(histpairs_new,plot.option.ReplaceAll("norm",""));
     TH1* axisowner=GetAxisParent(c);
-    axisowner->SetTitle(plot.name);
+    axisowner->SetTitle(plot.title);
     c->SetGridy();
     axisowner->GetYaxis()->SetTitle("DoubleRatio");
     if(plot.option.Contains("widewidey")){

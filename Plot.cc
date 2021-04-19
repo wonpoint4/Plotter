@@ -99,6 +99,7 @@ void Plot::RemoveOption(TString option_){
     else if(remove=="sysname") sysname="";
     else if(remove=="suffix") suffix="";
     else if(remove=="varibit") varibit=0;
+    else if(remove=="title") title="";
     else if(remove=="xtitle") xtitle="";
     else if(remove=="ytitle") ytitle="";
     else{
@@ -145,6 +146,9 @@ void Plot::Print(std::ostream& out) const{
   if(sysname!="") out<<" sysname:"<<sysname;
   if(suffix!="") out<<" suffix:"<<suffix;
   if(varibit!=0) out<<" varibit:"<<varibit;
+  if(title!=name) out<<" title:"<<title;
+  if(xtitle!="") out<<" xtitle:"<<xtitle;
+  if(ytitle!="") out<<" ytitle:"<<ytitle;
   out<<" "<<option;
   for(const auto& sub:subplots){
     stringstream temp;
