@@ -62,8 +62,16 @@ root [7] aa.SavePlot("ee2016/m80to100/dimass_MediumID_Q","norm")
 You can make your own plotter class inherited from `Plotter`. See 'EfficiencyPlotter.cc' as an example.
 
 ## Draw and Save options
-* norm - Normalize to 1
+* absy - projection to absolute y
+* logx - log scale x-axis
+* logy - log scale y-axis
+* norm - Normalized
 * noleg - Do not draw a legend
+* TLleg - top-left legend
+* TMleg - top-middle legend
+* BLleg - bottom-left legend
+* BMleg - bottom-middle legend
+* BRleg - bottom-right legend
 * type:INT
     * 0:UNDEF
     * 1:Compare - Draw multiple histograms in entries
@@ -75,7 +83,20 @@ You can make your own plotter class inherited from `Plotter`. See 'EfficiencyPlo
     * 7:CompareAndSig - 'Compare' plot in the upper pannel and 'Sig' plot in the lower pannel 
     * 8:DoubleRatio (Developing)
     * 9:Collection (Developing)
-* xmin:FLOAT,xmax:FLOAT
+* xmin:FLOAT,xmax:FLOAT - x-axis range
+* ymin:FLOAT,ymax:FLOAT - y-axis range
+* Xmin:FLOAT,Xmax:FLOAT - x-axis projection range
+* Ymin:FLOAT,Ymax:FLOAT - y-axis projection range
+* Zmin:FLOAT,Zmax:FLOAT - z-axis projection range
+* Umin:FLOAT,Umax:FLOAT - u-axis projection range
+* title:STRING - set title, you can use single quote (') if title has spaces
+* title+,title++ - larger title
+* xtitle:STRING - set xtitle, you can use single quote (') if title has spaces
+* xtitle+,xtitle++ - larger xtitle
+* xtitle-,xtitle-- - smaller xtitle
+* ytitle:STRING - set ytitle, you can use single quote (') if title has spaces
+* ytitle+,ytitle++ - larger ytitle
+* ytitle-,ytitle-- - smaller ytitle
 * widey - For ratio plot, set yaxis range from 0.5 to 1.5
 * widewidey - For ratio plot, set yaxis range from 0.0 to 2.0
 * widthweight - For variable bin size, divide bin contents by bin size to get proper shape
