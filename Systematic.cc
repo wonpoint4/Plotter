@@ -6,7 +6,7 @@ public:
   enum Type{UNDEF,ENVELOPE,GAUSSIAN,HESSIAN,MULTI};
   TString name;
   Type type=Type::UNDEF;
-  vector<TString> suffixes;
+  vector<pair<TString,TString>> replaces;
   int sysbit=0;
   int varibit=0;
 
@@ -36,7 +36,7 @@ void Systematic::Print() const{
   cout<<"------------------------"<<endl;
   cout<<name<<" "<<GetTypeString()<<endl;
   cout<<"sysbit:"<<sysbit<<" varibit:"<<varibit<<endl;
-  for(const auto& suffix:suffixes) cout<<suffix<<" ";
+  for(const auto& replace:replaces) cout<<replace.first<<"->"<<replace.second<<" ";
   cout<<"\n"<<endl;
 }
 #endif

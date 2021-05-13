@@ -45,12 +45,16 @@ public:
   tuple<TH1*,TH1*> GetHistPair(const Sample& sample,const Plot& plot);
   vector<tuple<TH1*,TH1*>> GetHistPairs(Plot& plot);
 
-  //Uncertainty
+  //Systematic
   TH1* GetEnvelope(TH1* central,const vector<TH1*>& variations);
   TH1* GetEnvelope(TH1* central,TH1* variation1,TH1* variation2=NULL,TH1* variation3=NULL,TH1* variation4=NULL,TH1* variation5=NULL,TH1* variation6=NULL,TH1* variation7=NULL,TH1* variation8=NULL,TH1* variation9=NULL);
   TH1* GetHessianError(TH1* central,const vector<TH1*>& variations);
   TH1* GetRMSError(TH1* central,const vector<TH1*>& variations);
   int AddError(TH1* hist,TH1* sys);
+  //void AddSystematic(TString name,Systematic::Type type,int varibit,vector<TString> includes);
+  //void AddSystematic(TString name,Systematic::Type type,int varibit,TString includes);
+  Systematic MakeSystematic(TString name,Systematic::Type type,int varibit,vector<TString> includes);
+  Systematic MakeSystematic(TString name,Systematic::Type type,int varibit,TString includes);
 
   //Canvas
   void DrawCompare(Plot p);
@@ -92,10 +96,6 @@ public:
   set<TString> GetHistKeys(const Sample& sample,TString regexp=".*");
   virtual Plot MakePlot(TString plotkey,TString plotoption="");
 
-  //MakeSystematic
-  Systematic MakeSystematic(TString name,Systematic::Type type,int varibit,vector<TString> includes);
-  Systematic MakeSystematic(TString name,Systematic::Type type,int varibit,TString includes);
-
   //etc
   double GetChi2(TH1* h1,TH1* h2) const;
   int GetAutoColor() const;
@@ -113,6 +113,7 @@ Plotter::Plotter(){
   gStyle->SetPadLeftMargin(0.15);
   gStyle->SetPadBottomMargin(0.12);
   gStyle->SetPadColor(0);
+  gStyle->SetFrameFillStyle(0);
   pdir=new TDirectory;
 }
 Plotter::~Plotter(){
@@ -345,7 +346,8 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,Plot p,TString additional_o
     }
   }else{
     for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(p.histname,newstr);
-    TString histname=p.histname+((1<<sample.type)&p.varibit?p.suffix:"");
+    TString histname=p.histname;
+    if(1<<sample.type&p.varibit) TPRegexp(p.replace.first).Substitute(histname,p.replace.second);
     for(const auto& file:sample.subs){
       TH1* this_hist=GetHistFromFile(file.title,histname);
       if(this_hist){
@@ -482,8 +484,8 @@ tuple<TH1*,TH1*> Plotter::GetHistPair(const Sample& sample,const Plot& p){
       if(sysbit&systematic.sysbit){
 	PDebug("[Plotter::GetHistPair] sysname='"+systematic.name+"' systype='"+systematic.GetTypeString()+"'");
 	vector<TH1*> variations;
-	for(const auto& suffix:systematic.suffixes){
-	  TH1* this_hist=GetHist(sample,p,Form("suffix:%s varibit:%d sysname:",suffix.Data(),systematic.varibit));
+	for(const auto& replace:systematic.replaces){
+	  TH1* this_hist=GetHist(sample,p,Form("replace:%s->%s varibit:%d",replace.first.Data(),replace.second.Data(),systematic.varibit));
 	  variations.push_back(GetTH1(this_hist,true));
 	}
 	if(systematic.type==Systematic::Type::ENVELOPE){
@@ -668,8 +670,8 @@ void Plotter::DrawCompare(Plot p){
   TH1* axisowner=GetAxisParent();
   axisowner->SetTickLength(0.015,"Y");
   double scale=1/TMath::Min(gPad->GetHNDC(),gPad->GetWNDC());
-  axisowner->SetTitleSize(0.045*scale,"XYZ");
-  axisowner->SetLabelSize(0.045*scale,"XYZ");
+  axisowner->SetTitleSize(0.04*scale,"XYZ");
+  axisowner->SetLabelSize(0.04*scale,"XYZ");
   if(p.option.Contains("xtitle++")) axisowner->SetTitleSize(axisowner->GetTitleSize("x")*1.5,"x");
   else if(p.option.Contains("xtitle+")) axisowner->SetTitleSize(axisowner->GetTitleSize("x")*1.2,"x");
   else if(p.option.Contains("xtitle--")) axisowner->SetTitleSize(axisowner->GetTitleSize("x")*0.6,"x");
@@ -694,13 +696,16 @@ void Plotter::DrawCompare(Plot p){
     tuple<double,double> minmax=GetMinMax(hists);
     double minimum=get<0>(minmax),maximum=get<1>(minmax);
     double range=fabs(maximum-minimum);
-    axisowner->GetYaxis()->SetRangeUser(minimum/range<-0.01?minimum-0.1*range:0,maximum+0.1*range);
+    double ymin=minimum/range<-0.01?minimum-0.1*range:0;
+    double ymax=maximum+0.1*(maximum-ymin);
+    axisowner->GetYaxis()->SetRangeUser(ymin,ymax);
   }
   if(p.ymin||p.ymax){
     axisowner->GetYaxis()->SetRangeUser(p.ymin,p.ymax);
   }
   axisowner->GetXaxis()->SetTitle(p.xtitle);
   axisowner->GetYaxis()->SetTitle(p.ytitle); 
+  gPad->SetFillStyle(0);
   gPad->RedrawAxis();
   gPad->Update();
   if(gPad->GetPrimitive("title")){
@@ -862,48 +867,22 @@ void Plotter::DrawCompareAndRatio(Plot p){
   TH1* axisparent=GetAxisParent();
   axisparent->GetXaxis()->SetLabelSize(0);
   axisparent->GetXaxis()->SetTitle("");
-  if(p.option.Contains("preliminary")){
-    axisparent->SetTitle("");
-    TLatex latex;
-    latex.SetTextSize(0.05);
-    latex.SetNDC();
-    latex.DrawLatex(0.16,0.92,"CMS #bf{#it{Preliminary}}");
-    if(p.histname.Contains("2016a/")){
-      latex.DrawLatex(0.71,0.92,"19.7 fb^{-1} (13 TeV)");
-    }else if(p.histname.Contains("2016b/")){
-      latex.DrawLatex(0.71,0.92,"16.2 fb^{-1} (13 TeV)");
-    }else if(p.histname.Contains("2016[ab]/")){
-      latex.DrawLatex(0.71,0.92,"35.9 fb^{-1} (13 TeV)");
-    }else if(p.histname.Contains("2017/")){
-      latex.DrawLatex(0.71,0.92,"41.5 fb^{-1} (13 TeV)");
-    }else if(p.histname.Contains("2018/")){
-      latex.DrawLatex(0.71,0.92,"59.8 fb^{-1} (13 TeV)");
-    }else if(p.histname.Contains("201[6-8]/")||p.histname.Contains("201[678ab]+/")){
-      latex.DrawLatex(0.71,0.92,"137 fb^{-1} (13 TeV)");      
-    }
-    latex.SetTextSize(0.05);
-    latex.SetTextColor(2);
-    latex.DrawLatex(0.4,0.92,"#it{Working in progress}");
-  }else{
-    if(gPad->GetPrimitive("title")){
-      TPaveText* pt=(TPaveText*)gPad->GetPrimitive("title");
-      pt->SetTextSize(0.075);
-      pt->SetY1NDC(pt->GetY1NDC()-0.02);
-      pt->SetY2NDC(pt->GetY2NDC()-0.02);
-      if(p.option.Contains("title++")) pt->SetTextSize(pt->GetTextSize()*1.4);
-      else if(p.option.Contains("title+")) pt->SetTextSize(pt->GetTextSize()*1.2);
-    }
+  if(gPad->GetPrimitive("title")){
+    TPaveText* pt=(TPaveText*)gPad->GetPrimitive("title");
+    pt->SetTextSize(0.075);
+    pt->SetY1NDC(pt->GetY1NDC()-0.02);
+    pt->SetY2NDC(pt->GetY2NDC()-0.02);
+    if(p.option.Contains("title++")) pt->SetTextSize(pt->GetTextSize()*1.4);
+    else if(p.option.Contains("title+")) pt->SetTextSize(pt->GetTextSize()*1.2);
   }
   gPad->Update();
   gPad->Modified();
-
   
   pad->cd(2);
   gPad->SetPad(0,0,1,0.365);
   gPad->SetTopMargin(0.02);
   gPad->SetBottomMargin(pad->GetBottomMargin()/0.35);
   gPad->SetGridx();gPad->SetGridy();
-  gPad->SetFillStyle(0);
   DrawRatio((p+"noleg").GetSubPlot(2));
   axisparent=GetAxisParent();
   if(axisparent){
@@ -942,7 +921,6 @@ void Plotter::DrawCompareAndSig(Plot p){
   gPad->SetTopMargin(0.02);
   gPad->SetBottomMargin(0.3);
   gPad->SetGridy();
-  gPad->SetFillStyle(0);
   axisparent=GetAxisParent();
   if(axisparent){
     axisparent->SetTitle("");
@@ -984,7 +962,6 @@ void Plotter::DrawCompareAndDiff(Plot p){
   gPad->SetTopMargin(0.02);
   gPad->SetBottomMargin(0.3);
   gPad->SetGridx();gPad->SetGridy();
-  gPad->SetFillStyle(0);
 
   axisparent=GetAxisParent();
   if(axisparent){
@@ -1076,6 +1053,34 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
   else if(p.type==Plot::Type::CompareAndDiff) DrawCompareAndDiff(p);
   else if(p.type==Plot::Type::CompareAndSig) DrawCompareAndSig(p);
   else if(p.type==Plot::Type::DoubleRatio) DrawDoubleRatio(p);
+  if(p.option.Contains("preliminary")){
+    c->cd(1);
+    TH1* axisparent=GetAxisParent();
+    if(axisparent) axisparent->SetTitle("");
+    c->cd();
+    axisparent=GetAxisParent();
+    if(axisparent) axisparent->SetTitle("");
+    TLatex latex;
+    latex.SetTextSize(0.035);
+    latex.SetNDC();
+    latex.DrawLatex(0.16,0.91,"CMS #bf{#it{Preliminary}}");
+    if(p.histname.Contains("2016a/")||p.era=="2016preVFP"){
+      latex.DrawLatex(0.69,0.91,"19.7 fb^{-1} (13 TeV)");
+    }else if(p.histname.Contains("2016b/")||p.era=="2016postVFP"){
+      latex.DrawLatex(0.69,0.91,"16.2 fb^{-1} (13 TeV)");
+    }else if(p.histname.Contains("2016[ab]/")||p.era=="2016"){
+      latex.DrawLatex(0.69,0.91,"35.9 fb^{-1} (13 TeV)");
+    }else if(p.histname.Contains("2017/")||p.era=="2017"){
+      latex.DrawLatex(0.69,0.91,"41.5 fb^{-1} (13 TeV)");
+    }else if(p.histname.Contains("2018/")||p.era=="2018"){
+      latex.DrawLatex(0.69,0.91,"59.8 fb^{-1} (13 TeV)");
+    }else if(p.histname.Contains("201[6-8]/")||p.histname.Contains("201[678ab]+/")||p.era=="Run2"){
+      latex.DrawLatex(0.69,0.91,"137 fb^{-1} (13 TeV)");      
+    }
+    latex.SetTextSize(0.035);
+    latex.SetTextColor(2);
+    latex.DrawLatex(0.38,0.91,"#it{Working in progress}");
+  }
   c->Update();
   c->Modified();
   _depth--;
@@ -1335,10 +1340,8 @@ TLegend* Plotter::DrawLegend(const Plot& p){
   else if(p.option.Contains("bottommiddleleg")||p.option.Contains("BMleg")) coordinates={0.5-0.5*width,pad->GetBottomMargin()+0.01,0.5+0.5*width,pad->GetBottomMargin()+0.01+height};
   else if(p.option.Contains("bottomrightleg")||p.option.Contains("BRleg")) coordinates={1-pad->GetRightMargin()-0.01,pad->GetBottomMargin()+0.01,1-pad->GetRightMargin()-width,pad->GetBottomMargin()+0.01+height};
   else coordinates={1-pad->GetRightMargin()-0.01,1-pad->GetTopMargin()-0.01,1-pad->GetRightMargin()-0.01-width,1-pad->GetTopMargin()-0.01-height};
-  TLegend* legend=new TLegend(coordinates[0],coordinates[1],coordinates[2],coordinates[3]);
-  cout<<coordinates[0]<<" "<<coordinates[1]<<" "<<coordinates[2]<<" "<<coordinates[3]<<endl;
-  cout<<height<<" "<<maxheight<<" "<<entry_size<<" "<<pad->GetHNDC()<<endl;
 
+  TLegend* legend=new TLegend(coordinates[0],coordinates[1],coordinates[2],coordinates[3]);
   for(const auto& hist:hists) legend->AddEntry(hist,hist->GetName());
   legend->SetBorderSize(0);
   pad->cd();
@@ -1433,7 +1436,10 @@ Systematic Plotter::MakeSystematic(TString name,Systematic::Type type,int varibi
         }
   }else{
     this_sys.sysbit=1<<systematics.size();
-    this_sys.suffixes=includes;
+    for(auto replace:includes){
+      if(Split(replace,"->").size()!=2) this_sys.replaces.push_back(make_pair("$",replace));
+      else this_sys.replaces.push_back(make_pair(Split(replace,"->").at(0),Split(replace,"->").at(1)));
+    }
   }
   //if(Verbosity) this_sys.Print();
   return this_sys;

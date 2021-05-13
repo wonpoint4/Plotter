@@ -112,6 +112,14 @@ TH1* AFBPlotter::GetHist(const Sample& sample,Plot plot,TString additional_optio
     TH1* hist_backward_num=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_num")+" Umin:-1 Umax:0");
     TH1* hist_backward_den=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_den")+" Umin:-1 Umax:0");
     hist=GetHistWeightedAFB(hist_forward_num,hist_forward_den,hist_backward_num,hist_backward_den);
+  }else if(plot.histname.Contains("AFBR")){
+    TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBR","costhetaR")+" Umin:0 Umax:1");
+    TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBR","costhetaR")+" Umin:-1 Umax:0");
+    hist=GetHistAFB(hist_forward,hist_backward);
+  }else if(plot.histname.Contains("AFBT")){
+    TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBT","costhetaT")+" Umin:0 Umax:1");
+    TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBT","costhetaT")+" Umin:-1 Umax:0");
+    hist=GetHistAFB(hist_forward,hist_backward);
   }else if(plot.histname.Contains("AFB")){
     TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFB","costhetaCS")+" Umin:0 Umax:1");
     TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFB","costhetaCS")+" Umin:-1 Umax:0");
@@ -119,7 +127,7 @@ TH1* AFBPlotter::GetHist(const Sample& sample,Plot plot,TString additional_optio
   }
   if(hist){
     sample.ApplyStyle(hist);
-    hist->SetTitle(plot.name+plot.suffix);
+    hist->SetTitle(plot.title);
     hist->SetDirectory(pdir);
     return hist;
   }else{

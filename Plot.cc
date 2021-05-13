@@ -9,9 +9,10 @@ public:
   TString histname;
   TString sysname;
   TString classname;
-  TString suffix;
+  pair<TString,TString> replace;
   TString xtitle,ytitle;
   TString project;
+  TString era;
   int varibit=0;
   Type type=Type::CompareAndRatio;
   int rebin=0;
@@ -116,7 +117,7 @@ void Plot::Print(std::ostream& out) const{
   if(Umin!=0) out<<" Umin:"<<Umin;
   if(Umax!=0) out<<" Umax:"<<Umax;
   if(sysname!="") out<<" sysname:"<<sysname;
-  if(suffix!="") out<<" suffix:"<<suffix;
+  if(replace!=make_pair(TString(""),TString(""))) out<<" replace:"<<replace.first<<"->"<<replace.second;
   if(varibit!=0) out<<" varibit:"<<varibit;
   if(title!=name) out<<" title:"<<title;
   if(xtitle!="") out<<" xtitle:"<<xtitle;
@@ -149,8 +150,9 @@ void Plot::RemoveOption(TString option_){
     else if(remove=="Zmax") Zmax=0;
     else if(remove=="Umin") Umin=0;
     else if(remove=="Umax") Umax=0;
+    else if(remove=="era") era="";
     else if(remove=="sysname") sysname="";
-    else if(remove=="suffix") suffix="";
+    else if(remove=="replace") replace=make_pair(TString(),TString());
     else if(remove=="varibit") varibit=0;
     else if(remove=="title") title="";
     else if(remove=="xtitle") xtitle="";
@@ -180,7 +182,12 @@ void Plot::SetOption(TString option_){
     else if(opt.Contains(TRegexp("^ymin:"))) ymin=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^ymax:"))) ymax=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^sysname:"))) sysname=Strip(opt(8,999),"'");
-    else if(opt.Contains(TRegexp("^suffix:"))) suffix=Strip(opt(7,999),"'");
+    else if(opt.Contains(TRegexp("^suffix:"))) replace=make_pair("$",Strip(opt(7,999),"'"));
+    else if(opt.Contains(TRegexp("^replace:"))){
+      vector<TString> replacev=Split(opt(8,999),"->");
+      if(replacev.size()!=2) PError("Wrong syntax for replace option "+opt);
+      else replace=make_pair(Split(opt(8,999),"->").at(0),Split(opt(8,999),"->").at(1));
+    }
     else if(opt.Contains(TRegexp("^varibit:"))) varibit=TString(opt(8,999)).Atoi();
     else if(opt.Contains(TRegexp("^xtitle:"))) xtitle=Strip(opt(7,999),"'");
     else if(opt.Contains(TRegexp("^ytitle:"))) ytitle=Strip(opt(7,999),"'");
@@ -194,6 +201,11 @@ void Plot::SetOption(TString option_){
     else if(opt.Contains(TRegexp("^Umax:"))) Umax=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^classname:"))) classname=Strip(opt(10,999),"'");
     else if(opt.Contains(TRegexp("^project:"))) project=Strip(opt(8,999),"'");
+    else if(opt.Contains(TRegexp("^era:"))){
+      era=Strip(opt(4,999),"'");
+      if(era=="2016a") era="2016preVFP";
+      if(era=="2016b") era="2016postVFP";
+    }
     else option+=" "+opt;
   }
 }   
