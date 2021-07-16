@@ -62,11 +62,13 @@ root [7] aa.SavePlot("ee2016/m80to100/dimass_MediumID_Q","norm")
 You can make your own plotter class inherited from `Plotter`. See 'EfficiencyPlotter.cc' as an example.
 
 ## Draw and Save options
+You can pass a option to a specific pad using `PADINDEX:OPTION` syntax. ex) `1:logy`  
 * absy - projection to absolute y
 * logx - log scale x-axis
 * logy - log scale y-axis
 * norm - Normalized
 * noleg - Do not draw a legend
+* preliminary - Draw "CMS preliminary working in progress" and lumi info
 * TLleg - top-left legend
 * TMleg - top-middle legend
 * BLleg - bottom-left legend
