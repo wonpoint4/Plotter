@@ -22,6 +22,7 @@ using namespace std;
 /////////////////////////////////////////////////////////////////////////////
 enum VERBOSITY{QUIET,ERROR,WARNING,INFO,DEBUG,ALL};
 int Verbosity=VERBOSITY::INFO; //0:quiet 1:error 2:warning 3:info 4:debug 5:all
+//int Verbosity=VERBOSITY::ALL;
 int _depth=0;
 void PMessage(VERBOSITY level,const char* msg){
   if(level>Verbosity) return;

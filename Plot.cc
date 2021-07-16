@@ -22,14 +22,14 @@ public:
   vector<Plot> subplots;
   bool root=false;
   TPad* pad=NULL;
-  vector<tuple<TH1*,TH1*>> histpairs;
+  vector<vector<TH1*>> hists;
 
   Plot(vector<TString> words);
   Plot(TString line=""):Plot(Split(line," ")){};
   ~Plot();
-  Plot operator-(const char* opt);
-  Plot operator+(const char* opt);
-  Plot operator/(Plot p);
+  Plot operator-(const char* opt) const;
+  Plot operator+(const char* opt) const;
+  Plot operator/(Plot p) const;
   Plot GetSubPlot(int ipad);
   bool IsMultiPad() const;
   void Print(std::ostream& out=cout) const;
@@ -68,17 +68,17 @@ Plot::Plot(TString line="") : Plot(Split(line," ")){
 }
 Plot::~Plot(){
 }
-Plot Plot::operator-(const char* opt){
+Plot Plot::operator-(const char* opt) const{
   Plot temp(*this);
   temp.RemoveOption(opt);
   return temp;
 }
-Plot Plot::operator+(const char* opt){
+Plot Plot::operator+(const char* opt) const{
   Plot temp(*this);
   temp.SetOption(opt);
   return temp;
 }
-Plot Plot::operator/(Plot p){
+Plot Plot::operator/(Plot p) const{
   Plot temp;
   temp.SetOption(Form("name:%s histname:%s type:%d",((*this).name+"%"+p.name).Data(),((*this).name+"%"+p.name).Data(),Type::DoubleRatio));
   temp.subplots.push_back(*this);
