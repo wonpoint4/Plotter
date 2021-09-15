@@ -1,5 +1,12 @@
 #ifndef __PLOTTER_CC__
 #define __PLOTTER_CC__
+#include <set>
+#include <TStyle.h>
+#include <TGaxis.h>
+#include <TH3.h>
+#include <TROOT.h>
+#include <TLatex.h>
+#include <TGraph.h>
 #include"Global.h"
 #include"Sample.cc"
 #include"Plot.cc"
@@ -81,8 +88,8 @@ public:
   bool CheckHists(vector<TH1*> hists);
   void DrawHistograms(Plot p);
   static vector<TH1*> VectorTH1(const vector<vector<TH1*>>& hists);
-  pair<double,double> GetMinMax(const vector<TH1*>& hists) const;
-  pair<double,double> GetMinMax(const vector<vector<TH1*>>& hists) const;
+  pair<double,double> GetMinMax(const vector<TH1*>& hists,TString option="") const;
+  pair<double,double> GetMinMax(const vector<vector<TH1*>>& hists,TString option="") const;
   void RebinXminXmax(TH1* hist,Plot p);
   double Normalize(TH1* hists,double val=1.,TString option="");
   vector<double> Normalize(vector<TH1*> hists,double val=1.,TString option="");
@@ -119,7 +126,7 @@ Plotter::Plotter(){
   gStyle->SetPadBottomMargin(0.12);
   gStyle->SetPadColor(0);
   gStyle->SetFrameFillStyle(0);
-  TGaxis::SetExponentOffset(-0.06,0);
+  TGaxis::SetExponentOffset(-0.06,0.02);
   pdir=new TDirectory("plotdir","plotdir");
 }
 Plotter::~Plotter(){
@@ -248,11 +255,11 @@ void Plotter::PrintEntries(bool detail,TRegexp regexp){
     }
   }
 }
-void Plotter::PrintHistKeys(const Sample& sample,TString regexp=".*"){
+void Plotter::PrintHistKeys(const Sample& sample,TString regexp){
   set<TString> histkeys=GetHistKeys(sample,regexp);
   for(const auto& key:histkeys) std::cout<<key<<endl;
 }
-void Plotter::PrintHistKeys(int ientry,TString regexp=".*"){
+void Plotter::PrintHistKeys(int ientry,TString regexp){
   set<TString> histkeys=GetHistKeys(entries[ientry],regexp);
   for(const auto& key:histkeys) std::cout<<key<<endl;
 }
@@ -462,9 +469,11 @@ TH1* Plotter::GetHistFromFile(TString filename,TString histname){
     if(!f->IsOpen()) PError("Cannot open the file");
     hist=(TH1*)f->Get(histname);
     if(hist){
-      hist->SetDirectory(pdir);
-      if(!hist->GetSumw2N()) hist->Sumw2();
-      PInfo("[Plotter::GetHistFromFile] get "+histname+" from "+filename);
+      if(hist->InheritsFrom("TH1")){
+	hist->SetDirectory(pdir);
+	if(!hist->GetSumw2N()) hist->Sumw2();
+	PInfo("[Plotter::GetHistFromFile] get "+histname+" from "+filename);
+      }else hist=NULL;
     }
     f->Close();
     delete f;
@@ -607,7 +616,7 @@ TH1* Plotter::GetEnvelope(TH1* central,const vector<TH1*>& variations){
   }
   return syshist;
 }
-TH1* Plotter::GetEnvelope(TH1* central,TH1* variation1,TH1* variation2=NULL,TH1* variation3=NULL,TH1* variation4=NULL,TH1* variation5=NULL,TH1* variation6=NULL,TH1* variation7=NULL,TH1* variation8=NULL,TH1* variation9=NULL){
+TH1* Plotter::GetEnvelope(TH1* central,TH1* variation1,TH1* variation2,TH1* variation3,TH1* variation4,TH1* variation5,TH1* variation6,TH1* variation7,TH1* variation8,TH1* variation9){
   vector<TH1*> variations;
   if(variation1) variations.push_back(variation1);
   if(variation2) variations.push_back(variation2);
@@ -763,7 +772,7 @@ void Plotter::DrawCompare(Plot p){
 
   if(p.option.Contains("logx")){gPad->SetLogx();axisowner->GetXaxis()->SetMoreLogLabels();}
   if(p.option.Contains("logy")){
-    pair<double,double> minmax=GetMinMax(p.hists);
+    pair<double,double> minmax=GetMinMax(p.hists,"pos");
     double minimum=minmax.first,maximum=minmax.second;
     if(minimum<=0) minimum=maximum/1000;
     axisowner->GetYaxis()->SetRangeUser(minimum/200,maximum*20);
@@ -1142,11 +1151,11 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
     latex.SetNDC();
     latex.DrawLatex(0.16,0.91,"CMS #bf{#it{Preliminary}}");
     if(p.histname.Contains("2016a/")||p.era=="2016preVFP"){
-      latex.DrawLatex(0.69,0.91,"19.7 fb^{-1} (13 TeV)");
+      latex.DrawLatex(0.69,0.91,"19.5 fb^{-1} (13 TeV)");
     }else if(p.histname.Contains("2016b/")||p.era=="2016postVFP"){
-      latex.DrawLatex(0.69,0.91,"16.2 fb^{-1} (13 TeV)");
+      latex.DrawLatex(0.69,0.91,"16.8 fb^{-1} (13 TeV)");
     }else if(p.histname.Contains("2016[ab]/")||p.era=="2016"){
-      latex.DrawLatex(0.69,0.91,"35.9 fb^{-1} (13 TeV)");
+      latex.DrawLatex(0.69,0.91,"36.3 fb^{-1} (13 TeV)");
     }else if(p.histname.Contains("2017/")||p.era=="2017"){
       latex.DrawLatex(0.69,0.91,"41.5 fb^{-1} (13 TeV)");
     }else if(p.histname.Contains("2018/")||p.era=="2018"){
@@ -1291,7 +1300,7 @@ vector<TH1*> Plotter::VectorTH1(const vector<vector<TH1*>>& hists){
   }
   return hists_out;
 }
-pair<double,double> Plotter::GetMinMax(const vector<TH1*>& hists) const{
+pair<double,double> Plotter::GetMinMax(const vector<TH1*>& hists,TString option) const{
   PAll("[Plotter::GetMinMax(const vector<TH1*>& hists)]");
   double maximum=-999999999;
   double minimum=999999999;
@@ -1300,14 +1309,19 @@ pair<double,double> Plotter::GetMinMax(const vector<TH1*>& hists) const{
       if(hist->InheritsFrom("THStack")) hist=GetTH1(hist);
       double this_maximum=hist->GetBinContent(hist->GetMaximumBin());
       double this_minimum=hist->GetBinContent(hist->GetMinimumBin());
-      if(maximum<this_maximum) maximum=this_maximum;
-      if(minimum>this_minimum) minimum=this_minimum;
+      if(!option.Contains("pos")){
+	if(maximum<this_maximum) maximum=this_maximum;
+	if(minimum>this_minimum) minimum=this_minimum;
+      }else{
+	if(maximum<this_maximum && this_maximum>0) maximum=this_maximum;
+	if(minimum>this_minimum && this_minimum>0) minimum=this_minimum;
+      }	
     }
   }
   return make_pair(minimum,maximum);
 }
-pair<double,double> Plotter::GetMinMax(const vector<vector<TH1*>>& hists) const{
-  return GetMinMax(VectorTH1(hists));
+pair<double,double> Plotter::GetMinMax(const vector<vector<TH1*>>& hists,TString option) const{
+  return GetMinMax(VectorTH1(hists),option);
 }
 void Plotter::RebinXminXmax(TH1* hist,Plot p){
   PAll("[Plotter::RebinXminXmax]");
@@ -1472,7 +1486,7 @@ TLegend* Plotter::DrawLegend(const Plot& p){
 /////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// Plot /////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-set<TString> Plotter::GetHistKeys(TDirectory* dir,TRegexp regexp=".*"){
+set<TString> Plotter::GetHistKeys(TDirectory* dir,TRegexp regexp){
   PAll("[Plotter::GetHistKeys(TDirectory* dir,TRegexp regexp=\".*\")]");
   set<TString> histkeys;
   for(const auto& obj:*(dir->GetListOfKeys())){
@@ -1490,7 +1504,7 @@ set<TString> Plotter::GetHistKeys(TDirectory* dir,TRegexp regexp=".*"){
   }
   return histkeys;
 }
-set<TString> Plotter::GetHistKeys(TString filename,TString regexp=".*"){
+set<TString> Plotter::GetHistKeys(TString filename,TString regexp){
   PAll("[Plotter::GetHistKeys(TString filename=\""+filename+",TString regexp=\""+regexp+"\")]");
   if(histkeys_cache.find(filename)==histkeys_cache.end()){
     TFile *f=new TFile(filename);
@@ -1505,7 +1519,7 @@ set<TString> Plotter::GetHistKeys(TString filename,TString regexp=".*"){
     return histkeys;
   }
 }
-set<TString> Plotter::GetHistKeys(const Sample& sample,TString regexp=".*"){
+set<TString> Plotter::GetHistKeys(const Sample& sample,TString regexp){
   PAll("[Plotter::GetHistKeys]");
   set<TString> histkeys;
   if(sample.type==Sample::Type::FILE){

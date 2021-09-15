@@ -1,5 +1,9 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__
+#include <TString.h>
+#include <TObjArray.h>
+#include <TObjString.h>
+#include <TRegexp.h>
 vector<TString> Split(TString s,TString del){
   TObjArray* array=s.Tokenize(del);
   vector<TString> out;

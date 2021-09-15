@@ -27,8 +27,8 @@ EfficiencyPlotter::EfficiencyPlotter(TString mode_){
   samples["tt"]=Sample("t#bar{t}",Sample::Type::BG,kMagenta)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_TTLL_powheg$");
   samples["tw"]=Sample("t#bar{t}",Sample::Type::BG,kMagenta+10)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_SingleTop_tW_.*top_NoFullyHad$");
   samples["tttw"]=Sample("t#bar{t}, tW",Sample::Type::SUM,kMagenta)+"tt"+"tw";
-  samples["ss"]="ss_"%(Sample("QCD multi-jet",Sample::Type::SUM,kCyan)+"data"-"amc"-"tau_amc"-"vv"-"wjets"-"tttw");
-  samples["ss_minnlo"]="ss_"%(Sample("QCD multi-jet",Sample::Type::SUM,kCyan)+"data"-"minnlo"-"tau_minnlo"-"vv"-"wjets"-"tttw");
+  samples["ss"]="ss_"%(Sample("QCD multi-jet",Sample::Type::SUM,kBlue-5)+"data"-"amc"-"tau_amc"-"vv"-"wjets"-"tttw");
+  samples["ss_minnlo"]="ss_"%(Sample("QCD multi-jet",Sample::Type::SUM,kBlue-5)+"data"-"minnlo"-"tau_minnlo"-"vv"-"wjets"-"tttw");
 
   samples["sim_stack"]=Sample("sim",Sample::Type::STACK,Style(kRed,-1,3001,"e2"),Style(kCyan,-1,3001,"e2"))+"amc"+"tau_amc"+"vv"+"wjets"+"tttw";
   samples["sim"]=Sample("simulation",Sample::Type::SUM,Style(kRed,22,3001,"e2"),Style(kCyan,-1,3001,"e2"))+"amc"+"tau_amc"+"vv"+"wjets"+"tttw";

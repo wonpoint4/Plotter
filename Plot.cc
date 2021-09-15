@@ -1,7 +1,8 @@
 #ifndef __PLOT_CC__
 #define __PLOT_CC__
+#include <sstream>
 #include "Global.h"
-#include"Utils.h"
+#include "Utils.h"
 class Plot{
 public:
   enum Type{UNDEF,Compare,Ratio,Diff,Sig,CompareAndRatio,CompareAndDiff,CompareAndSig,DoubleRatio,Multi};
@@ -64,8 +65,6 @@ Plot::Plot(vector<TString> words){
   }
   //this->Print();
 }  
-Plot::Plot(TString line="") : Plot(Split(line," ")){
-}
 Plot::~Plot(){
 }
 Plot Plot::operator-(const char* opt) const{
@@ -158,7 +157,7 @@ void Plot::RemoveOption(TString option_){
     else if(remove=="xtitle") xtitle="";
     else if(remove=="ytitle") ytitle="";
     else{
-      for(int i=0;i<options.size();i++){
+      for(int i=0,n=options.size();i<n;i++){
         if(options[i].Contains(TRegexp("^"+remove))){
           options.erase(options.begin()+i);
           i--;

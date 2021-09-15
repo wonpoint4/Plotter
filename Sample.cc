@@ -1,5 +1,8 @@
 #ifndef __SAMPLE_CC__
 #define __SAMPLE_CC__
+#include <TPRegexp.h>
+#include <TObjString.h>
+#include <TSystem.h>
 #include"Global.h"
 #include"Style.cc"
 class Sample{
