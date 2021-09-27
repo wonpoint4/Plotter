@@ -16,7 +16,7 @@ public:
   TString era;
   int varibit=0;
   Type type=Type::CompareAndRatio;
-  int rebin=0;
+  TString rebin="";
   double xmin=0,xmax=0,ymin=0,ymax=0;
   double Xmin=0,Xmax=0,Ymin=0,Ymax=0,Zmin=0,Zmax=0,Umin=0,Umax=0;
   TString option;
@@ -102,7 +102,7 @@ void Plot::Print(std::ostream& out) const{
   out<<"<Plot> ";
   out<<"name:"<<name<<" histname:"<<histname;
   if(type!=Type::UNDEF) out<<" type:"<<type;
-  if(rebin!=0) out<<" rebin:"<<rebin;
+  if(rebin!="") out<<" rebin:"<<rebin;
   if(xmin!=0) out<<" xmin:"<<xmin;
   if(xmax!=0) out<<" xmax:"<<xmax;
   if(ymin!=0) out<<" ymin:"<<ymin;
@@ -136,7 +136,7 @@ void Plot::RemoveOption(TString option_){
   vector<TString> options_remove=Split(option_," ");
   for(const auto& remove:options_remove){
     if(remove=="type") type=Type::UNDEF;
-    else if(remove=="rebin") rebin=0;
+    else if(remove=="rebin") rebin="";
     else if(remove=="xmin") xmin=0;
     else if(remove=="xmax") xmax=0;
     else if(remove=="ymin") ymin=0;
@@ -175,7 +175,7 @@ void Plot::SetOption(TString option_){
     else if(opt.Contains(TRegexp("^title:"))) title=Strip(opt(6,999),"'");
     else if(opt.Contains(TRegexp("^histname:"))) histname=Strip(opt(9,999),"'"); 
     else if(opt.Contains(TRegexp("^type:"))) type=(Type)TString(opt(5,999)).Atoi();
-    else if(opt.Contains(TRegexp("^rebin:"))) rebin=TString(opt(6,999)).Atoi();
+    else if(opt.Contains(TRegexp("^rebin:"))) rebin=TString(opt(6,999));
     else if(opt.Contains(TRegexp("^xmin:"))) xmin=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^xmax:"))) xmax=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^ymin:"))) ymin=TString(opt(5,999)).Atof();

@@ -34,5 +34,13 @@ TString Strip(TString str,TString c){
   if(str.BeginsWith(c)) str=str(c.Length(),str.Length()-c.Length());
   return str;
 }
+vector<double> VectorDouble(TString str){
+  str=Strip(str,"{");
+  str=Strip(str,"}");
+  vector<TString> sdoubles=Split(str,",");
+  vector<double> out;
+  for(TString sdouble:sdoubles) out.push_back(sdouble.Atof());
+  return out;
+}
 
 #endif

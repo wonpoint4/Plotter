@@ -770,12 +770,18 @@ void Plotter::DrawCompare(Plot p){
   TLegend* legend=NULL;
   if(!p.option.Contains("noleg")) DrawLegend(p);
 
-  if(p.option.Contains("logx")){gPad->SetLogx();axisowner->GetXaxis()->SetMoreLogLabels();}
+  if(p.option.Contains("logx")){
+    gPad->SetLogx();
+    axisowner->GetXaxis()->SetMoreLogLabels();
+    if(axisowner->GetXaxis()->GetBinLowEdge(axisowner->GetXaxis()->GetFirst())==0){
+      axisowner->GetXaxis()->SetRange(axisowner->GetXaxis()->GetFirst()+1,axisowner->GetXaxis()->GetLast());
+    }
+  }
   if(p.option.Contains("logy")){
     pair<double,double> minmax=GetMinMax(p.hists,"pos");
     double minimum=minmax.first,maximum=minmax.second;
     if(minimum<=0) minimum=maximum/1000;
-    axisowner->GetYaxis()->SetRangeUser(minimum/200,maximum*20);
+    axisowner->GetYaxis()->SetRangeUser(minimum/20,maximum*20);
     gPad->SetLogy();
   }else{
     pair<double,double> minmax=GetMinMax(p.hists);
@@ -1160,7 +1166,7 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
       latex.DrawLatex(0.69,0.91,"41.5 fb^{-1} (13 TeV)");
     }else if(p.histname.Contains("2018/")||p.era=="2018"){
       latex.DrawLatex(0.69,0.91,"59.8 fb^{-1} (13 TeV)");
-    }else if(p.histname.Contains("201[6-8]/")||p.histname.Contains("201[678ab]+/")||p.histname.Contains("201[6-8][ab]?/")||p.era=="Run2"){
+    }else if(p.histname.Contains("201[6-8]/")||p.histname.Contains("201[678ab]+/")||p.histname.Contains("201[6-8][ab]?/")||p.histname.Contains("201[678][ab]?/")||p.era=="Run2"){
       latex.DrawLatex(0.69,0.91,"137 fb^{-1} (13 TeV)");      
     }
     latex.SetTextSize(0.035);
@@ -1330,23 +1336,29 @@ void Plotter::RebinXminXmax(TH1* hist,Plot p){
       for(const auto& obj:*((THStack*)hist)->GetHists())
 	RebinXminXmax((TH1*)obj,p);
     }else if(hist->InheritsFrom("TH4D")){
-      if(p.rebin){
+      if(p.rebin!=""){
 	PError((TString)"[Plotter::RebinXminXmax] Unsupported class for rebin "+hist->ClassName());
       }
       if(p.xmin!=0||p.xmax!=0)
 	hist->GetXaxis()->SetRangeUser(p.xmin,p.xmax);
     }else if(hist->InheritsFrom("TH3")){
-      if(p.rebin){
+      if(p.rebin!=""){
 	PError((TString)"[Plotter::RebinXminXmax] Unsupported class for rebin "+hist->ClassName());
       }
       if(p.xmin!=0||p.xmax!=0)
 	hist->GetXaxis()->SetRangeUser(p.xmin,p.xmax);
     }else if(strstr(hist->ClassName(),"TH1")){
-      if(p.rebin){
-	double this_xmin=hist->GetBinLowEdge(hist->GetXaxis()->GetFirst());
-	double this_xmax=hist->GetBinLowEdge(hist->GetXaxis()->GetLast()+1);
-	hist->Rebin(p.rebin);
-	hist->GetXaxis()->SetRangeUser(this_xmin,this_xmax);
+      if(p.rebin!=""){
+	if(p.rebin.IsDec()){
+	  double this_xmin=hist->GetBinLowEdge(hist->GetXaxis()->GetFirst());
+	  double this_xmax=hist->GetBinLowEdge(hist->GetXaxis()->GetLast()+1);
+	  hist->Rebin(p.rebin.Atoi());
+	  hist->GetXaxis()->SetRangeUser(this_xmin,this_xmax);
+	}else{
+	  vector<double> bins=VectorDouble(p.rebin);
+	  TH1* newhist=hist->Rebin(bins.size()-1,hist->GetName(),&bins[0]);
+	  newhist->Copy(*hist);
+	}
       }
       if(p.xmin==0&&p.xmax==0){
 	if(hist->GetXaxis()->GetFirst()==1&&hist->GetXaxis()->GetLast()==hist->GetNbinsX()){

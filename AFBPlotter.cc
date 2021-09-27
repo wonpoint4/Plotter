@@ -1,6 +1,9 @@
 #ifndef __AFBPLOTTER_CC__
 #define __AFBPLOTTER_CC__
 #include"Plotter.cc"
+#if __has_include("TH4D.h")
+#include "TH4D.h"
+#endif
 class AFBPlotter:public Plotter{
 public:
   void SetupSystematics();
@@ -8,6 +11,7 @@ public:
   TString mode;
   TString analyzer;
   AFBPlotter(TString mode_="data ^amc+tau_amc+vv+wjets+tttw",TString analyzer_="AFBAnalyzer");
+  ~AFBPlotter();
 
   void SetupTH4D();
   pair<double,double> GetRange(TString histname,TString axisname);
@@ -24,7 +28,10 @@ public:
 
   //TCanvas* DrawPlot(TString plotkey,TString option="");
   map<TString,TString> plot_axisnames;
+
+  ClassDef(AFBPlotter,0);
 };
+ClassImp(AFBPlotter);
 /*
 TCanvas* AFBPlotter::DrawPlot(TString plotkey,TString option=""){
   TCanvas* c=Plotter::DrawPlot(plotkey,option);
@@ -406,6 +413,7 @@ AFBPlotter::AFBPlotter(TString mode_,TString analyzer_){
 
   Setup(mode_);
 }
+AFBPlotter::~AFBPlotter(){}
 
 int AFBPlotter::Setup(TString mode_){
   Reset();
@@ -448,7 +456,7 @@ void AFBPlotter::SetupSystematics(){
 
   vector<TString> prefixes;
   for(int i=0;i<100;i++) prefixes.push_back(Form("_pdf%d",i));
-  AddSystematic("pdfh","pdfh",Systematic::Type::HESSIAN,(1<<Sample::Type::SIGNAL),prefixes);
+  AddSystematic("pdf","pdf",Systematic::Type::HESSIAN,(1<<Sample::Type::SIGNAL),prefixes);
   AddSystematic("pdfg","pdfg",Systematic::Type::GAUSSIAN,(1<<Sample::Type::SIGNAL),prefixes);
 
   AddSystematic("noRECOSF","noRECOSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_noRECOSF");
@@ -462,7 +470,8 @@ void AFBPlotter::SetupSystematics(){
   AddSystematic("IDSF_POG","IDSF_POG",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_IDSF_POG");
   AddSystematic("selective","selective",Systematic::Type::ENVELOPE,(1<<Sample::Type::DATA)+(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_selective");
   AddSystematic("efficiencySF","efficiencySF",Systematic::Type::MULTI,0,"RECOSF IDSF ISOSF triggerSF");
-  AddSystematic("totalsys","totalsys",Systematic::Type::MULTI,0,"RECOSF IDSF ISOSF triggerSF PUreweight prefireweight scale smear alphaS scalevariation pdf nozptcor");
+  //AddSystematic("totalsys","totalsys",Systematic::Type::MULTI,0,"RECOSF IDSF ISOSF triggerSF PUreweight prefireweight scale smear alphaS scalevariation pdf nozptcor");
+  AddSystematic("totalsys","totalsys",Systematic::Type::MULTI,0,"alphaS scalevariation pdf");
 }
 
 void AFBPlotter::SetupTH4D(){
