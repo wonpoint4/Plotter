@@ -11,7 +11,7 @@ General purpose plotter using ROOT histogram
 ## Basic Classes
 ### Style
 ### Sample
-* Define a sample. It can be a file(`Sample::Type::FILE`), a sample, or a collection of samples(`Sample::Type::SUM||Sample::Type::STACK`)
+* Define a sample. It can be a file(FILE), a sample(SAMPLE), or a collection of samples(SUM,STACK)
 * main variables
   * title: the title of this sample in plots
   * subs: a vector of sub-samples for Collection type or files for Sample type
@@ -21,7 +21,7 @@ General purpose plotter using ROOT histogram
 * Define a plot. It is passed as argument of `Plotter::GetHist` function
 ### Plotter
 * Base class for plotters
-* Draw or save a TCanvas with `vector<Sample> Plotter::entries`
+* Draw or save a TCanvas with sample entries(`vector<Sample> Plotter::entries`).
   
 ## Quick start using Plotter
 ```c++
@@ -74,6 +74,11 @@ You can pass a option to a specific pad using `PADINDEX:OPTION` syntax. ex) `1:l
 * BLleg - bottom-left legend
 * BMleg - bottom-middle legend
 * BRleg - bottom-right legend
+* rebin:INT - Rebinning by merging INT bins.
+* rebin:{bin0,bin1,...,binN} - Rebinning with new bin boundary.
+* replace:STRING->STRING[:tag] - Modify the histogram name. You can specify sample tag. You can also use regular expression.
+* suffix:STRING[:tag] - Add suffix to histogram name. Same with replace:$->STRING[:tag].
+* sysname:STRING - Draw with systematic uncertainties defined by AddSystematic.
 * type:INT
     * 0:UNDEF
     * 1:Compare - Draw multiple histograms in entries

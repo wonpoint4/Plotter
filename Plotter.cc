@@ -58,8 +58,8 @@ public:
   TH1* GetHessianError(TH1* central,const vector<TH1*>& variations);
   TH1* GetRMSError(TH1* central,const vector<TH1*>& variations);
   int AddError(TH1* hist,TH1* sys);
-  void AddSystematic(TString key,TString title,Systematic::Type type,int varibit,vector<TString> includes);
-  void AddSystematic(TString key,TString title,Systematic::Type type,int varibit,TString includes);
+  void AddSystematic(TString key,TString title,Systematic::Type type,vector<TString> includes,TString tag="");
+  void AddSystematic(TString key,TString title,Systematic::Type type,TString includes,TString tag="");
 
   //Canvas
   void DrawCompare(Plot p);
@@ -85,7 +85,6 @@ public:
   static TLegend* GetLegend(TVirtualPad* pad=NULL);
   static void SetLegendEntryLabel(TLegend* legend,int i,TString label);
   TH1* GetTH1(TH1* hstack,bool deleteorigin=false) const;
-  bool CheckHists(vector<TH1*> hists);
   void DrawHistograms(Plot p);
   static vector<TH1*> VectorTH1(const vector<vector<TH1*>>& hists);
   pair<double,double> GetMinMax(const vector<TH1*>& hists,TString option="") const;
@@ -136,7 +135,7 @@ Plotter::~Plotter(){
 ////////////////////////////// Setup ////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 void Plotter::AddFile(TString key,TString file){
-  Sample sample=Sample(file,Sample::Type::FILE);
+  Sample sample=Sample(file,"FILE");
   if(samples.find(key)==samples.end()){
     TFile f(file);
     if(f.IsZombie()) PError("[Plotter::AddFile] Wrong file "+file);
@@ -150,7 +149,7 @@ void Plotter::AddFile(TString key,TString file){
       }
       samples[key]=sample;
     }
-  }else if(samples[key].type!=Sample::Type::FILE||samples[key].title!=file) PError("[Plotter::AddFile] sample "+key+" already exists");
+  }else if(!samples[key].IsFile()||samples[key].title!=file) PError("[Plotter::AddFile] sample "+key+" already exists");
 }
 void Plotter::ScanFiles(TString path){
   vector<TString> files=Split(gSystem->GetFromPipe("find "+path+" -type f -name '*.root'"),"\n");
@@ -184,9 +183,9 @@ void Plotter::AddEntry(TString key){
   TPRegexp("([+-])").Substitute(key," $1","g");
   Sample entry;
   if(key.BeginsWith("^")){
-    entry=Sample("simulation",Sample::Type::STACK,Style(kRed,-1,3001,"e2"),Style(kCyan,-1,3001,"e2"));
+    entry=Sample("simulation","STACK",Style(kRed,-1,3001,"e2"),Style(kCyan,-1,3001,"e2"));
     key=key(1,key.Length()-1);
-  }else entry=Sample("simulation",Sample::Type::SUM);
+  }else entry=Sample("simulation","SUM");
   vector<TString> sample_keys=Split(key," ");
   for(int i=0;i<(int)sample_keys.size();i++){
     TObjArray *array=TPRegexp("^([+-]?[0-9.]*)[*]?(.*)$").MatchS(sample_keys[i]);
@@ -198,7 +197,7 @@ void Plotter::AddEntry(TString key){
     delete array;
     if(samples.find(sample_key)!=samples.end()){
       Sample sample=samples[sample_key];
-      if(sample_keys.size()==1&&entry.type!=Sample::Type::STACK){
+      if(sample_keys.size()==1&&!entry.IsStack()){
 	entry=sample*weight;
       }else{
 	if(i==0){
@@ -213,7 +212,7 @@ void Plotter::AddEntry(TString key){
 }
 void Plotter::AddEntry(const Sample& sample){
   if(sample.IsFile()){
-    Sample s(sample.title,Sample::Type::UNDEF,GetAutoColor());
+    Sample s(sample.title,"SAMPLE",GetAutoColor());
     s.weight=sample.weight;
     s.replace=sample.replace;
     s+=sample;
@@ -227,7 +226,7 @@ void Plotter::AddEntry(const Sample& sample){
 void Plotter::PrintFiles(bool detail,TRegexp regexp){
   std::cout<<"--------------------------"<<endl;
   for(const auto& [key,sample]:samples){
-    if(sample.type!=Sample::Type::FILE) continue;
+    if(!sample.IsFile()) continue;
     if(key.Contains(regexp)){
       std::cout<<"@Key: "<<key<<" "<<endl;
       if(detail) sample.Print(detail,"  ");
@@ -238,7 +237,7 @@ void Plotter::PrintFiles(bool detail,TRegexp regexp){
 void Plotter::PrintSamples(bool detail,TRegexp regexp){
   std::cout<<"--------------------------"<<endl;
   for(const auto& [key,sample]:samples){
-    if(sample.type==Sample::Type::FILE) continue;
+    if(sample.IsFile()) continue;
     if(key.Contains(regexp)){
       std::cout<<"@Key: "<<key<<" "<<endl;
       sample.Print(detail,"  ");
@@ -305,7 +304,7 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,const Plot& pp,TString addi
   //p.Print();
   p.SetOption(additional_option);
   TH1* hist=NULL;
-  if(sample.type==Sample::Type::STACK){
+  if(sample.IsStack()){
     for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(p.histname,newstr);
     for(int i=sample.subs.size()-1;i>=0;i--){
       TH1* this_hist=GetHistFromSample(sample.subs[i],p);
@@ -317,7 +316,7 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,const Plot& pp,TString addi
 	((THStack*)hist)->Add(this_hist,"HIST");
       }
     }
-  }else if(sample.type==Sample::Type::SUM){
+  }else if(sample.IsSum()){
     for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(p.histname,newstr);
     for(const auto& sub:sample.subs){
       TH1* this_hist=GetHistFromSample(sub,p);
@@ -359,7 +358,7 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,const Plot& pp,TString addi
   }else{
     for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(p.histname,newstr);
     TString histname=p.histname;
-    if((1<<sample.type&p.varibit)&&p.replace!=make_pair(TString(),TString())) TPRegexp(p.replace.first).Substitute(histname,p.replace.second);
+    if(sample.HasTag(p.replace_tag)&&(p.replace_old!=""||p.replace_new!="")) TPRegexp(p.replace_old).Substitute(histname,p.replace_new);
     for(const auto& file:sample.subs){
       TH1* this_hist=GetHistFromFile(file.title,histname);
       if(this_hist){
@@ -440,9 +439,9 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,const Plot& pp,TString addi
 	delete this_hist;
       }
     }
-    if(!hist&&(1<<sample.type&p.varibit)&&p.replace!=make_pair(TString(),TString())){
+    if(!hist&&sample.HasTag(p.replace_tag)&&(p.replace_old!=""||p.replace_new!="")){
       PWarning("[Plotter::GetHistFromSample] no "+histname+" "+sample.title+", use "+p.histname);
-      hist=GetHistFromSample(sample,pp+additional_option-"replace"-"varibit");
+      hist=GetHistFromSample(sample,pp+additional_option-"replace");
     }
   }
   if(hist){
@@ -532,7 +531,7 @@ vector<TH1*> Plotter::GetHistSys(const Sample& sample,const Plot& p){
 	PDebug("[Plotter::GetHistSys] sysname='"+p.sysname+"' systype='"+systematic.GetTypeString()+"'");
 	vector<TH1*> variations;
 	for(const auto& replace:systematic.replaces){
-	  TH1* this_hist=GetHist(sample,p,Form("replace:%s->%s varibit:%d",replace.first.Data(),replace.second.Data(),systematic.varibit));
+	  TH1* this_hist=GetHist(sample,p,Form("replace:%s->%s:%s",replace.first.Data(),replace.second.Data(),systematic.tag.Data()));
 	  this_hist=GetTH1(this_hist,true);
 	  if(this_hist){
 	    this_hist->SetName(this_hist->GetName()+replace.second);
@@ -1285,17 +1284,6 @@ TH1* Plotter::GetTH1(TH1* hstack,bool deleteorigin) const{
   }
   return hist;
 }
-bool Plotter::CheckHists(vector<TH1*> hists){
-  PAll("[Plotter::CheckHists(vector<TH1*> hists)]");
-  bool flag_data=false,flag_signal=false;
-  for(unsigned int i=0;i<entries.size();i++){
-    if(!hists.at(i)) continue;
-    if(entries[i].type==Sample::Type::DATA) flag_data=true;
-    if(entries[i].type==Sample::Type::SIGNAL) flag_signal=true;
-  }
-  if(flag_data&&flag_signal) return true;
-  else return false;
-}
 vector<TH1*> Plotter::VectorTH1(const vector<vector<TH1*>>& hists){
   PAll("[Plotter::VectorTH1(const vector<vector<TH1*>>& hists)]");
   vector<TH1*> hists_out;
@@ -1534,7 +1522,7 @@ set<TString> Plotter::GetHistKeys(TString filename,TString regexp){
 set<TString> Plotter::GetHistKeys(const Sample& sample,TString regexp){
   PAll("[Plotter::GetHistKeys]");
   set<TString> histkeys;
-  if(sample.type==Sample::Type::FILE){
+  if(sample.IsFile()){
     set<TString> this_histkeys=GetHistKeys(sample.title,regexp);
     histkeys.insert(this_histkeys.begin(),this_histkeys.end());
   }else if(sample.subs.size()){
@@ -1570,13 +1558,13 @@ Plot Plotter::MakePlot(TString name,TString option){
 ///////////////////////////////////////////////////////////////////////
 ///////////////////// Systeamtic /////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
-void Plotter::AddSystematic(TString key,TString title,Systematic::Type type,int varibit,vector<TString> includes){
+void Plotter::AddSystematic(TString key,TString title,Systematic::Type type,vector<TString> includes,TString tag){
   auto it=systematics.find(key);
-  if(it==systematics.end()) systematics[key]=Systematic(title,type,varibit,includes);
+  if(it==systematics.end()) systematics[key]=Systematic(title,type,includes,tag);
   else PError("systematic "+key+" already exists");
 }
-void Plotter::AddSystematic(TString key,TString title,Systematic::Type type,int varibit,TString includes){
-  return AddSystematic(key,title,type,varibit,Split(includes," "));
+void Plotter::AddSystematic(TString key,TString title,Systematic::Type type,TString includes,TString tag){
+  return AddSystematic(key,title,type,Split(includes," "),tag);
 }
 
 

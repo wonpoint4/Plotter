@@ -4,37 +4,21 @@
 #include <TObjString.h>
 #include <TSystem.h>
 #include"Global.h"
+#include"Utils.h"
 #include"Style.cc"
 class Sample{
 public:
-  enum Type{UNDEF,DATA,SIGNAL,BG,GEN,STACK,SUM,A,B,C,D,FILE};
-  TString GetTypeString() const{
-    switch(type){
-    case UNDEF: return "UNDEF";
-    case DATA: return "DATA";
-    case SIGNAL: return "SIGNAL";
-    case BG: return "BG";
-    case GEN: return "GEN";
-    case STACK: return "STACK";
-    case SUM: return "SUM";
-    case A: return "A";
-    case B: return "B";
-    case C: return "C";
-    case D: return "D";
-    case FILE: return "FILE";
-    default: return "###ERROR### Bad Sample::Type";
-    }
-  }
   TString title;
-  Type type;
+  vector<TString> tags;
+  TString type;
   Style style;
   Style style_alt;
   map<TString,TString> replace;
   double weight=1.;
   vector<Sample> subs;
 
-  Sample(TString title_="",Sample::Type type_=Sample::Type::UNDEF,Style styleA=Style(),Style styleB=Style());
-  Sample(TString title_,Sample::Type type_,int color,int marker=-1,int fill=-1,TString drawoption="");
+  Sample(TString title_="",TString tag="",Style styleA=Style(),Style styleB=Style());
+  Sample(TString title_,TString tag,int color,int marker=-1,int fill=-1,TString drawoption="");
   Sample operator+(const Sample& sam);
   Sample operator+(const char* key);
   Sample operator+(const TString key);
@@ -58,7 +42,10 @@ public:
   TString GetHistPrefix() const;
   TString GetPrefix() const;
   TString GetSuffix() const;
+  bool HasTag(TString tag,bool recursive=true) const;
   bool IsCollection() const;
+  bool IsStack() const;
+  bool IsSum() const;
   bool IsSample() const;
   bool IsFile() const;
   void Print(bool detail=false,TString pre="") const;
@@ -67,36 +54,37 @@ public:
   void SetPrefix(TString prefix);
   void SetSuffix(TString suffix);
   void SetStyle(int color,int marker=-1,int fill=-1,TString drawoption="");
-  void SetType(int type_);
+  void SetTags(TString tag);
+  void SetType(TString type_);
   void TurnOffFillColor();
   void TurnOnFillColor();
 };
 map<TString,Sample> samples;
 
-Sample::Sample(TString title_,Sample::Type type_,Style styleA,Style styleB){
+Sample::Sample(TString title_,TString tag,Style styleA,Style styleB){
   title=title_;
-  type=type_;
+  SetTags(tag);
   style=styleA;
   style_alt=styleB;
 }
-Sample::Sample(TString title_,Sample::Type type_,int color,int marker,int fill,TString drawoption){
+Sample::Sample(TString title_,TString tag,int color,int marker,int fill,TString drawoption){
   title=title_;
-  type=type_;
+  SetTags(tag);
   SetStyle(color,marker,fill,drawoption);
 }
 Sample Sample::operator+(const Sample& sam){
   Sample temp(*this);
   if(temp.IsCollection()&&sam.IsCollection()){
     temp.subs.push_back(sam);
-    if(temp.type==Sample::Type::STACK){
-      if(temp.subs.back().type==Sample::Type::STACK) temp.subs.back().type=Sample::Type::SUM;
+    if(temp.IsStack()){
+      if(temp.subs.back().IsStack()) temp.subs.back().SetType("SUM");
       temp.subs.back().TurnOnFillColor();
     }
   }else if(temp.IsCollection()&&sam.IsSample()){
     temp.subs.push_back(sam);
-    if(temp.type==Sample::Type::STACK) temp.subs.back().TurnOnFillColor();
+    if(temp.IsStack()) temp.subs.back().TurnOnFillColor();
   }else if(temp.IsCollection()&&sam.IsFile()){
-    Sample sample(sam.title,Type::UNDEF);
+    Sample sample(sam.title,"SAMPLE");
     sample=sample+sam;
     temp=temp+sample;
   }else if(temp.IsSample()&&sam.IsSample()){
@@ -106,7 +94,7 @@ Sample Sample::operator+(const Sample& sam){
   }else if(temp.IsSample()&&sam.IsFile()){ 
     temp.subs.push_back(sam);
   }else{
-    PError("[Sample::operator+] Cannot add samples; "+temp.title+"("+temp.GetTypeString()+") + "+sam.title+"("+sam.GetTypeString()+")");
+    PError("[Sample::operator+] Cannot add samples; "+temp.title+"("+temp.type+") + "+sam.title+"("+sam.type+")");
   }
   return temp;
 }
@@ -215,20 +203,49 @@ TString Sample::GetSuffix() const {
   if(it!=replace.end()) return it->second;
   else return "";
 }
+bool Sample::HasTag(TString tag,bool recursive) const {
+  if(tag=="") return true;
+  if(IsCollection()&&recursive){
+    if(HasTag(tag,false)) return true;
+    for(const auto& sub:subs)
+      if(sub.HasTag(tag)) return true;
+    return false;
+  }else{
+    if(tag.Contains(",")||tag.Contains(" ")){
+      tag.ReplaceAll(","," ");
+      vector<TString> this_tags=Split(tag," ");
+      for(TString t:this_tags)
+	if(!HasTag(t,false)) return false;
+      return true;
+    }else{
+      if(find(tags.begin(),tags.end(),tag)!=tags.end()) 
+	return true;
+      return false;
+    }
+  }
+}
 bool Sample::IsCollection() const {
-  if(type==Sample::Type::STACK||type==Sample::Type::SUM) return true;
+  if(IsStack()||IsSum()) return true;
   else return false;
 }
-bool Sample::IsFile() const {
-  if(type==Sample::Type::FILE) return true;
+bool Sample::IsStack() const {
+  if(type=="STACK") return true;
+  return false;
+}
+bool Sample::IsSum() const {
+  if(type=="SUM") return true;
   return false;
 }
 bool Sample::IsSample() const{
-  if(!IsCollection()&&!IsFile()) return true;
+  if(type=="SAMPLE") return true;
+  return false;
+}
+bool Sample::IsFile() const {
+  if(type=="FILE") return true;
   return false;
 }
 void Sample::Print(bool detail,TString pre) const{
-  if(type==Type::FILE){
+  if(type=="FILE"){
     cout<<pre<<title<<" "<<gSystem->GetFromPipe("stat -c %.19y "+title)<<endl;
     return;
   }
@@ -237,12 +254,12 @@ void Sample::Print(bool detail,TString pre) const{
     if(weight==1) weightstring="+";
     else if(weight==-1) weightstring="-";
     else weightstring=Form("%+.1f ",weight);
-    cout<<pre<<weightstring<<"Title:"<<title<<" Type:"<<GetTypeString()<<" "<<ReplaceToString()<<" ";
+    cout<<pre<<weightstring<<"Title:"<<title<<" Type:"<<type<<" Tags:"<<Join(",",tags)<<" Replace:"<<ReplaceToString()<<" ";
     style.Print();
     for(const auto& sub:subs){
       sub.Print(detail,pre+"  ");
     }
-  }else cout<<pre<<"Title: "<<title<<" "<<"Type: "<<GetTypeString()<<endl;
+  }else cout<<pre<<"Title: "<<title<<" "<<"Type:"<<type<<endl;
 }
 TString Sample::ReplaceToString() const {
   TString out;
@@ -263,25 +280,36 @@ void Sample::SetSuffix(TString suffix){
 void Sample::SetStyle(int color,int marker,int fill,TString drawoption){
   style=Style(color,marker,fill,drawoption);
   
-  if(type==Type::STACK){
+  if(IsStack()){
     style.drawoption="e";
   }
 }
-void Sample::SetType(int type_){
-  if(type==Type::STACK){
-    for(auto& sub:subs){
-      sub.SetType(type_);
+void Sample::SetTags(TString tag){
+  tags.clear();
+  tag.ReplaceAll(","," ");
+  vector<TString> tags_=Split(tag," ");
+  for(auto t:tags_){
+    if(t=="STACK"||t=="SUM"||t=="SAMPLE"||t=="FILE"){
+      SetType(t);
+      continue;
     }
-  }else type=(Type)type_;
+    tags.push_back(t);
+  }
+}
+void Sample::SetType(TString type_){
+  type_.ToUpper();
+  if(type_!="STACK"&&type_!="SUM"&&type_!="SAMPLE"&&type_!="FILE")
+    PError("[Sample::SetType] Unknown type "+type_);
+  type=type_;
 }
 void Sample::TurnOffFillColor(){
-  if(type!=Type::STACK) style.fillcolor=-1;
+  if(!IsStack()) style.fillcolor=-1;
   else
     for(auto& sub:subs)
       sub.TurnOffFillColor();
 }  
 void Sample::TurnOnFillColor(){
-  if(type!=Type::STACK) style.fillcolor=style.linecolor;
+  if(!IsStack()) style.fillcolor=style.linecolor;
   else
     for(auto& sub:subs)
       sub.TurnOnFillColor();

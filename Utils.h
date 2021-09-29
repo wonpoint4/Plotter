@@ -34,6 +34,11 @@ TString Strip(TString str,TString c){
   if(str.BeginsWith(c)) str=str(c.Length(),str.Length()-c.Length());
   return str;
 }
+TString Join(TString del,vector<TString> strs){
+  TString out;
+  for(const auto& s:strs) out+=s+del;
+  return out(0,out.Length()-del.Length());
+}
 vector<double> VectorDouble(TString str){
   str=Strip(str,"{");
   str=Strip(str,"}");

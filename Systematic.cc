@@ -8,17 +8,17 @@ public:
   Type type=Type::UNDEF;
   vector<pair<TString,TString>> replaces;
   vector<TString> keys;
-  int varibit=0;
+  TString tag;
 
-  Systematic(TString title_="",Type type_=Type::UNDEF,int varibit_=0,vector<TString> includes={});
+  Systematic(TString title_="",Type type_=Type::UNDEF,vector<TString> includes={},TString tag_="");
   ~Systematic();
   TString GetTypeString() const;
   void Print() const;
 };
-Systematic::Systematic(TString title_,Type type_,int varibit_,vector<TString> includes){
+Systematic::Systematic(TString title_,Type type_,vector<TString> includes,TString tag_){
   title=title_;
   type=type_;
-  varibit=varibit_;
+  tag=tag_;
   if(type==Systematic::Type::MULTI) keys=includes;
   else{
     for(const TString& replace:includes){
@@ -41,7 +41,7 @@ TString Systematic::GetTypeString() const{
 }
 void Systematic::Print() const{
   cout<<"------------------------"<<endl;
-  cout<<title<<" "<<GetTypeString()<<" varibit:"<<varibit<<endl;
+  cout<<title<<" "<<GetTypeString()<<" tag:"<<tag<<endl;
   if(type==MULTI) for(const auto& key:keys) cout<<key<<" ";
   else for(const auto& replace:replaces) cout<<replace.first<<"->"<<replace.second<<" ";
   cout<<"\n"<<endl;

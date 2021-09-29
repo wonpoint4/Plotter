@@ -10,11 +10,12 @@ public:
   TString histname;
   TString sysname;
   TString classname;
-  pair<TString,TString> replace;
+  TString replace_old;
+  TString replace_new;
+  TString replace_tag;
   TString xtitle,ytitle;
   TString project;
   TString era;
-  int varibit=0;
   Type type=Type::CompareAndRatio;
   TString rebin="";
   double xmin=0,xmax=0,ymin=0,ymax=0;
@@ -116,8 +117,10 @@ void Plot::Print(std::ostream& out) const{
   if(Umin!=0) out<<" Umin:"<<Umin;
   if(Umax!=0) out<<" Umax:"<<Umax;
   if(sysname!="") out<<" sysname:"<<sysname;
-  if(replace!=make_pair(TString(""),TString(""))) out<<" replace:"<<replace.first<<"->"<<replace.second;
-  if(varibit!=0) out<<" varibit:"<<varibit;
+  if(replace_old!=""&&replace_new!=""){
+    if(replace_tag!="") out<<" replace:"<<replace_old<<"->"<<replace_new<<":"<<replace_tag;
+    else out<<" replace:"<<replace_old<<"->"<<replace_new;
+  }
   if(title!=name) out<<" title:"<<title;
   if(xtitle!="") out<<" xtitle:"<<xtitle;
   if(ytitle!="") out<<" ytitle:"<<ytitle;
@@ -151,8 +154,11 @@ void Plot::RemoveOption(TString option_){
     else if(remove=="Umax") Umax=0;
     else if(remove=="era") era="";
     else if(remove=="sysname") sysname="";
-    else if(remove=="replace") replace=make_pair(TString(),TString());
-    else if(remove=="varibit") varibit=0;
+    else if(remove=="replace"){
+      replace_old="";
+      replace_new="";
+      replace_tag="";
+    }
     else if(remove=="title") title="";
     else if(remove=="xtitle") xtitle="";
     else if(remove=="ytitle") ytitle="";
@@ -181,13 +187,26 @@ void Plot::SetOption(TString option_){
     else if(opt.Contains(TRegexp("^ymin:"))) ymin=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^ymax:"))) ymax=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^sysname:"))) sysname=Strip(opt(8,999),"'");
-    else if(opt.Contains(TRegexp("^suffix:"))) replace=make_pair("$",Strip(opt(7,999),"'"));
+    else if(opt.Contains(TRegexp("^suffix:"))){
+      replace_old="$";
+      replace_new=Strip(opt(7,999),"'");
+      if(replace_new.Contains(":")){
+	replace_tag=replace_new(replace_new.Index(":")+1,replace_new.Length());
+	replace_new=replace_new(0,replace_new.Index(":"));
+      }
+    }
     else if(opt.Contains(TRegexp("^replace:"))){
       vector<TString> replacev=Split(opt(8,999),"->");
       if(replacev.size()!=2) PError("Wrong syntax for replace option "+opt);
-      else replace=make_pair(Split(opt(8,999),"->").at(0),Split(opt(8,999),"->").at(1));
+      else{
+	replace_old=replacev.at(0);
+	replace_new=replacev.at(1);
+	if(replace_new.Contains(":")){
+	  replace_tag=replace_new(replace_new.Index(":")+1,replace_new.Length());
+	  replace_new=replace_new(0,replace_new.Index(":"));
+	}
+      }
     }
-    else if(opt.Contains(TRegexp("^varibit:"))) varibit=TString(opt(8,999)).Atoi();
     else if(opt.Contains(TRegexp("^xtitle:"))) xtitle=Strip(opt(7,999),"'");
     else if(opt.Contains(TRegexp("^ytitle:"))) ytitle=Strip(opt(7,999),"'");
     else if(opt.Contains(TRegexp("^Xmin:"))) Xmin=TString(opt(5,999)).Atof();
