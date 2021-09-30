@@ -910,6 +910,24 @@ void Plotter::DrawSig(Plot p){
   else if(p.hists.size()>2) base=GetTH1(p.hists[0].back());
   else base=GetTH1(p.hists[1].back());
 
+  TH1* sigma1=(TH1*)base->Clone("sigma1");
+  sigma1->SetTitle("#pm 1 #sigma");
+  sigma1->SetFillColor(kGreen);
+  sigma1->SetFillStyle(3001);
+  sigma1->SetMarkerSize(0);
+  for(int i=0;i<sigma1->GetNbinsX()+2;i++){
+    sigma1->SetBinContent(i,0);
+    sigma1->SetBinError(i,1);
+  }
+  TH1* sigma2=(TH1*)sigma1->Clone("simga2");
+  for(int i=0;i<sigma2->GetNbinsX()+2;i++){
+    sigma2->SetBinError(i,2);
+  }
+  sigma2->SetTitle("#pm 2 #sigma");
+  sigma2->SetFillColor(kYellow);
+  sigma2->Draw("e2");
+  sigma1->Draw("same e2");  
+
   vector<vector<TH1*>> hists_new;
   for(const vector<TH1*>& this_hists:p.hists){
     TH1* hist=NULL;
@@ -919,9 +937,10 @@ void Plotter::DrawSig(Plot p){
 	hist=GetTH1(hist);
 	for(int i=0;i<hist->GetNbinsX()+2;i++){
 	  double error=sqrt(pow(hist->GetBinError(i),2)+pow(base->GetBinError(i),2));
-	  double content=(hist->GetBinContent(i)-base->GetBinContent(i))/error;
+	  double content=error ? (hist->GetBinContent(i)-base->GetBinContent(i))/error : 0.;
 	  hist->SetBinContent(i,content);
-	  hist->SetBinError(i,0);
+	  if(content) hist->SetBinError(i,content*1e-30);
+	  else hist->SetBinError(i,0);
 	}
 	break;
       }
@@ -935,13 +954,12 @@ void Plotter::DrawSig(Plot p){
     if(p.ytitle=="") axisparent->GetYaxis()->SetTitle("Difference (#sigma)");
     if(p.ymin||p.ymax){
       axisparent->GetYaxis()->SetRangeUser(p.ymin,p.ymax);
-    }else if(p.option.Contains("widewidey")){
-      axisparent->GetYaxis()->SetRangeUser(0.01,1.99);
-      axisparent->GetYaxis()->SetNdivisions(506);
     }else if(p.option.Contains("widey")){
-      axisparent->GetYaxis()->SetRangeUser(-4.9,4.9);
+      axisparent->GetYaxis()->SetRangeUser(-7.99,7.99);
+      axisparent->GetYaxis()->SetNdivisions(504);
     }else{
-      axisparent->GetYaxis()->SetRangeUser(-2.9,2.9);
+      axisparent->GetYaxis()->SetRangeUser(-3.99,3.99);
+      axisparent->GetYaxis()->SetNdivisions(504);
     }
   }
   _depth--;
@@ -1012,7 +1030,6 @@ void Plotter::DrawCompareAndSig(Plot p){
   gPad->SetPad(0,0,1,0.365);
   gPad->SetTopMargin(0.02);
   gPad->SetBottomMargin(pad->GetBottomMargin()/0.35);
-  gPad->SetGridy();
   DrawSig((p+"noleg").GetSubPlot(2));
   axisparent=GetAxisParent();
   if(axisparent) axisparent->SetTitle("");
