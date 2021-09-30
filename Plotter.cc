@@ -596,6 +596,19 @@ vector<vector<TH1*>> Plotter::GetHists(Plot& p){
       }
     }
   }
+  if(p.blind_xmin||p.blind_xmax){
+    for(int i=0,n=entries.size();i<n;i++){
+      if(entries[i].HasTag("data",false)){
+	for(auto& h:hists.at(i)){
+	  if(!h) continue;
+	  for(int ibin=h->FindBin(p.blind_xmin);ibin<h->FindBin(p.blind_xmax);ibin++){
+	    h->SetBinContent(ibin,0);
+	    h->SetBinError(ibin,0);
+	  }
+	}
+      }
+    }
+  }
   return hists;
 }  
 
@@ -936,8 +949,11 @@ void Plotter::DrawSig(Plot p){
       if(hist){
 	hist=GetTH1(hist);
 	for(int i=0;i<hist->GetNbinsX()+2;i++){
-	  double error=sqrt(pow(hist->GetBinError(i),2)+pow(base->GetBinError(i),2));
-	  double content=error ? (hist->GetBinContent(i)-base->GetBinContent(i))/error : 0.;
+	  double content=0;
+	  if(hist->GetBinError(i)&&base->GetBinError(i)){
+	    double error=sqrt(pow(hist->GetBinError(i),2)+pow(base->GetBinError(i),2));
+	    content=(hist->GetBinContent(i)-base->GetBinContent(i))/error;
+	  }
 	  hist->SetBinContent(i,content);
 	  if(content) hist->SetBinError(i,content*1e-30);
 	  else hist->SetBinError(i,0);

@@ -20,6 +20,7 @@ public:
   TString rebin="";
   double xmin=0,xmax=0,ymin=0,ymax=0;
   double Xmin=0,Xmax=0,Ymin=0,Ymax=0,Zmin=0,Zmax=0,Umin=0,Umax=0;
+  double blind_xmin=0,blind_xmax=0;
   TString option;
   vector<Plot> subplots;
   bool root=false;
@@ -124,6 +125,7 @@ void Plot::Print(std::ostream& out) const{
   if(title!=name) out<<" title:"<<title;
   if(xtitle!="") out<<" xtitle:"<<xtitle;
   if(ytitle!="") out<<" ytitle:"<<ytitle;
+  if(blind_xmin&&blind_xmax) out<<" blind:"<<blind_xmin<<","<<blind_xmax;
   out<<" "<<option;
   for(const auto& sub:subplots){
     stringstream temp;
@@ -162,6 +164,10 @@ void Plot::RemoveOption(TString option_){
     else if(remove=="title") title="";
     else if(remove=="xtitle") xtitle="";
     else if(remove=="ytitle") ytitle="";
+    else if(remove=="blind"){
+      blind_xmin=0;
+      blind_xmax=0;
+    }
     else{
       for(int i=0,n=options.size();i<n;i++){
         if(options[i].Contains(TRegexp("^"+remove))){
@@ -223,6 +229,14 @@ void Plot::SetOption(TString option_){
       era=Strip(opt(4,999),"'");
       if(era=="2016a") era="2016preVFP";
       if(era=="2016b") era="2016postVFP";
+    }
+    else if(opt.Contains(TRegexp("^blind:"))){
+      vector<TString> blindv=Split(opt(6,999),",");
+      if(blindv.size()!=2) PError("Wrong syntax for blind option "+opt);
+      else{
+	blind_xmin=blindv.at(0).Atof();
+	blind_xmax=blindv.at(1).Atof();
+      }
     }
     else option+=" "+opt;
   }
