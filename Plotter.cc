@@ -183,7 +183,7 @@ void Plotter::AddEntry(TString key){
   TPRegexp("([+-])").Substitute(key," $1","g");
   Sample entry;
   if(key.BeginsWith("^")){
-    entry=Sample("simulation","STACK",Style(kRed,-1,3001,"e2"),Style(kCyan,-1,3001,"e2"));
+    entry=Sample("simulation","STACK",Style(kRed,-1,3001,"e2"),Style(kGreen,-1,3006,"e2"),Style(kBlue,-1,3005,"e2"),Style(kMagenta,-1,3004,"e2"));
     key=key(1,key.Length()-1);
   }else entry=Sample("simulation","SUM");
   vector<TString> sample_keys=Split(key," ");
@@ -572,6 +572,8 @@ vector<TH1*> Plotter::GetHistSys(const Sample& sample,const Plot& p){
     }
     //sample.ApplyStyle(total,true);
   }
+  for(int i=0,n=hists.size();i<n;i++)
+    sample.ApplyStyle(hists.at(i),i);
   _depth--;
   return hists;
 }
@@ -704,10 +706,6 @@ void Plotter::DrawHistograms(Plot p){
 	}else{
 	  TH1* hist_sum=GetTH1(hists.at(0));
 	  hist_sum->Draw(hists.at(0)->GetOption());
-	  if(((THStack*)hists.at(0))->GetHists()->GetSize()){
-	    TH1* first=(TH1*)((THStack*)hists.at(0))->GetHists()->At(0);
-	    hist_sum->GetXaxis()->SetRange(first->GetXaxis()->GetFirst(),first->GetXaxis()->GetLast());
-	  }
 	  hists.at(0)->Draw("same");
 	}
 	for(int i=hists.size()-1;i>0;i--){
@@ -751,36 +749,36 @@ void Plotter::DrawCompare(Plot p){
   if(!gPad) gROOT->MakeDefCanvas();
 
   DrawHistograms(p);
-  TH1* axisowner=GetAxisParent();
-  axisowner->SetTickLength(0.015,"Y");
+  TH1* axisparent=GetAxisParent();
+  axisparent->SetTickLength(0.015,"Y");
   double scale=1/TMath::Min(gPad->GetHNDC(),gPad->GetWNDC());
-  axisowner->SetTitleSize(0.04*scale,"XYZ");
-  axisowner->SetLabelSize(0.04*scale,"XYZ");
-  if(p.option.Contains("xtitle++")) axisowner->SetTitleSize(axisowner->GetTitleSize("x")*1.5,"x");
-  else if(p.option.Contains("xtitle+")) axisowner->SetTitleSize(axisowner->GetTitleSize("x")*1.2,"x");
-  else if(p.option.Contains("xtitle--")) axisowner->SetTitleSize(axisowner->GetTitleSize("x")*0.6,"x");
-  else if(p.option.Contains("xtitle-")) axisowner->SetTitleSize(axisowner->GetTitleSize("x")*0.8,"x");
-  if(p.option.Contains("ytitle++")) axisowner->SetTitleSize(axisowner->GetTitleSize("y")*1.5,"y");
-  else if(p.option.Contains("ytitle+")) axisowner->SetTitleSize(axisowner->GetTitleSize("y")*1.2,"y");
-  else if(p.option.Contains("ytitle--")) axisowner->SetTitleSize(axisowner->GetTitleSize("y")*0.8,"y");
-  else if(p.option.Contains("ytitle-")) axisowner->SetTitleSize(axisowner->GetTitleSize("y")*0.6,"y");
-  axisowner->GetYaxis()->SetTitleOffset(1.8/scale);
+  axisparent->SetTitleSize(0.04*scale,"XYZ");
+  axisparent->SetLabelSize(0.04*scale,"XYZ");
+  if(p.option.Contains("xtitle++")) axisparent->SetTitleSize(axisparent->GetTitleSize("x")*1.5,"x");
+  else if(p.option.Contains("xtitle+")) axisparent->SetTitleSize(axisparent->GetTitleSize("x")*1.2,"x");
+  else if(p.option.Contains("xtitle--")) axisparent->SetTitleSize(axisparent->GetTitleSize("x")*0.6,"x");
+  else if(p.option.Contains("xtitle-")) axisparent->SetTitleSize(axisparent->GetTitleSize("x")*0.8,"x");
+  if(p.option.Contains("ytitle++")) axisparent->SetTitleSize(axisparent->GetTitleSize("y")*1.5,"y");
+  else if(p.option.Contains("ytitle+")) axisparent->SetTitleSize(axisparent->GetTitleSize("y")*1.2,"y");
+  else if(p.option.Contains("ytitle--")) axisparent->SetTitleSize(axisparent->GetTitleSize("y")*0.8,"y");
+  else if(p.option.Contains("ytitle-")) axisparent->SetTitleSize(axisparent->GetTitleSize("y")*0.6,"y");
+  axisparent->GetYaxis()->SetTitleOffset(1.8/scale);
 
   TLegend* legend=NULL;
   if(!p.option.Contains("noleg")) DrawLegend(p);
 
   if(p.option.Contains("logx")){
     gPad->SetLogx();
-    axisowner->GetXaxis()->SetMoreLogLabels();
-    if(axisowner->GetXaxis()->GetBinLowEdge(axisowner->GetXaxis()->GetFirst())==0){
-      axisowner->GetXaxis()->SetRange(axisowner->GetXaxis()->GetFirst()+1,axisowner->GetXaxis()->GetLast());
+    axisparent->GetXaxis()->SetMoreLogLabels();
+    if(axisparent->GetXaxis()->GetBinLowEdge(axisparent->GetXaxis()->GetFirst())==0){
+      axisparent->GetXaxis()->SetRange(axisparent->GetXaxis()->GetFirst()+1,axisparent->GetXaxis()->GetLast());
     }
   }
   if(p.option.Contains("logy")){
     pair<double,double> minmax=GetMinMax(p.hists,"pos");
     double minimum=minmax.first,maximum=minmax.second;
     if(minimum<=0) minimum=maximum/1000;
-    axisowner->GetYaxis()->SetRangeUser(minimum/20,maximum*20);
+    axisparent->GetYaxis()->SetRangeUser(minimum/20,maximum*20);
     gPad->SetLogy();
   }else{
     pair<double,double> minmax=GetMinMax(p.hists);
@@ -788,14 +786,13 @@ void Plotter::DrawCompare(Plot p){
     double range=fabs(maximum-minimum);
     double ymin=minimum/range<-0.01?minimum-0.1*range:0;
     double ymax=maximum+0.1*(maximum-ymin);
-    axisowner->GetYaxis()->SetRangeUser(ymin,ymax);
+    axisparent->GetYaxis()->SetRangeUser(ymin,ymax);
   }
   if(p.ymin||p.ymax){
-    axisowner->GetYaxis()->SetRangeUser(p.ymin,p.ymax);
-    cout<<"setting"<<endl;
+    axisparent->GetYaxis()->SetRangeUser(p.ymin,p.ymax);
   }
-  axisowner->GetXaxis()->SetTitle(p.xtitle);
-  axisowner->GetYaxis()->SetTitle(p.ytitle); 
+  axisparent->GetXaxis()->SetTitle(p.xtitle);
+  axisparent->GetYaxis()->SetTitle(p.ytitle); 
   gPad->SetFillStyle(0);
   gPad->RedrawAxis();
   gPad->Update();
@@ -841,26 +838,26 @@ void Plotter::DrawRatio(Plot p){
 
   p.hists=GetRatioHists(p);
   DrawCompare(p-"norm");
-  TH1* axisowner=GetAxisParent();
-  if(axisowner){
-    if(p.ytitle=="") axisowner->GetYaxis()->SetTitle("Ratio");
+  TH1* axisparent=GetAxisParent();
+  if(axisparent){
+    if(p.ytitle=="") axisparent->GetYaxis()->SetTitle("Ratio");
     if(p.ymin||p.ymax){
-      axisowner->GetYaxis()->SetRangeUser(p.ymin,p.ymax);
+      axisparent->GetYaxis()->SetRangeUser(p.ymin,p.ymax);
     }else if(p.option.Contains("widewidey")){
-      axisowner->GetYaxis()->SetRangeUser(0.01,1.99);
-      axisowner->GetYaxis()->SetNdivisions(506);
+      axisparent->GetYaxis()->SetRangeUser(0.01,1.99);
+      axisparent->GetYaxis()->SetNdivisions(506);
     }else if(p.option.Contains("widey")){
-      axisowner->GetYaxis()->SetRangeUser(0.501,1.499);
-      axisowner->GetYaxis()->SetNdivisions(506);
+      axisparent->GetYaxis()->SetRangeUser(0.501,1.499);
+      axisparent->GetYaxis()->SetNdivisions(506);
     }else{
-      axisowner->GetYaxis()->SetRangeUser(0.801,1.199);
-      axisowner->GetYaxis()->SetNdivisions(504);
+      axisparent->GetYaxis()->SetRangeUser(0.801,1.199);
+      axisparent->GetYaxis()->SetNdivisions(504);
     }
   }
   _depth--;
 }
 void Plotter::DrawDiff(Plot p){
-  PInfo("[Plotter::DrawDiff]"+p.option);
+  PInfo("[Plotter::DrawDiff]"+p.option);_depth++;
   if(!gPad) gROOT->MakeDefCanvas();
 
   TH1* base=NULL;
@@ -889,15 +886,18 @@ void Plotter::DrawDiff(Plot p){
 
   p.hists=hists_new;
   DrawCompare(p);
-
   TH1* axisparent=GetAxisParent();
-  axisparent->GetYaxis()->SetTitle("Diff");
-  axisparent->GetYaxis()->SetLabelSize(0.06);
-
-  pair<double,double> minmax=GetMinMax(p.hists);
-  double minimum=minmax.first,maximum=minmax.second;
-  double range=fabs(maximum-minimum);
-  axisparent->GetYaxis()->SetRangeUser(minimum/range<-0.01?minimum-0.1*range:0,maximum+0.1*range);
+  if(axisparent){
+    if(p.ytitle=="") axisparent->GetYaxis()->SetTitle("Difference");
+    if(p.ymin||p.ymax){
+      axisparent->GetYaxis()->SetRangeUser(p.ymin,p.ymax);
+    }else{
+      pair<double,double> minmax=GetMinMax(p.hists);
+      double minimum=minmax.first,maximum=minmax.second;
+      double range=fabs(maximum-minimum);
+      axisparent->GetYaxis()->SetRangeUser(minimum/range<-0.01?minimum-0.1*range:0,maximum+0.1*range);
+    }
+  }
   _depth--;
 }
 void Plotter::DrawSig(Plot p){
@@ -931,12 +931,19 @@ void Plotter::DrawSig(Plot p){
   p.hists=hists_new;
   DrawCompare(p);
   TH1* axisparent=GetAxisParent();
-  
-  axisparent->GetYaxis()->SetTitle("Difference (#sigma)");
-  axisparent->GetYaxis()->SetLabelSize(0.06);
-
-  if(p.option.Contains("widey")) axisparent->GetYaxis()->SetRangeUser(-4.9,4.9);
-  else axisparent->GetYaxis()->SetRangeUser(-2.9,2.9);
+  if(axisparent){
+    if(p.ytitle=="") axisparent->GetYaxis()->SetTitle("Difference (#sigma)");
+    if(p.ymin||p.ymax){
+      axisparent->GetYaxis()->SetRangeUser(p.ymin,p.ymax);
+    }else if(p.option.Contains("widewidey")){
+      axisparent->GetYaxis()->SetRangeUser(0.01,1.99);
+      axisparent->GetYaxis()->SetNdivisions(506);
+    }else if(p.option.Contains("widey")){
+      axisparent->GetYaxis()->SetRangeUser(-4.9,4.9);
+    }else{
+      axisparent->GetYaxis()->SetRangeUser(-2.9,2.9);
+    }
+  }
   _depth--;
 }
 void Plotter::DrawCompareAndRatio(Plot p){
@@ -949,8 +956,7 @@ void Plotter::DrawCompareAndRatio(Plot p){
   gPad->SetPad(0,0.35,1,1);
   gPad->SetBottomMargin(0.02);
   gPad->SetTopMargin(pad->GetTopMargin()/0.65);
-  Plot plot1=p.GetSubPlot(1);
-  DrawCompare(plot1);
+  DrawCompare(p.GetSubPlot(1));
   TH1* axisparent=GetAxisParent();
   axisparent->GetXaxis()->SetLabelSize(0);
   axisparent->GetXaxis()->SetTitle("");
@@ -972,11 +978,7 @@ void Plotter::DrawCompareAndRatio(Plot p){
   gPad->SetGridx();gPad->SetGridy();
   DrawRatio((p+"noleg").GetSubPlot(2));
   axisparent=GetAxisParent();
-  if(axisparent){
-    axisparent->SetTitle("");
-    //axisparent->SetStats(0);
-    //axisparent->GetYaxis()->SetTitle("Ratio");
-  }
+  if(axisparent) axisparent->SetTitle("");
   gPad->Update();
   gPad->Modified();
   _depth--;
@@ -991,33 +993,29 @@ void Plotter::DrawCompareAndSig(Plot p){
   gPad->SetPad(0,0.35,1,1);
   gPad->SetBottomMargin(0.02);
   gPad->SetTopMargin(pad->GetTopMargin()/0.65);
-  DrawCompare(p-"2:");
-  if(pad->GetPad(1)->GetPrimitive("title")) ((TPaveText*)pad->GetPad(1)->GetPrimitive("title"))->SetTextSize(0.075);
+  DrawCompare(p.GetSubPlot(1));
   TH1* axisparent=GetAxisParent();
-  axisparent->GetYaxis()->SetLabelSize(0.06);
-  axisparent->GetYaxis()->SetTitleSize(0.06);
-  axisparent->GetYaxis()->SetTitleOffset(1.2);
   axisparent->GetXaxis()->SetLabelSize(0);
   axisparent->GetXaxis()->SetTitle("");
+  if(gPad->GetPrimitive("title")){
+    TPaveText* pt=(TPaveText*)gPad->GetPrimitive("title");
+    pt->SetTextSize(0.075);
+    pt->SetY1NDC(pt->GetY1NDC()-0.02);
+    pt->SetY2NDC(pt->GetY2NDC()-0.02);
+    if(p.option.Contains("title++")) pt->SetTextSize(pt->GetTextSize()*1.4);
+    else if(p.option.Contains("title+")) pt->SetTextSize(pt->GetTextSize()*1.2);
+  }
   gPad->Update();
   gPad->Modified();
 
   pad->cd(2);
-  DrawSig(p-"1:"+"noleg");
   gPad->SetPad(0,0,1,0.365);
   gPad->SetTopMargin(0.02);
-  gPad->SetBottomMargin(0.3);
+  gPad->SetBottomMargin(pad->GetBottomMargin()/0.35);
   gPad->SetGridy();
+  DrawSig((p+"noleg").GetSubPlot(2));
   axisparent=GetAxisParent();
-  if(axisparent){
-    axisparent->SetTitle("");
-    axisparent->SetStats(0);
-    axisparent->GetYaxis()->SetLabelSize(0.1);
-    axisparent->GetYaxis()->SetTitleSize(0.12);
-    axisparent->GetYaxis()->SetTitleOffset(0.6);
-    axisparent->GetXaxis()->SetTitleSize(0.12);
-    axisparent->GetXaxis()->SetLabelSize(0.12);
-  }
+  if(axisparent) axisparent->SetTitle("");
   gPad->Update();
   gPad->Modified();
   _depth--;
@@ -1029,38 +1027,34 @@ void Plotter::DrawCompareAndDiff(Plot p){
   TVirtualPad* pad=gPad;
   pad->Divide(1,2);
   pad->cd(1);
-  DrawCompare(p-"2:");
-  if(pad->GetPad(1)->GetPrimitive("title")) ((TPaveText*)pad->GetPad(1)->GetPrimitive("title"))->SetTextSize(0.075);
   gPad->SetPad(0,0.35,1,1);
   gPad->SetBottomMargin(0.02);
   gPad->SetTopMargin(pad->GetTopMargin()/0.65);
+  DrawCompare(p.GetSubPlot(1));
   TH1* axisparent=GetAxisParent();
-  axisparent->GetYaxis()->SetLabelSize(0.06);
-  axisparent->GetYaxis()->SetTitleSize(0.06);
-  axisparent->GetYaxis()->SetTitleOffset(1.2);
   axisparent->GetXaxis()->SetLabelSize(0);
   axisparent->GetXaxis()->SetTitle("");
+  if(gPad->GetPrimitive("title")){
+    TPaveText* pt=(TPaveText*)gPad->GetPrimitive("title");
+    pt->SetTextSize(0.075);
+    pt->SetY1NDC(pt->GetY1NDC()-0.02);
+    pt->SetY2NDC(pt->GetY2NDC()-0.02);
+    if(p.option.Contains("title++")) pt->SetTextSize(pt->GetTextSize()*1.4);
+    else if(p.option.Contains("title+")) pt->SetTextSize(pt->GetTextSize()*1.2);
+  }
   gPad->Update();
   gPad->Modified();
 
   pad->cd(2);
-  DrawDiff(p-"1:"+"noleg");
   gPad->SetPad(0,0,1,0.365);
   gPad->SetTopMargin(0.02);
-  gPad->SetBottomMargin(0.3);
+  gPad->SetBottomMargin(pad->GetBottomMargin()/0.35);
   gPad->SetGridx();gPad->SetGridy();
-
+  DrawDiff((p+"noleg").GetSubPlot(2));
   axisparent=GetAxisParent();
   if(axisparent){
     axisparent->SetTitle("");
-    axisparent->SetStats(0);
-    axisparent->GetYaxis()->SetLabelSize(0.1);
-    axisparent->GetYaxis()->SetTitleSize(0.12);
-    axisparent->GetYaxis()->SetTitleOffset(0.6);
     axisparent->GetYaxis()->SetNdivisions(305);
-    axisparent->GetXaxis()->SetTitle(axisparent->GetTitle());
-    axisparent->GetXaxis()->SetTitleSize(0.12);
-    axisparent->GetXaxis()->SetLabelSize(0.12);
   }
   gPad->Update();
   gPad->Modified();
@@ -1128,7 +1122,6 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
   PInfo("[Plotter::DrawPlot] "+p.name+" "+p.histname+" "+p.option+" "+additional_option);_depth++;
   if(!pdir) pdir=new TDirectory("plotdir","plotdir");
   p.SetOption(additional_option);
-  TCanvas* c=gROOT->MakeDefCanvas();
   p.hists=GetHists(p);
   vector<TH1*> hists=VectorTH1(p.hists);
   if(hists.size()<entries.size()){
@@ -1136,6 +1129,7 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
     _depth--;
     return NULL;
   }
+  TCanvas* c=gROOT->MakeDefCanvas();
   if(p.type==Plot::Type::Compare) DrawCompare(p);
   else if(p.type==Plot::Type::Ratio) DrawRatio(p);
   else if(p.type==Plot::Type::Diff) DrawDiff(p);
@@ -1261,7 +1255,7 @@ TH1* Plotter::GetTH1(TH1* hstack,bool deleteorigin) const{
   PAll("[Plotter::GetTH1(TH1* hstack)]");
   TH1* hist=NULL;
   if(hstack){
-    if(strstr(hstack->ClassName(),"THStack")!=NULL){
+    if(hstack->InheritsFrom("THStack")){
       hist=(TH1*)((THStack*)hstack)->GetHists()->Last()->Clone();
       hist->SetDirectory(pdir);
       hist->SetStats(0);
@@ -1576,7 +1570,7 @@ int Plotter::GetAutoColor() const {
   for(const auto& color:colors){
     bool exist=false;
     for(const auto& entry:entries){
-      if(entry.style.linecolor==color){
+      if(entry.styles[0].linecolor==color){
 	exist=true;
 	break;
       }

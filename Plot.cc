@@ -27,7 +27,7 @@ public:
   vector<vector<TH1*>> hists;
 
   Plot(vector<TString> words);
-  Plot(TString line=""):Plot(Split(line," ")){};
+  Plot(TString line=""):Plot(SplitOptions(line)){};
   ~Plot();
   Plot operator-(const char* opt) const;
   Plot operator+(const char* opt) const;
@@ -135,8 +135,8 @@ void Plot::Print(std::ostream& out) const{
   out<<" </Plot>\n";
 }
 void Plot::RemoveOption(TString option_){
-  vector<TString> options=Split(option," ");
-  vector<TString> options_remove=Split(option_," ");
+  vector<TString> options=SplitOptions(option);
+  vector<TString> options_remove=SplitOptions(option_);
   for(const auto& remove:options_remove){
     if(remove=="type") type=Type::UNDEF;
     else if(remove=="rebin") rebin="";
@@ -166,7 +166,7 @@ void Plot::RemoveOption(TString option_){
       for(int i=0,n=options.size();i<n;i++){
         if(options[i].Contains(TRegexp("^"+remove))){
           options.erase(options.begin()+i);
-          i--;
+          i--;n--;
         }
       }
     }

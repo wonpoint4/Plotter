@@ -480,12 +480,12 @@ void AFBPlotter::SetupSystematics(){
   AddSystematic("selective","selective",Systematic::Type::ENVELOPE,"_selective");
   AddSystematic("efficiencySF","efficiencySF",Systematic::Type::MULTI,"RECOSF IDSF ISOSF triggerSF");
   //AddSystematic("totalsys","totalsys",Systematic::Type::MULTI,0,"RECOSF IDSF ISOSF triggerSF PUreweight prefireweight scale smear alphaS scalevariation pdf nozptcor");
-
   
   AddSystematic("dytheory","theory (DY)",Systematic::Type::MULTI,"dyalphaS dyscale dypdf");
   AddSystematic("tttheory","theory (t#bar{t})",Systematic::Type::MULTI,"ttalphaS ttscale ttpdf");
-  AddSystematic("totalsys","totalsys",Systematic::Type::MULTI,"dytheory tttheory btag_old");
-  AddSystematic("test","totalsys",Systematic::Type::MULTI,"dyscale ttscale btag_old");
+  AddSystematic("totalsys","totalsys",Systematic::Type::MULTI,"btag dytheory tttheory");
+  AddSystematic("test","totalsys",Systematic::Type::MULTI,"btag dyscale ttscale");
+  AddSystematic("test_old","totalsys",Systematic::Type::MULTI,"btag_old dyscale ttscale");
 }
 
 void AFBPlotter::SetupTH4D(){

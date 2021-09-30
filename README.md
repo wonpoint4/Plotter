@@ -15,8 +15,7 @@ General purpose plotter using ROOT histogram
 * main variables
   * title: the title of this sample in plots
   * subs: a vector of sub-samples for Collection type or files for Sample type
-  * style: a plotting style for this sample
-  * sytle_alt: an alternative plotting style for this sample (for systematic uncertainty)
+  * styles: a plotting style for this sample. Index 0 for the nominal and others for the systematics.
 ### Plot
 * Define a plot. It is passed as argument of `Plotter::GetHist` function
 ### Plotter
@@ -79,6 +78,7 @@ You can pass a option to a specific pad using `PADINDEX:OPTION` syntax. ex) `1:l
 * replace:STRING->STRING[:tag] - Modify the histogram name. You can specify sample tag. You can also use regular expression.
 * suffix:STRING[:tag] - Add suffix to histogram name. Same with replace:$->STRING[:tag].
 * sysname:STRING - Draw with systematic uncertainties defined by AddSystematic.
+* sysdetail - Decompose systematic uncertainty.
 * type:INT
     * 0:UNDEF
     * 1:Compare - Draw multiple histograms in entries
