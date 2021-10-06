@@ -27,83 +27,10 @@ public:
   TH1* GetHistAFB(TH1* hist_forward,TH1* hist_backward);
 
   //TCanvas* DrawPlot(TString plotkey,TString option="");
-  map<TString,TString> plot_axisnames;
 
   ClassDef(AFBPlotter,0);
 };
 ClassImp(AFBPlotter);
-/*
-TCanvas* AFBPlotter::DrawPlot(TString plotkey,TString option=""){
-  TCanvas* c=Plotter::DrawPlot(plotkey,option);
-  if(c){
-    Plot plot=plots[plotkey];
-    plot.SetOption(option);
-    for(auto [histname,axisname]:plot_axisnames){
-      if(plot.name.Contains(TRegexp("/[^/]*"+histname))){
-	if(plot.IsMultiPad()){
-	  c->GetPad(2)->cd();
-	}else{
-	  c->cd();
-	}
-	TH1* axisowner=GetAxisParent(gPad);
-	if(axisowner){
-	  if(plot.histname.Contains(TRegexp("^mm[0-9]"))) axisname.ReplaceAll("ll","#mu#mu");
-	  else if(plot.histname.Contains(TRegexp("^ee[0-9]"))) axisname.ReplaceAll("ll","ee");
-	  axisowner->GetXaxis()->SetTitle(axisname);
-	  gPad->Update();
-	  gPad->Modified();
-	}
-      }
-    }
-    if(plot.IsMultiPad()){
-      c->GetPad(1)->cd();
-    }else{
-      c->cd();
-    }
-    
-    TH1* axisowner=GetAxisParent(gPad);
-    if(axisowner){
-      if(plot.name.Contains("AFB")) axisowner->GetYaxis()->SetTitle("A_{FB}"); 
-      else if(plot.option.Contains("norm")) axisowner->GetYaxis()->SetTitle("Normalized");
-      else if(plot.option.Contains("widthweight")) axisowner->GetYaxis()->SetTitle("Events / 1 GeV");
-      //else axisowner->GetYaxis()->SetTitle(Form("Events / %g GeV",axisowner->GetBinWidth(1)));
-      else axisowner->GetYaxis()->SetTitle("Events");
-      
-      if(gPad->GetPrimitive("TPave")){
-	TLegend* leg=(TLegend*)gPad->GetPrimitive("TPave");
-	for(auto obj:*leg->GetListOfPrimitives()){
-	  TLegendEntry* entry=(TLegendEntry*)obj;
-	  TString label=entry->GetLabel();
-	  if(label.Contains("#rightarrowll")){
-	    if(plot.histname.Contains(TRegexp("^mm[0-9]"))) label.ReplaceAll("ll","#mu#mu");
-	    else if(plot.histname.Contains(TRegexp("^ee[0-9]"))) label.ReplaceAll("ll","ee");
-	    entry->SetLabel(label);
-	    break;
-	  }
-	}
-      }
-
-      //axisowner->SetTitle("");
-      TLatex latex;
-      latex.SetTextSize(0.07);
-      latex.SetNDC();
-      if(!(plot.IsMultiPad())) latex.SetTextSize(0.04);
-      //latex.DrawLatex(0.17,0.92,"CMS #bf{#it{Preliminary}}");
-      if(plot.histname.Contains(TRegexp("^[a-z]*2016/"))){
-	//latex.DrawLatex(0.6,0.92,"35.92 fb^{-1} (13 TeV)");
-      }else if(plot.histname.Contains(TRegexp("^[a-z]*2017/"))){
-	//latex.DrawLatex(0.6,0.92,"41.53 fb^{-1} (13 TeV)");
-      }else if(plot.histname.Contains(TRegexp("^[a-z]*2018/"))){
-	//latex.DrawLatex(0.6,0.92,"59.74 fb^{-1} (13 TeV)");
-      }	
-      
-      gPad->Update();
-      gPad->Modified();
-    }
-  }
-  return c;
-}
-*/
 pair<double,double> AFBPlotter::GetRange(TString histname,TString axisname){
   TString rangestring=histname(TRegexp(axisname+"[[-+0-9.]*,[-+0-9.]*]"));
   TString first=rangestring(axisname.Length()+1,rangestring.Index(',')-axisname.Length()-1);
@@ -374,7 +301,7 @@ AFBPlotter::AFBPlotter(TString mode_,TString analyzer_){
   samples["aa"]=Sample("#gamma#gamma#rightarrowll","SAMPLE sim",kYellow+1)+TRegexp("/"+analyzer+"_.*GamGamToLL$");
 
   samples["amc"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/"+analyzer+"_.*DYJets$");
-  samples["amcS20"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/"+analyzer+"_.*DYJets_Summer20$");
+  samples["amcS19"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/"+analyzer+"_.*DYJets_Summer19$");
   samples["amcJet"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/"+analyzer+"_.*DY[0-9]Jets$");
   samples["amcPt"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/"+analyzer+"_.*DYJets_Pt-[0-9]*To[0-9Inf]*$");
   samples["amcM"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/"+analyzer+"_.*DYJets_M-[0-9]*to[0-9Inf]*$");
@@ -405,14 +332,6 @@ AFBPlotter::AFBPlotter(TString mode_,TString analyzer_){
   samples["private_correct"]=(Sample("correct direction",Sample::Type::A,Style(kRed,20))+"private")%"_correct";
   samples["private_0"]=(Sample("PDG sin^{2}#theta",Sample::Type::A,Style(kRed,20))+"private")%"_0";
   */
-  plot_axisnames["dimass"]="m(ll) [GeV]";
-  plot_axisnames["dirap"]="y(ll)";
-  plot_axisnames["dipt"]="p_{T}(ll) [GeV]";
-  plot_axisnames["costhetaCS"]="cos#theta_{CS}";
-  plot_axisnames["AFB(m)"]="m(ll) [GeV]";
-  plot_axisnames["AFB(y)"]="y(ll)";
-  plot_axisnames["AFB(pt)"]="p_{T}(ll) [GeV]";
-
   Setup(mode_);
 }
 AFBPlotter::~AFBPlotter(){}
@@ -441,12 +360,31 @@ int AFBPlotter::Setup(TString mode_){
   
 void AFBPlotter::SetupSystematics(){
   if(Verbosity>VERBOSITY::WARNING)  std::cout<<"[AFBPlotter::SetupSystematics]"<<endl;
-  AddSystematic("RECOSF","RECOSF",Systematic::Type::ENVELOPE,"_RECOSF_up _RECOSF_down","sim");
-  AddSystematic("IDSF","IDSF",Systematic::Type::ENVELOPE,"_IDSF_up _IDSF_down","sim");
-  AddSystematic("ISOSF","ISOSF",Systematic::Type::ENVELOPE,"_ISOSF_up _ISOSF_down","sim");
-  AddSystematic("triggerSF","triggerSF",Systematic::Type::ENVELOPE,"_triggerSF_up _triggerSF_down","sim");
-  AddSystematic("PUreweight","PUreweight",Systematic::Type::ENVELOPE,"_PUreweight_up _PUreweight_down","sim");
-  AddSystematic("prefireweight","prefireweight",Systematic::Type::ENVELOPE,"_prefireweight_up _prefireweight_down","sim");
+  AddSystematic("efficiencySF_stat","efficiencySF_stat",Systematic::Type::GAUSSIAN,FormRange("_efficiencySF_stat%d",Range(20)),"sim");
+  AddSystematic("electronRECOSF_sys1","electronRECOSF_sys1",Systematic::Type::ENVELOPE,"_electronRECOSF_s1_m0","sim");
+  AddSystematic("electronRECOSF_sys2","electronRECOSF_sys2",Systematic::Type::ENVELOPE,"_electronRECOSF_s2_m0","sim");
+  AddSystematic("electronRECOSF_sys3","electronRECOSF_sys3",Systematic::Type::ENVELOPE,"_electronRECOSF_s3_m0","sim");
+  AddSystematic("electronRECOSF_sys4","electronRECOSF_sys4",Systematic::Type::ENVELOPE,"_electronRECOSF_s4_m0","sim");
+  AddSystematic("electronRECOSF_sys","electronRECOSF_sys",Systematic::Type::MULTI,"electronRECOSF_sys1 electronRECOSF_sys2 electronRECOSF_sys3 electronRECOSF_sys4");
+  AddSystematic("electronIDSF_sys1","electronIDSF_sys1",Systematic::Type::ENVELOPE,"_electronIDSF_s1_m0","sim");
+  AddSystematic("electronIDSF_sys2","electronIDSF_sys2",Systematic::Type::ENVELOPE,"_electronIDSF_s2_m0","sim");
+  AddSystematic("electronIDSF_sys3","electronIDSF_sys3",Systematic::Type::ENVELOPE,"_electronIDSF_s3_m0","sim");
+  AddSystematic("electronIDSF_sys4","electronIDSF_sys4",Systematic::Type::ENVELOPE,"_electronIDSF_s4_m0","sim");
+  AddSystematic("electronIDSF_sys","electronIDSF_sys",Systematic::Type::MULTI,"electronIDSF_sys1 electronIDSF_sys2 electronIDSF_sys3 electronIDSF_sys4");
+  AddSystematic("muonIDSF_sys1","muonIDSF_sys1",Systematic::Type::ENVELOPE,"_muonIDSF_s1_m0 _muonIDSF_s1_m1","sim");
+  AddSystematic("muonIDSF_sys2","muonIDSF_sys2",Systematic::Type::ENVELOPE,"_muonIDSF_s2_m0 _muonIDSF_s2_m1","sim");
+  AddSystematic("muonIDSF_sys3","muonIDSF_sys3",Systematic::Type::ENVELOPE,"_muonIDSF_s3_m0 _muonIDSF_s3_m1","sim");
+  AddSystematic("muonIDSF_sys4","muonIDSF_sys4",Systematic::Type::ENVELOPE,"_muonIDSF_s4_m0 _muonIDSF_s4_m1","sim");
+  AddSystematic("muonIDSF_sys","muonIDSF_sys",Systematic::Type::MULTI,"muonIDSF_sys1 muonIDSF_sys2 muonIDSF_sys3 muonIDSF_sys4");
+  AddSystematic("triggerSF_sys1","triggerSF_sys1",Systematic::Type::ENVELOPE,"_triggerSF_s1_m0 _triggerSF_s1_m1","sim");
+  AddSystematic("triggerSF_sys2","triggerSF_sys2",Systematic::Type::ENVELOPE,"_triggerSF_s2_m0 _triggerSF_s2_m1","sim");
+  AddSystematic("triggerSF_sys3","triggerSF_sys3",Systematic::Type::ENVELOPE,"_triggerSF_s3_m0 _triggerSF_s3_m1","sim");
+  AddSystematic("triggerSF_sys4","triggerSF_sys4",Systematic::Type::ENVELOPE,"_triggerSF_s4_m0 _triggerSF_s4_m1","sim");
+  AddSystematic("triggerSF_sys","triggerSF_sys",Systematic::Type::MULTI,"triggerSF_sys1 triggerSF_sys2 triggerSF_sys3 triggerSF_sys4");
+  AddSystematic("efficiencySF","efficiencySF",Systematic::Type::MULTI,"efficiencySF_stat electronRECOSF_sys electronIDSF_sys muonIDSF_sys triggerSF_sys");
+  AddSystematic("PUweight","PUweight",Systematic::Type::ENVELOPE,"_PUweight_up _PUweight_down","sim");
+  AddSystematic("prefireweight","prefiring unc.",Systematic::Type::ENVELOPE,"_prefireweight_up _prefireweight_down","sim");
+  AddSystematic("CFSF","charge-flip",Systematic::Type::ENVELOPE,"_CFSF_up _CFSF_down","sim");
   AddSystematic("btagh","b tagging (heavy)",Systematic::Type::ENVELOPE,"_btagSF_hup _btagSF_hdown","sim");
   AddSystematic("btagl","b tagging (light)",Systematic::Type::ENVELOPE,"_btagSF_lup _btagSF_ldown","sim");
   AddSystematic("btag_old","b tagging",Systematic::Type::ENVELOPE,"_btagSF_up _btagSF_down","sim");
@@ -460,32 +398,29 @@ void AFBPlotter::SetupSystematics(){
 
   AddSystematic("dyscale","#mu_{R}/#mu_{F}",Systematic::Type::ENVELOPE,"_scalevariation0 _scalevariation1 _scalevariation2 _scalevariation3 _scalevariation4 _scalevariation6 _scalevariation8","dy");
   AddSystematic("dyalphaS","alphaS",Systematic::Type::ENVELOPE,"_alphaS_up _alphaS_down","dy");
-  vector<TString> prefixes;
-  for(int i=0;i<100;i++) prefixes.push_back(Form("_pdf%d",i));
-  AddSystematic("dypdf","PDF",Systematic::Type::HESSIAN,prefixes,"dy");
+  AddSystematic("dypdf","PDF",Systematic::Type::HESSIAN,FormRange("_pdf%d",Range(100)),"dy");
 
   AddSystematic("ttscale","#mu_{R}/#mu_{F}",Systematic::Type::ENVELOPE,"_scalevariation0 _scalevariation1 _scalevariation2 _scalevariation3 _scalevariation4 _scalevariation6 _scalevariation8","tt");
   AddSystematic("ttalphaS","alphaS",Systematic::Type::ENVELOPE,"_alphaS_up _alphaS_down","tt");
-  AddSystematic("ttpdf","PDF",Systematic::Type::HESSIAN,prefixes,"tt");
+  AddSystematic("ttpdf","PDF",Systematic::Type::HESSIAN,FormRange("_pdf%d",Range(100)),"tt");
 
   AddSystematic("noRECOSF","noRECOSF",Systematic::Type::ENVELOPE,"_noRECOSF","sim");
   AddSystematic("noIDSF","noIDSF",Systematic::Type::ENVELOPE,"_noIDSF","sim");
   AddSystematic("noISOSF","noISOSF",Systematic::Type::ENVELOPE,"_noISOSF","sim");
   AddSystematic("notriggerSF","notriggerSF",Systematic::Type::ENVELOPE,"_notriggerSF","sim");
-  AddSystematic("noPUreweight","noPUreweight",Systematic::Type::ENVELOPE,"_noPUreweight","sim");
+  AddSystematic("noPUweight","noPUweight",Systematic::Type::ENVELOPE,"_noPUweight","sim");
   AddSystematic("noprefireweight","noprefireweight",Systematic::Type::ENVELOPE,"_noprefireweight","sim");
   AddSystematic("nozptcor","nozptcor",Systematic::Type::ENVELOPE,"_nozptcor","dy");
   AddSystematic("noefficiencySF","noefficiencySF",Systematic::Type::ENVELOPE,"_noefficiencySF","sim");
   AddSystematic("IDSF_POG","IDSF_POG",Systematic::Type::ENVELOPE,"_IDSF_POG","sim");
   AddSystematic("selective","selective",Systematic::Type::ENVELOPE,"_selective");
-  AddSystematic("efficiencySF","efficiencySF",Systematic::Type::MULTI,"RECOSF IDSF ISOSF triggerSF");
-  //AddSystematic("totalsys","totalsys",Systematic::Type::MULTI,0,"RECOSF IDSF ISOSF triggerSF PUreweight prefireweight scale smear alphaS scalevariation pdf nozptcor");
-  
+  //AddSystematic("totalsys","totalsys",Systematic::Type::MULTI,0,"RECOSF IDSF ISOSF triggerSF PUweight prefireweight scale smear alphaS scalevariation pdf nozptcor");
+   
+  AddSystematic("sys","syst. unc.",Systematic::Type::MULTI,"PUweight prefireweight btag CFSF efficiencySF");
   AddSystematic("dytheory","theory (DY)",Systematic::Type::MULTI,"dyalphaS dyscale dypdf");
   AddSystematic("tttheory","theory (t#bar{t})",Systematic::Type::MULTI,"ttalphaS ttscale ttpdf");
-  AddSystematic("totalsys","totalsys",Systematic::Type::MULTI,"btag dytheory tttheory");
-  AddSystematic("test","totalsys",Systematic::Type::MULTI,"btag dyscale ttscale");
-  AddSystematic("test_old","totalsys",Systematic::Type::MULTI,"btag_old dyscale ttscale");
+  AddSystematic("totalsys","totalsys",Systematic::Type::MULTI,"sys dytheory tttheory");
+  AddSystematic("test","totalsys",Systematic::Type::MULTI,"sys dyscale ttscale");
 }
 
 void AFBPlotter::SetupTH4D(){

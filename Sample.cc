@@ -163,9 +163,10 @@ void Sample::Add(TRegexp regexp,double weight,TString hprefix,TString suffix){
 }
 void Sample::ApplyStyle(TH1* hist,int index) const {
   PAll("[Sample::ApplyStyle(TH1* hist,int index=0)]");
-  if(index<0) index=0;
-  if(index>=styles.size()) index=styles.size()-1;
-  styles[index].Apply(hist);
+  int i=index;
+  if(i<0) i=0;
+  if(i>=styles.size()) i=styles.size()-1;
+  styles[i].Apply(hist);
 
   if(hist&&index==0){
     hist->SetName(title);

@@ -80,6 +80,7 @@ You can pass a option to a specific pad using `PADINDEX:OPTION` syntax. ex) `1:l
 * suffix:STRING[:tag] - Add suffix to histogram name. Same with replace:$->STRING[:tag].
 * sysname:STRING - Draw with systematic uncertainties defined by AddSystematic.
 * sysdetail - Decompose systematic uncertainty.
+* sysleg - Draw legend for systematic uncertainties.
 * type:INT
     * 0:UNDEF
     * 1:Compare - Draw multiple histograms in entries

@@ -97,6 +97,7 @@ public:
   void WidthWeight(vector<TH1*> hists);
   bool IsEntry(const Sample& sample);
   static TLegend* DrawLegend(const Plot& p);
+  static TLegend* DrawLegendSys(const Plot& p);
   
   //Plot
   set<TString> GetHistKeys(TDirectory* dir,TRegexp regexp=".*");
@@ -183,7 +184,7 @@ void Plotter::AddEntry(TString key){
   TPRegexp("([+-])").Substitute(key," $1","g");
   Sample entry;
   if(key.BeginsWith("^")){
-    entry=Sample("simulation","STACK",Style(kRed,-1,3001,"e2"),Style(kGreen,-1,3006,"e2"),Style(kBlue,-1,3005,"e2"),Style(kMagenta,-1,3004,"e2"));
+    entry=Sample("simulation","STACK",Style(kRed,-1,3001,"e2"),Style(kGreen,-1,3017,"e2"),Style(kBlue,-1,3017,"e2"),Style(kRed,-1,3017,"e2"));
     key=key(1,key.Length()-1);
   }else entry=Sample("simulation","SUM");
   vector<TString> sample_keys=Split(key," ");
@@ -501,11 +502,11 @@ vector<TH1*> Plotter::GetHistSys(const Sample& sample,const Plot& p){
 	  }else{
 	    vector<TH1*> this_histsys=GetHistSys(sample,p+("sysname:"+this_key)-"sysdetail"+"notaddsys");
 	    if(this_histsys.size()==2){
-	      this_histsys.at(1)->SetName(this_key);
-	      this_histsys.at(1)->SetTitle(systematics[this_key].title);
+	      //this_histsys.at(1)->SetName(this_key);
+	      //this_histsys.at(1)->SetTitle(systematics[this_key].title);
+	      this_histsys.at(1)->SetName(systematics[this_key].title);
 	      syss.push_back(this_histsys.at(1));
-	    }
-	    else PError("[Plotter::GetHistSys] this_histsys.size() != 2");
+	    }else if(this_histsys.size()>2) PError("[Plotter::GetHistSys] this_histsys.size() > 2");
 	  }
 	}
 	if(syss.size()>0){
@@ -521,13 +522,13 @@ vector<TH1*> Plotter::GetHistSys(const Sample& sample,const Plot& p){
 	      AddError(totalsys,syss.at(i));
 	      delete syss.at(i);
 	    }
-	    totalsys->SetName(p.sysname);
-	    totalsys->SetTitle(systematic.title);
+	    totalsys->SetName(systematic.title);
+	    //totalsys->SetTitle(systematic.title);
 	    if(!p.option.Contains("notaddsys")) AddError(totalsys,hists.at(0));
 	    hists.push_back(totalsys);
 	  }
 	}
-      }else{
+      }else if(sample.HasTag(systematic.tag)){
 	PDebug("[Plotter::GetHistSys] sysname='"+p.sysname+"' systype='"+systematic.GetTypeString()+"'");
 	vector<TH1*> variations;
 	for(const auto& replace:systematic.replaces){
@@ -564,6 +565,7 @@ vector<TH1*> Plotter::GetHistSys(const Sample& sample,const Plot& p){
 	  }
 	  if(histsys){
 	    sample.ApplyStyle(histsys,true);
+	    histsys->SetName(systematic.title);
 	    if(!p.option.Contains("notaddsys")) AddError(histsys,hists.at(0));
 	    hists.push_back(histsys);
 	  }
@@ -779,6 +781,7 @@ void Plotter::DrawCompare(Plot p){
 
   TLegend* legend=NULL;
   if(!p.option.Contains("noleg")) DrawLegend(p);
+  if(p.option.Contains("sysleg")) DrawLegendSys(p);
 
   if(p.option.Contains("logx")){
     gPad->SetLogx();
@@ -806,6 +809,7 @@ void Plotter::DrawCompare(Plot p){
   }
   axisparent->GetXaxis()->SetTitle(p.xtitle);
   axisparent->GetYaxis()->SetTitle(p.ytitle); 
+  axisparent->SetTitle(p.title);
   gPad->SetFillStyle(0);
   gPad->RedrawAxis();
   gPad->Update();
@@ -1193,7 +1197,7 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
     }else if(p.histname.Contains("2018/")||p.era=="2018"){
       latex.DrawLatex(0.69,0.91,"59.8 fb^{-1} (13 TeV)");
     }else if(p.histname.Contains("201[6-8]/")||p.histname.Contains("201[678ab]+/")||p.histname.Contains("201[6-8][ab]?/")||p.histname.Contains("201[678][ab]?/")||p.era=="Run2"){
-      latex.DrawLatex(0.69,0.91,"137 fb^{-1} (13 TeV)");      
+      latex.DrawLatex(0.69,0.91,"138 fb^{-1} (13 TeV)");      
     }
     latex.SetTextSize(0.035);
     latex.SetTextColor(2);
@@ -1328,14 +1332,15 @@ pair<double,double> Plotter::GetMinMax(const vector<TH1*>& hists,TString option)
   for(auto hist:hists){
     if(hist){
       if(hist->InheritsFrom("THStack")) hist=GetTH1(hist);
-      double this_maximum=hist->GetBinContent(hist->GetMaximumBin());
-      double this_minimum=hist->GetBinContent(hist->GetMinimumBin());
-      if(!option.Contains("pos")){
-	if(maximum<this_maximum) maximum=this_maximum;
-	if(minimum>this_minimum) minimum=this_minimum;
-      }else{
-	if(maximum<this_maximum && this_maximum>0) maximum=this_maximum;
-	if(minimum>this_minimum && this_minimum>0) minimum=this_minimum;
+      for(int i=hist->GetXaxis()->GetFirst(),n=hist->GetXaxis()->GetLast()+1;i<n;i++){
+	double content=hist->GetBinContent(i);
+	if(!option.Contains("pos")){
+	  if(maximum<content) maximum=content;
+	  if(minimum>content) minimum=content;
+	}else{
+	  if(maximum<content && content>0) maximum=content;
+	  if(minimum>content && content>0) minimum=content;
+	}
       }	
     }
   }
@@ -1504,6 +1509,41 @@ TLegend* Plotter::DrawLegend(const Plot& p){
 
   TLegend* legend=new TLegend(coordinates[0],coordinates[1],coordinates[2],coordinates[3]);
   for(const auto& hist:hists) legend->AddEntry(hist,hist->GetName());
+  legend->SetBorderSize(0);
+  pad->cd();
+  legend->Draw();
+  return legend;
+}
+TLegend* Plotter::DrawLegendSys(const Plot& p){
+  PAll("[Plotter::DrawLegendSys(const Plot& p)]");
+  vector<pair<TString,TH1*>> hists;
+  for(const auto& this_hists:p.hists){
+    for(int i=0,n=this_hists.size();i<n;i++){
+      TH1* hist=this_hists.at(i);
+      if(hist){
+	if(i==0) hists.push_back(make_pair(TString()+hist->GetName()+" stat.",hist));
+	else hists.push_back(make_pair(TString()+"#oplus "+hist->GetName(),hist));
+      }
+    }
+  }
+  TVirtualPad* pad=gPad;
+  TCanvas* c=pad->GetCanvas();
+  double maxwidth=0;
+  double maxheight=0;
+  c->cd();
+  for(const auto& [title,hist]:hists){
+    TLatex latex(-1,-1,title);
+    latex.SetTextSize(0.04);
+    UInt_t w,h;
+    latex.GetBoundingBox(w,h);
+    if(1.0*w/c->GetWw()>maxwidth) maxwidth=1.0*w/c->GetWw();
+    if(1.0*h/c->GetWh()>maxheight) maxheight=1.0*h/c->GetWh();
+  }
+  double height=maxheight/pad->GetHNDC();
+
+  TLegend* legend=new TLegend(pad->GetLeftMargin()+0.01,1-pad->GetTopMargin()-0.01,1-pad->GetRightMargin()-0.01,1-pad->GetTopMargin()-0.01-height);
+  legend->SetNColumns(hists.size());
+  for(const auto& [title,hist]:hists) legend->AddEntry(hist,title);
   legend->SetBorderSize(0);
   pad->cd();
   legend->Draw();
