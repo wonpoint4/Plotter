@@ -1185,22 +1185,43 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
     TLatex latex;
     latex.SetTextSize(0.035);
     latex.SetNDC();
+    latex.SetTextAlign(11);
     latex.DrawLatex(0.16,0.91,"CMS #bf{#it{Preliminary}}");
-    if(p.histname.Contains("2016a/")||p.era=="2016preVFP"){
-      latex.DrawLatex(0.69,0.91,"19.5 fb^{-1} (13 TeV)");
-    }else if(p.histname.Contains("2016b/")||p.era=="2016postVFP"){
-      latex.DrawLatex(0.69,0.91,"16.8 fb^{-1} (13 TeV)");
-    }else if(p.histname.Contains("2016[ab]/")||p.era=="2016"){
-      latex.DrawLatex(0.69,0.91,"36.3 fb^{-1} (13 TeV)");
-    }else if(p.histname.Contains("2017/")||p.era=="2017"){
-      latex.DrawLatex(0.69,0.91,"41.5 fb^{-1} (13 TeV)");
-    }else if(p.histname.Contains("2018/")||p.era=="2018"){
-      latex.DrawLatex(0.69,0.91,"59.8 fb^{-1} (13 TeV)");
-    }else if(p.histname.Contains("201[6-8]/")||p.histname.Contains("201[678ab]+/")||p.histname.Contains("201[6-8][ab]?/")||p.histname.Contains("201[678][ab]?/")||p.era=="Run2"){
-      latex.DrawLatex(0.69,0.91,"138 fb^{-1} (13 TeV)");      
+    if(!p.option.Contains("nolumi")){
+      latex.SetTextAlign(31);
+      if(p.histname.Contains("2016a/")||p.era=="2016preVFP"){
+	latex.DrawLatex(0.9,0.91,"19.5 fb^{-1} (13 TeV)");
+      }else if(p.histname.Contains("2016b/")||p.era=="2016postVFP"){
+	latex.DrawLatex(0.9,0.91,"16.8 fb^{-1} (13 TeV)");
+      }else if(p.histname.Contains("2016[ab]/")||p.era=="2016"){
+	latex.DrawLatex(0.9,0.91,"36.3 fb^{-1} (13 TeV)");
+      }else if(p.histname.Contains("2017/")||p.era=="2017"){
+	latex.DrawLatex(0.9,0.91,"41.5 fb^{-1} (13 TeV)");
+      }else if(p.histname.Contains("2018/")||p.era=="2018"){
+	latex.DrawLatex(0.9,0.91,"59.8 fb^{-1} (13 TeV)");
+      }else if(p.histname.Contains("201[6-8]/")||p.histname.Contains("201[678ab]+/")||p.histname.Contains("201[6-8][ab]?/")||p.histname.Contains("201[678][ab]?/")||p.era=="Run2"){
+	latex.DrawLatex(0.9,0.91,"138 fb^{-1} (13 TeV)");      
+      }
+    }
+    if(!p.option.Contains("noera")){
+      latex.SetTextAlign(31);
+      if(p.histname.Contains("2016a/")||p.era=="2016preVFP"){
+	latex.DrawLatex(0.9,0.95,"Run 2016preVFP");
+      }else if(p.histname.Contains("2016b/")||p.era=="2016postVFP"){
+	latex.DrawLatex(0.9,0.95,"Run 2016postVFP");
+      }else if(p.histname.Contains("2016[ab]/")||p.era=="2016"){
+	latex.DrawLatex(0.9,0.95,"Run 2016");
+      }else if(p.histname.Contains("2017/")||p.era=="2017"){
+	latex.DrawLatex(0.9,0.95,"Run 2017");
+      }else if(p.histname.Contains("2018/")||p.era=="2018"){
+	latex.DrawLatex(0.9,0.95,"Run 2018");
+      }else if(p.histname.Contains("201[6-8]/")||p.histname.Contains("201[678ab]+/")||p.histname.Contains("201[6-8][ab]?/")||p.histname.Contains("201[678][ab]?/")||p.era=="Run2"){
+	latex.DrawLatex(0.9,0.95,"Run II");
+      }
     }
     latex.SetTextSize(0.035);
     latex.SetTextColor(2);
+    latex.SetTextAlign(11);
     latex.DrawLatex(0.38,0.91,"#it{Working in progress}");
   }
   c->Update();

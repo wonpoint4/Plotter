@@ -1,9 +1,9 @@
 #ifndef __AFBPLOTTER_CC__
 #define __AFBPLOTTER_CC__
 #include"Plotter.cc"
-#if __has_include("TH4D.h")
-#include "TH4D.h"
-#endif
+//#if __has_include("TH4D.h")
+//#include "TH4D.h"
+//#endif
 class AFBPlotter:public Plotter{
 public:
   void SetupSystematics();
@@ -262,8 +262,9 @@ TH1* AFBPlotter::GetHistAFB(TH1* hist_forward,TH1* hist_backward){
 
 AFBPlotter::AFBPlotter(TString mode_,TString analyzer_){
   analyzer=analyzer_;
+  analyzer.ReplaceAll("_backup","");
   SetupTH4D();
-  ScanFiles(TString()+getenv("SKFlatOutputDir")+getenv("SKFlatV")+"/"+analyzer+"/");
+  ScanFiles(TString()+getenv("SKFlatOutputDir")+getenv("SKFlatV")+"/"+analyzer_+"/");
   
   samples["data"]=Sample("data","SAMPLE data",kBlack,20)+TRegexp("/DATA/"+analyzer+"_SkimTree_Dilepton_DoubleMuon_[A-Z]")+TRegexp("/DATA/"+analyzer+"_SkimTree_Dilepton_SingleMuon_[A-Z]")+TRegexp("/DATA/"+analyzer+"_SkimTree_Dilepton_SingleElectron_[A-Z]")+TRegexp("/DATA/"+analyzer+"_SkimTree_Dilepton_DoubleEG_[A-Z]")+TRegexp("/DATA/"+analyzer+"_SkimTree_Dilepton_EGamma_[A-Z]");
   samples["mm2016"]=Sample("data (#mu#mu2016a)","SAMPLE data mm 2016a",kBlack,20)+TRegexp("2016preVFP.*/DATA/"+analyzer+"_SkimTree_Dilepton_DoubleMuon_[A-Z]");
@@ -324,6 +325,9 @@ AFBPlotter::AFBPlotter(TString mode_,TString analyzer_){
   for(auto& sub:samples["amcPt_stack"].subs) sub.title=sub.title(TRegexp("Pt-[0-9]*To[0-9Inf]*"));
   samples["amcM_stack"]=Sample("DY M-binned","STACK",kBlue)+TRegexp("/"+analyzer+"_.*DYJets_M-[0-9]*to[0-9Inf]*$");
   for(auto& sub:samples["amcM_stack"].subs) sub.title=sub.title(TRegexp("M-[0-9]*to[0-9Inf]*"));
+
+  samples["miel_nodata"]=Sample("SM Prediction","SUM",Style(kRed,-1,1001,"e2"),Style(kGreen,-1,1001,"e2"),Style(kBlue,-1,1001,"e2"),Style(kMagenta,-1,1001,"e2"))+"mi"+"tau_mi"+"vv"+"wjets"+"tttw"+"ss_mi";
+  samples["mimu_nodata"]=Sample("SM Prediction","SUM",Style(kRed,-1,1001,"e2"),Style(kGreen,-1,1001,"e2"),Style(kBlue,-1,1001,"e2"),Style(kMagenta,-1,1001,"e2"))+"mi"+"tau_mi"+"vv"+"wjets"+"tttw"+1.7*samples["ss_mi"];
 
   /*
   samples["private"]=Sample("aMC@NLO private",Sample::Type::A,Style(kBlue,20));
@@ -419,8 +423,8 @@ void AFBPlotter::SetupSystematics(){
   AddSystematic("sys","syst. unc.",Systematic::Type::MULTI,"PUweight prefireweight btag CFSF efficiencySF");
   AddSystematic("dytheory","theory (DY)",Systematic::Type::MULTI,"dyalphaS dyscale dypdf");
   AddSystematic("tttheory","theory (t#bar{t})",Systematic::Type::MULTI,"ttalphaS ttscale ttpdf");
-  AddSystematic("totalsys","totalsys",Systematic::Type::MULTI,"sys dytheory tttheory");
-  AddSystematic("test","totalsys",Systematic::Type::MULTI,"sys dyscale ttscale");
+  AddSystematic("totalsys","syst. unc.",Systematic::Type::MULTI,"sys dytheory tttheory");
+  AddSystematic("test","totalsys",Systematic::Type::MULTI,"btag dyscale ttscale");
 }
 
 void AFBPlotter::SetupTH4D(){
