@@ -68,7 +68,9 @@ You can pass a option to a specific pad using `PADINDEX:OPTION` syntax. ex) `1:l
 * logy - log scale y-axis
 * norm - Normalized
 * noleg - Do not draw a legend
-* preliminary - Draw "CMS preliminary working in progress" and lumi info
+* preliminary - Draw "CMS preliminary working in progress" and lumi and era info
+* noera - In the preliminary option, do not draw era info
+* nolumi - In the preliminary option, do not draw lumi info
 * TLleg - top-left legend
 * TMleg - top-middle legend
 * BLleg - bottom-left legend
