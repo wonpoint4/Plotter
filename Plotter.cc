@@ -283,6 +283,7 @@ TH1* Plotter::GetHist(const Sample& sample,Plot plot,TString additional_option){
     RebinXminXmax(hist,plot);
     if(plot.option.Contains("widthweight")) WidthWeight(hist);
     //if(plot.option.Contains("norm")) Normalize(hist);
+    if(plot.option.Contains("thickline")) hist->SetLineWidth(2);
   }
   _depth--;
   return hist;
@@ -725,7 +726,8 @@ TCanvas* Plotter::GetRatio(vector<tuple<TH1*,TH1*>> histpairs,Plot plot){
   if(axisowner){
     if(plot.ytitle=="") axisowner->GetYaxis()->SetTitle("Ratio");
     if(plot.option.Contains("widewidey")){
-      axisowner->GetYaxis()->SetRangeUser(0.01,1.99);
+      //axisowner->GetYaxis()->SetRangeUser(0.01,1.99);
+      axisowner->GetYaxis()->SetRangeUser(-1.01,3.01);
       axisowner->GetYaxis()->SetNdivisions(506);
     }else if(plot.option.Contains("widey")){
       axisowner->GetYaxis()->SetRangeUser(0.501,1.499);
