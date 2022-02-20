@@ -447,6 +447,12 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,const Plot& pp,TString addi
   }
   if(hist){
     sample.ApplyStyle(hist);
+    if(hist->InheritsFrom("TH1")&&p.option.Contains("nostat")){
+      for(int i=0;i<hist->GetNcells();i++){
+	hist->SetBinError(i,0);
+      }
+      hist->SetBinError(hist->GetNcells()/2,1e-10);
+    }
   }
   _depth--;
   return hist;
@@ -1016,7 +1022,10 @@ void Plotter::DrawCompareAndRatio(Plot p){
   gPad->SetGridx();gPad->SetGridy();
   DrawRatio((p+"noleg").GetSubPlot(2));
   axisparent=GetAxisParent();
-  if(axisparent) axisparent->SetTitle("");
+  if(axisparent){
+    axisparent->SetTitle("");
+    axisparent->GetYaxis()->SetNdivisions(505);
+  }
   gPad->Update();
   gPad->Modified();
   _depth--;

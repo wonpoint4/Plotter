@@ -71,6 +71,7 @@ You can pass a option to a specific pad using `PADINDEX:OPTION` syntax. ex) `1:l
 * preliminary - Draw "CMS preliminary working in progress" and lumi and era info
 * noera - In the preliminary option, do not draw era info
 * nolumi - In the preliminary option, do not draw lumi info
+* nostat - set statistical errro to 0
 * TLleg - top-left legend
 * TMleg - top-middle legend
 * BLleg - bottom-left legend
