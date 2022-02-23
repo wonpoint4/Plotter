@@ -1,45 +1,42 @@
 #include"Plotter.cc"
 #ifndef __EFFICIENCYPLOTTER_CC__
 #define __EFFICIENCYPLOTTER_CC__
-class EfficiencyPlotter:public Plotter{
+class tWAnalyzerPlotter:public Plotter{
 public:
   void SetupSystematics();
   int Setup(TString mode_);
   TString mode;
-  EfficiencyPlotter(TString mode_="data ^mi+tau_mi+vv+wjets+tttw+ss_mi");
+  tWAnalyzerPlotter(TString mode_="data ^tw+ttlj+ttll+wjets+mi+vv");
 };
-EfficiencyPlotter::EfficiencyPlotter(TString mode_){
-  ScanFiles((TString)getenv("SKFlatOutputDir")+getenv("SKFlatV")+"/EfficiencyValidation/");
+tWAnalyzerPlotter::tWAnalyzerPlotter(TString mode_){
+  ScanFiles((TString)getenv("SKFlatOutputDir")+getenv("SKFlatV")+"/tWAnalyzer/");
 
-  samples["muon"]=Sample("data (#mu#mu)","SAMPLE data",kBlack,20)+TRegexp("/DATA/EfficiencyValidation_SkimTree_Dilepton_DoubleMuon_[A-Z]")+TRegexp("/DATA/EfficiencyValidation_SkimTree_Dilepton_SingleMuon_[A-Z]");
-  samples["electron"]=Sample("data (ee)","SAMPLE data",kBlack,20)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_.*EG.*_[A-Z]")+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_SingleElectron_[A-Z]");
+  samples["muon"]=Sample("data (#mu#mu)","SAMPLE data",kBlack,20)+TRegexp("/DATA/tWAnalyzer_DoubleMuon_[A-Z]")+TRegexp("/DATA/tWAnalyzer_SingleMuon_[A-Z]");
+  samples["electron"]=Sample("data (ee)","SAMPLE data",kBlack,20)+TRegexp("/tWAnalyzer_.*EG.*_[A-Z]")+TRegexp("/tWAnalyzer_SingleElectron_[A-Z]");
   samples["data"]=Sample("data","SAMPLE data",kBlack,20)+"muon"+"electron";
-  samples["amc"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJets$");
-  samples["tau_amc"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau","SAMPLE sim",kGreen)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJets$"));
-  samples["amcS20"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJets_Summer20$");
-  samples["tau_amcS20"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau","SAMPLE sim",kGreen)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJets_Summer20$"));
-  samples["mi"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJetsTo.*MiNNLO$");
-  samples["tau_mi"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau","SAMPLE sim",kGreen)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJetsTo.*MiNNLO$"));
-  samples["mg"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJets_MG$");
-  samples["tau_mg"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau","SAMPLE sim",kGreen)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJets_MG$"));
-  samples["vv"]=Sample("Diboson","SAMPLE sim",kBlue)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_[W-Z][W-Z]_pythia$");
-  samples["wjets"]=Sample("W","SAMPLE sim",kYellow)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_WJets_MG$");
-  samples["tt"]=Sample("t#bar{t}","SAMPLE sim",kMagenta)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_TTLL_powheg$");
-  samples["tw"]=Sample("t#bar{t}","SAMPLE sim",kMagenta+10)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_SingleTop_tW_.*top_NoFullyHad$");
-  samples["tttw"]=Sample("t#bar{t}, tW","SUM",kMagenta)+"tt"+"tw";
-  samples["ss"]="ss_"%(Sample("QCD multi-jet","SUM",kBlue-5)+"data"-"amc"-"tau_amc"-"vv"-"wjets"-"tttw");
-  samples["ss_mi"]="ss_"%(Sample("QCD multi-jet","SUM",kBlue-5)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"tttw");
+  samples["amc"]=Sample("DYJets","SAMPLE sim dy",kCyan)+TRegexp("/tWAnalyzer_DYJets$");
+  samples["mi"]=Sample("DYJets","SAMPLE sim dy",kCyan)+TRegexp("/tWAnalyzer_DYJetsTo.*MiNNLO$");
+  samples["mg"]=Sample("DYJets","SAMPLE sim dy",kCyan)+TRegexp("/tWAnalyzer_DYJets_MG$");
+  samples["vv"]=Sample("Diboson","SAMPLE sim",kMagenta)+TRegexp("/tWAnalyzer_[W-Z][W-Z]_pythia$");
+  samples["wjets"]=Sample("WJets","SAMPLE sim",kYellow)+TRegexp("/tWAnalyzer_WJets_MG$");
+  //samples["tt"]=Sample("t#bar{t}","SAMPLE sim",kMagenta)+TRegexp("/tWAnalyzer_TTLL_powheg$");
+  samples["tw"]=Sample("tW","SAMPLE sim",kGreen+2)+TRegexp("/tWAnalyzer_SingleTop_tW_.*top_NoFullyHad$");
+  samples["ttll"]=Sample("TTLL","SAMPLE sim",kBlue)+TRegexp("/tWAnalyzer_TTLL_powheg$");
+  samples["ttlj"]=Sample("TTLJ","SAMPLE sim",kRed)+TRegexp("/tWAnalyzer_TTLJ_powheg$");
+  //samples["tttw"]=Sample("t#bar{t}, tW","SUM",kMagenta)+"tt"+"tw";
+  //samples["ss"]="ss_"%(Sample("QCD multi-jet","SUM",kBlue-5)+"data"-"amc"-"tau_amc"-"vv"-"wjets"-"tttw");
+  //samples["ss_mi"]="ss_"%(Sample("QCD multi-jet","SUM",kBlue-5)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"tttw");
 
-  samples["sim_stack"]=Sample("sim","STACK",Style(kRed,-1,3001,"e2"),Style(kCyan,-1,3001,"e2"))+"amc"+"tau_amc"+"vv"+"wjets"+"tttw";
-  samples["sim"]=Sample("simulation","SUM",Style(kRed,22,3001,"e2"),Style(kCyan,-1,3001,"e2"))+"amc"+"tau_amc"+"vv"+"wjets"+"tttw";
-  samples["sim_noSF"]=(Sample("w/o efficiency SF","SUM",kBlue)+"amc"+"tau_amc"+"vv"+"wjets"+"tttw")%"_noefficiencySF";
+  //samples["sim_stack"]=Sample("sim","STACK",Style(kRed,-1,3001,"e2"),Style(kCyan,-1,3001,"e2"))+"amc"+"tau_amc"+"vv"+"wjets"+"tttw";
+  //samples["sim"]=Sample("simulation","SUM",Style(kRed,22,3001,"e2"),Style(kCyan,-1,3001,"e2"))+"amc"+"tau_amc"+"vv"+"wjets"+"tttw";
+  //samples["sim_noSF"]=(Sample("w/o efficiency SF","SUM",kBlue)+"amc"+"tau_amc"+"vv"+"wjets"+"tttw")%"_noefficiencySF";
   //for(auto& sub:samples["sim_noSF"].subs) sub.type=Sample::Type::A;
-  samples["sim_noSF"].styles[0].linewidth=1;
+  //samples["sim_noSF"].styles[0].linewidth=1;
 
   Setup(mode_);
 }
 
-int EfficiencyPlotter::Setup(TString mode_){
+int tWAnalyzerPlotter::Setup(TString mode_){
   Reset();
 
   mode=mode_;
@@ -53,7 +50,8 @@ int EfficiencyPlotter::Setup(TString mode_){
 
   return 1;
 }
-void EfficiencyPlotter::SetupSystematics(){
+void tWAnalyzerPlotter::SetupSystematics(){
+  /*
   if(DEBUG)  cout<<"[SetupSystematics]"<<endl;
   int nreplica=20;
   AddSystematic("efficiencySF_stat","efficiencySF_stat",Systematic::Type::GAUSSIAN,FormRange("_efficiencySF_stat%d",Range(20)),"sim");
@@ -90,6 +88,6 @@ void EfficiencyPlotter::SetupSystematics(){
   AddSystematic("nozptcor","nozptcor",Systematic::Type::ENVELOPE,"_nozptcor","dy");
   AddSystematic("noefficiencySF","noefficiencySF",Systematic::Type::ENVELOPE,"_noefficiencySF","sim");
   AddSystematic("efficiencySF","eff. SF unc.",Systematic::Type::MULTI,"efficiencySF_stat electronRECOSF electronIDSF muonIDSF triggerSF");
-
+  */
 }
 #endif

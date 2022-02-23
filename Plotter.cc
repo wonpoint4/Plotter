@@ -1,5 +1,12 @@
 #ifndef __PLOTTER_CC__
 #define __PLOTTER_CC__
+#include <set>
+#include <TStyle.h>
+#include <TGaxis.h>
+#include <TH3.h>
+#include <TROOT.h>
+#include <TLatex.h>
+#include <TGraph.h>
 #include"Global.h"
 #include"Sample.cc"
 #include"Plot.cc"
@@ -38,53 +45,59 @@ public:
   //Hist
   virtual TH1* GetHist(TString samplekey,TString plotkey,TString additional_option="");
   virtual TH1* GetHist(int ientry,TString plotkey,TString additional_option="");
-  virtual TH1* GetHist(const Sample& sample,Plot plot,TString additional_option="");
-  virtual TH1* GetHistFromSample(const Sample& sample,Plot plot,TString additional_option="");
+  virtual TH1* GetHist(const Sample& sample,Plot p,TString additional_option="");
+  virtual TH1* GetHistFromSample(const Sample& sample,const Plot& p,TString additional_option="");
   virtual TH1* GetHistFromFile(TString filename,TString histname);
-  virtual void GetHistActionForAdditionalClass(TObject*& obj,Plot plot);
-  tuple<TH1*,TH1*> GetHistPair(const Sample& sample,const Plot& plot);
-  vector<tuple<TH1*,TH1*>> GetHistPairs(Plot& plot);
+  virtual void GetHistActionForAdditionalClass(TObject*& obj,Plot p);
+  vector<TH1*> GetHistSys(const Sample& sample,const Plot& plot);
+  vector<vector<TH1*>> GetHists(Plot& plot);
 
-  //Uncertainty
+  //Systematic
   TH1* GetEnvelope(TH1* central,const vector<TH1*>& variations);
   TH1* GetEnvelope(TH1* central,TH1* variation1,TH1* variation2=NULL,TH1* variation3=NULL,TH1* variation4=NULL,TH1* variation5=NULL,TH1* variation6=NULL,TH1* variation7=NULL,TH1* variation8=NULL,TH1* variation9=NULL);
   TH1* GetHessianError(TH1* central,const vector<TH1*>& variations);
   TH1* GetRMSError(TH1* central,const vector<TH1*>& variations);
   int AddError(TH1* hist,TH1* sys);
+  void AddSystematic(TString key,TString title,Systematic::Type type,vector<TString> includes,TString tag="");
+  void AddSystematic(TString key,TString title,Systematic::Type type,TString includes,TString tag="");
 
   //Canvas
-  TCanvas* GetCompare(vector<tuple<TH1*,TH1*>> hists,Plot plot);
-  vector<tuple<TH1*,TH1*>> GetRatioHistPairs(vector<tuple<TH1*,TH1*>> histpairs,TString option);
-  TCanvas* GetRatio(vector<tuple<TH1*,TH1*>> hists,Plot plot);
-  TCanvas* GetDiff(vector<tuple<TH1*,TH1*>> hists,Plot plot);
-  TCanvas* GetSig(vector<tuple<TH1*,TH1*>> hists,Plot plot);
-  TCanvas* GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,Plot plot);
-  TCanvas* GetCompareAndDiff(vector<tuple<TH1*,TH1*>> hists,Plot plot);
-  TCanvas* GetCompareAndSig(vector<tuple<TH1*,TH1*>> hists,Plot plot);
-  TCanvas* GetDoubleRatio(Plot& plot);
+  void DrawCompare(Plot p);
+  vector<vector<TH1*>> GetRatioHists(Plot p);
+  void DrawRatio(Plot p);
+  void DrawDiff(Plot p);
+  void DrawSig(Plot p);
+  void DrawCompareAndRatio(Plot p);
+  void DrawCompareAndDiff(Plot p);
+  void DrawCompareAndSig(Plot p);
+  void DrawDoubleRatio(Plot& plot);
   virtual TCanvas* DrawPlot(Plot plotkey,TString additional_option="");
   virtual TCanvas* DrawPlot(TString plotkey,TString additional_option="");
   vector<TCanvas*> DrawPlots(TRegexp plotkey,TString additional_option="");
   void SavePlots(TRegexp plotkey);
   void SavePlot(TString plotkey,TString option="",bool delete_canvas=true);
+  void SaveCanvas(TCanvas *c,TString path,bool delete_canvas=true);
   void SavePlotAll();
 
   //Canvas tools
   TString GetHistNameWithPrefixAndSuffix(TString histname,TString prefix,TString suffix);
-  static TH1* GetAxisParent(TVirtualPad* pad);
-  TH1* GetTH1(TH1* hstack,bool deleteorigin=false);
-  bool CheckHists(vector<TH1*> hists);
-  static vector<TH1*> VectorTH1(vector<tuple<TH1*,TH1*>>& hists);
-  tuple<double,double> GetMinMax(const vector<TH1*>& hists);
-  void RebinXminXmax(TH1* hist,Plot plot);
-  double Normalize(TH1* hists,double val=1.);
-  vector<double> Normalize(vector<TH1*> hists,double val=1.);
-  vector<tuple<double,double>> Normalize(vector<tuple<TH1*,TH1*>> histpairs,double val=1.);
+  static TH1* GetAxisParent(TVirtualPad* pad=NULL);
+  static TLegend* GetLegend(TVirtualPad* pad=NULL);
+  static void SetLegendEntryLabel(TLegend* legend,int i,TString label);
+  TH1* GetTH1(TH1* hstack,bool deleteorigin=false) const;
+  void DrawHistograms(Plot p);
+  static vector<TH1*> VectorTH1(const vector<vector<TH1*>>& hists);
+  pair<double,double> GetMinMax(const vector<TH1*>& hists,TString option="") const;
+  pair<double,double> GetMinMax(const vector<vector<TH1*>>& hists,TString option="") const;
+  void RebinXminXmax(TH1* hist,Plot p);
+  double Normalize(TH1* hists,double val=1.,TString option="");
+  vector<double> Normalize(vector<TH1*> hists,double val=1.,TString option="");
+  vector<vector<double>> Normalize(vector<vector<TH1*>> hists,double val=1.,TString option="");
   void WidthWeight(TH1* hist);
   void WidthWeight(vector<TH1*> hists);
   bool IsEntry(const Sample& sample);
-  static TLegend* GetLegend(const vector<TH1*>& hists,TString option);
-  static TLegend* GetLegend(const vector<tuple<TH1*,TH1*>>& hists,TString option);
+  static TLegend* DrawLegend(const Plot& p);
+  static TLegend* DrawLegendSys(const Plot& p);
   
   //Plot
   set<TString> GetHistKeys(TDirectory* dir,TRegexp regexp=".*");
@@ -92,13 +105,12 @@ public:
   set<TString> GetHistKeys(const Sample& sample,TString regexp=".*");
   virtual Plot MakePlot(TString plotkey,TString plotoption="");
 
-  //MakeSystematic
-  Systematic MakeSystematic(TString name,Systematic::Type type,int varibit,vector<TString> includes);
-  Systematic MakeSystematic(TString name,Systematic::Type type,int varibit,TString includes);
-
   //etc
   double GetChi2(TH1* h1,TH1* h2) const;
   int GetAutoColor() const;
+  static vector<int> Range(int n);
+  static vector<int> Range(int s,int n,int h=1);
+  static vector<TString> FormRange(TString form,vector<int> range);
   
   //working
 
@@ -111,18 +123,20 @@ Plotter::Plotter(){
   gStyle->SetCanvasDefH(600);
   gStyle->SetCanvasDefW(700);
   gStyle->SetPadLeftMargin(0.15);
-  gStyle->SetTickLength(0.015,"Y");
-  pdir=new TDirectory;
+  gStyle->SetPadBottomMargin(0.12);
+  gStyle->SetPadColor(0);
+  gStyle->SetFrameFillStyle(0);
+  TGaxis::SetExponentOffset(-0.06,0.02);
+  pdir=new TDirectory("plotdir","plotdir");
 }
 Plotter::~Plotter(){
-  if(pdir) delete pdir;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// Setup ////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 void Plotter::AddFile(TString key,TString file){
-  Sample sample=Sample(file,Sample::Type::FILE);
+  Sample sample=Sample(file,"FILE");
   if(samples.find(key)==samples.end()){
     TFile f(file);
     if(f.IsZombie()) PError("[Plotter::AddFile] Wrong file "+file);
@@ -136,7 +150,7 @@ void Plotter::AddFile(TString key,TString file){
       }
       samples[key]=sample;
     }
-  }else if(samples[key].type!=Sample::Type::FILE||samples[key].title!=file) PError("[Plotter::AddFile] sample "+key+" already exists");
+  }else if(!samples[key].IsFile()||samples[key].title!=file) PError("[Plotter::AddFile] sample "+key+" already exists");
 }
 void Plotter::ScanFiles(TString path){
   vector<TString> files=Split(gSystem->GetFromPipe("find "+path+" -type f -name '*.root'"),"\n");
@@ -170,9 +184,9 @@ void Plotter::AddEntry(TString key){
   TPRegexp("([+-])").Substitute(key," $1","g");
   Sample entry;
   if(key.BeginsWith("^")){
-    entry=Sample("simulation",Sample::Type::STACK);
+    entry=Sample("simulation","STACK",Style(kRed,-1,3001,"e2"),Style(kGreen,-1,3017,"e2"),Style(kBlue,-1,3017,"e2"),Style(kRed,-1,3017,"e2"));
     key=key(1,key.Length()-1);
-  }else entry=Sample("simulation",Sample::Type::SUM);
+  }else entry=Sample("simulation","SUM");
   vector<TString> sample_keys=Split(key," ");
   for(int i=0;i<(int)sample_keys.size();i++){
     TObjArray *array=TPRegexp("^([+-]?[0-9.]*)[*]?(.*)$").MatchS(sample_keys[i]);
@@ -184,12 +198,12 @@ void Plotter::AddEntry(TString key){
     delete array;
     if(samples.find(sample_key)!=samples.end()){
       Sample sample=samples[sample_key];
-      if(sample_keys.size()==1&&entry.type!=Sample::Type::STACK){
+      if(sample_keys.size()==1&&!entry.IsStack()){
 	entry=sample*weight;
       }else{
 	if(i==0){
-	  entry.style=sample.style;
-	  entry.style_alt=sample.style_alt;
+	  //entry.style=sample.style;
+	  //entry.style_alt=sample.style_alt;
 	}
 	entry+=weight*sample;
       }
@@ -199,7 +213,7 @@ void Plotter::AddEntry(TString key){
 }
 void Plotter::AddEntry(const Sample& sample){
   if(sample.IsFile()){
-    Sample s(sample.title,Sample::Type::UNDEF,GetAutoColor());
+    Sample s(sample.title,"SAMPLE",GetAutoColor());
     s.weight=sample.weight;
     s.replace=sample.replace;
     s+=sample;
@@ -213,7 +227,7 @@ void Plotter::AddEntry(const Sample& sample){
 void Plotter::PrintFiles(bool detail,TRegexp regexp){
   std::cout<<"--------------------------"<<endl;
   for(const auto& [key,sample]:samples){
-    if(sample.type!=Sample::Type::FILE) continue;
+    if(!sample.IsFile()) continue;
     if(key.Contains(regexp)){
       std::cout<<"@Key: "<<key<<" "<<endl;
       if(detail) sample.Print(detail,"  ");
@@ -224,7 +238,7 @@ void Plotter::PrintFiles(bool detail,TRegexp regexp){
 void Plotter::PrintSamples(bool detail,TRegexp regexp){
   std::cout<<"--------------------------"<<endl;
   for(const auto& [key,sample]:samples){
-    if(sample.type==Sample::Type::FILE) continue;
+    if(sample.IsFile()) continue;
     if(key.Contains(regexp)){
       std::cout<<"@Key: "<<key<<" "<<endl;
       sample.Print(detail,"  ");
@@ -241,11 +255,11 @@ void Plotter::PrintEntries(bool detail,TRegexp regexp){
     }
   }
 }
-void Plotter::PrintHistKeys(const Sample& sample,TString regexp=".*"){
+void Plotter::PrintHistKeys(const Sample& sample,TString regexp){
   set<TString> histkeys=GetHistKeys(sample,regexp);
   for(const auto& key:histkeys) std::cout<<key<<endl;
 }
-void Plotter::PrintHistKeys(int ientry,TString regexp=".*"){
+void Plotter::PrintHistKeys(int ientry,TString regexp){
   set<TString> histkeys=GetHistKeys(entries[ientry],regexp);
   for(const auto& key:histkeys) std::cout<<key<<endl;
 }
@@ -274,40 +288,40 @@ TH1* Plotter::GetHist(int ientry,TString plotkey,TString additional_option){
   }
   return GetHist(entries[ientry],MakePlot(plotkey,additional_option));
 } 
-TH1* Plotter::GetHist(const Sample& sample,Plot plot,TString additional_option){
-  PInfo("[Plotter::GetHist] "+sample.title+" "+plot.histname+" "+plot.option+" "+additional_option);_depth++;
-  //plot.Print();
-  TH1* hist=GetHistFromSample(sample,plot,additional_option);
+TH1* Plotter::GetHist(const Sample& sample,Plot p,TString additional_option){
+  PInfo("[Plotter::GetHist] "+sample.title+" "+p.histname+" "+p.option+" "+additional_option);_depth++;
+  TH1* hist=GetHistFromSample(sample,p,additional_option);
   if(hist){
-    hist->SetTitle(plot.name+plot.suffix);
-    RebinXminXmax(hist,plot);
-    if(plot.option.Contains("widthweight")) WidthWeight(hist);
-    //if(plot.option.Contains("norm")) Normalize(hist);
-    if(plot.option.Contains("thickline")) hist->SetLineWidth(2);
+    hist->SetTitle(p.title);
+    RebinXminXmax(hist,p);
+    if(p.option.Contains("widthweight")) WidthWeight(hist);
+    if(p.option.Contains("thickline")) hist->SetLineWidth(2);
   }
   _depth--;
   return hist;
 }
-TH1* Plotter::GetHistFromSample(const Sample& sample,Plot plot,TString additional_option){
-  PInfo("[Plotter::GetHistFromSample] "+sample.title+" "+plot.histname+" "+plot.option+" "+additional_option);_depth++;
-  //plot.Print();
-  plot.SetOption(additional_option);
+TH1* Plotter::GetHistFromSample(const Sample& sample,const Plot& pp,TString additional_option){
+  Plot p=pp;
+  PInfo("[Plotter::GetHistFromSample] "+sample.title+" "+p.histname+" "+p.option+" "+additional_option);_depth++;
+  //p.Print();
+  p.SetOption(additional_option);
   TH1* hist=NULL;
-  if(sample.type==Sample::Type::STACK){
-    for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(plot.histname,newstr);
+  if(sample.IsStack()){
+    for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(p.histname,newstr);
     for(int i=sample.subs.size()-1;i>=0;i--){
-      TH1* this_hist=GetHistFromSample(sample.subs[i],plot);
+      TH1* this_hist=GetHistFromSample(sample.subs[i],p);
       if(this_hist){
+	this_hist->Scale(sample.weight);
 	if(!hist){
 	  hist=(TH1*)new THStack(sample.title,sample.title);
 	}
 	((THStack*)hist)->Add(this_hist,"HIST");
       }
     }
-  }else if(sample.type==Sample::Type::SUM){
-    for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(plot.histname,newstr);
+  }else if(sample.IsSum()){
+    for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(p.histname,newstr);
     for(const auto& sub:sample.subs){
-      TH1* this_hist=GetHistFromSample(sub,plot);
+      TH1* this_hist=GetHistFromSample(sub,p);
       if(this_hist){
 	if(!hist){
 	  hist=(TH1*)this_hist->Clone();
@@ -318,15 +332,15 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,Plot plot,TString additiona
 	delete this_hist;
       }
     }
-    hist->Scale(sample.weight);
-  }else if(plot.option.Contains("absy")){
-    if(plot.project.Contains("y")) PError("[Plotter::GetHistFromSample] Not supported (absy + project:y)");
-    else if(plot.Ymin==0&&plot.Ymax==0) PError("[Plotter::GetHistFromSample] absy needs Ymin and Ymax");
-    else if(plot.Ymin<0||plot.Ymax<0) PError("[Plotter::GetHistFromSample] absy needs positive Ymin and Ymax");
+    if(hist) hist->Scale(sample.weight);
+  }else if(p.option.Contains("absy")){
+    if(p.project.Contains("y")) PError("[Plotter::GetHistFromSample] Not supported (absy + project:y)");
+    else if(p.Ymin==0&&p.Ymax==0) PError("[Plotter::GetHistFromSample] absy needs Ymin and Ymax");
+    else if(p.Ymin<0||p.Ymax<0) PError("[Plotter::GetHistFromSample] absy needs positive Ymin and Ymax");
     else{
-      Plot plus_plot=plot-"absy";
+      Plot plus_plot=p-"absy";
       TH1* plus_hist=GetHistFromSample(sample,plus_plot);
-      Plot minus_plot=plot-"absy";
+      Plot minus_plot=p-"absy";
       double Ymax_temp=-fabs(minus_plot.Ymin);
       minus_plot.Ymin=-fabs(minus_plot.Ymax);
       minus_plot.Ymax=Ymax_temp;
@@ -344,8 +358,9 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,Plot plot,TString additiona
       }
     }
   }else{
-    for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(plot.histname,newstr);
-    TString histname=plot.histname+((1<<sample.type)&plot.varibit?plot.suffix:"");
+    for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(p.histname,newstr);
+    TString histname=p.histname;
+    if(sample.HasTag(p.replace_tag)&&(p.replace_old!=""||p.replace_new!="")) TPRegexp(p.replace_old).Substitute(histname,p.replace_new);
     for(const auto& file:sample.subs){
       TH1* this_hist=GetHistFromFile(file.title,histname);
       if(this_hist){
@@ -354,64 +369,66 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,Plot plot,TString additiona
 	  TH2* hist2d=(TH2*)this_hist;
 	  int ixmin=0,iymin=0;
 	  int ixmax=-1,iymax=-1;
-	  if(plot.Xmin||plot.Xmax){
-	    ixmin=hist2d->GetXaxis()->FindBin(plot.Xmin);
-	    ixmax=hist2d->GetXaxis()->FindBin(plot.Xmax-0.00001);
-	    if(fabs(plot.Xmin-hist2d->GetXaxis()->GetBinLowEdge(ixmin))>0.00001)
-	      PWarning(Form("[Plotter::GetHistFromSample] Xmin=%f is not exact edge... use %f",plot.Xmin,hist2d->GetXaxis()->GetBinLowEdge(ixmin)));
-	    if(fabs(plot.Xmax-hist2d->GetXaxis()->GetBinUpEdge(ixmax))>0.00001)
-	      PWarning(Form("[Plotter::GetHistFromSample] Xmax=%f is not exact edge... use %f",plot.Xmax,hist2d->GetXaxis()->GetBinUpEdge(ixmin)));
+	  if(p.Xmin||p.Xmax){
+	    ixmin=hist2d->GetXaxis()->FindBin(p.Xmin);
+	    ixmax=hist2d->GetXaxis()->FindBin(p.Xmax-0.00001);
+	    if(fabs(p.Xmin-hist2d->GetXaxis()->GetBinLowEdge(ixmin))>0.00001)
+	      PWarning(Form("[Plotter::GetHistFromSample] Xmin=%f is not exact edge... use %f",p.Xmin,hist2d->GetXaxis()->GetBinLowEdge(ixmin)));
+	    if(fabs(p.Xmax-hist2d->GetXaxis()->GetBinUpEdge(ixmax))>0.00001)
+	      PWarning(Form("[Plotter::GetHistFromSample] Xmax=%f is not exact edge... use %f",p.Xmax,hist2d->GetXaxis()->GetBinUpEdge(ixmin)));
 	  }
-	  if(plot.Ymin||plot.Ymax){
-	    iymin=hist2d->GetYaxis()->FindBin(plot.Ymin);
-	    iymax=hist2d->GetYaxis()->FindBin(plot.Ymax-0.00001);
-	    if(fabs(plot.Ymin-hist2d->GetYaxis()->GetBinLowEdge(iymin))>0.00001)
-	      PWarning(Form("[Plotter::GetHistFromSample] Ymin=%f is not exact edge... use %f",plot.Ymin,hist2d->GetYaxis()->GetBinLowEdge(iymin)));
-	    if(fabs(plot.Ymax-hist2d->GetYaxis()->GetBinUpEdge(iymax))>0.00001)
-	      PWarning(Form("[Plotter::GetHistFromSample] Ymax=%f is not exact edge... use %f",plot.Ymax,hist2d->GetYaxis()->GetBinUpEdge(iymax)));
+	  if(p.Ymin||p.Ymax){
+	    iymin=hist2d->GetYaxis()->FindBin(p.Ymin);
+	    iymax=hist2d->GetYaxis()->FindBin(p.Ymax-0.00001);
+	    if(fabs(p.Ymin-hist2d->GetYaxis()->GetBinLowEdge(iymin))>0.00001)
+	      PWarning(Form("[Plotter::GetHistFromSample] Ymin=%f is not exact edge... use %f",p.Ymin,hist2d->GetYaxis()->GetBinLowEdge(iymin)));
+	    if(fabs(p.Ymax-hist2d->GetYaxis()->GetBinUpEdge(iymax))>0.00001)
+	      PWarning(Form("[Plotter::GetHistFromSample] Ymax=%f is not exact edge... use %f",p.Ymax,hist2d->GetYaxis()->GetBinUpEdge(iymax)));
 	  }
-	  if(plot.project=="") this_hist=(TH1*)hist2d->ProjectionY("_py",ixmin,ixmax);
-	  else if(plot.project=="x") this_hist=(TH1*)hist2d->ProjectionX("_px",iymin,iymax);
-	  else if(plot.project=="y") this_hist=(TH1*)hist2d->ProjectionY("_py",ixmin,ixmax);
+	  if(p.project=="") this_hist=(TH1*)hist2d->ProjectionY("_py",ixmin,ixmax);
+	  else if(p.project=="x") this_hist=(TH1*)hist2d->ProjectionX("_px",iymin,iymax);
+	  else if(p.project=="y") this_hist=(TH1*)hist2d->ProjectionY("_py",ixmin,ixmax);
 	  else PError("[Plotter::GetHistFromSample] wrong projection or classname");
 	  delete hist2d;
 	}else if(strstr(this_hist->ClassName(),"TH3")!=NULL){
 	  TH3* hist3d=(TH3*)this_hist;
 	  int ixmin=0,iymin=0,izmin=0;
 	  int ixmax=-1,iymax=-1,izmax=-1;
-	  if(plot.Xmin||plot.Xmax){
-	    ixmin=hist3d->GetXaxis()->FindBin(plot.Xmin);
-	    ixmax=hist3d->GetXaxis()->FindBin(plot.Xmax-0.00001);
-	    if(fabs(plot.Xmin-hist3d->GetXaxis()->GetBinLowEdge(ixmin))>0.00001)
-	      PWarning(Form("[Plotter::GetHistFromSample] Xmin=%f is not exact edge... use %f",plot.Xmin,hist3d->GetXaxis()->GetBinLowEdge(ixmin)));
-	    if(fabs(plot.Xmax-hist3d->GetXaxis()->GetBinUpEdge(ixmax))>0.00001)
-	      PWarning(Form("[Plotter::GetHistFromSample] Xmax=%f is not exact edge... use %f",plot.Xmax,hist3d->GetXaxis()->GetBinUpEdge(ixmin)));
+	  if(p.Xmin||p.Xmax){
+	    ixmin=hist3d->GetXaxis()->FindBin(p.Xmin);
+	    ixmax=hist3d->GetXaxis()->FindBin(p.Xmax-0.00001);
+	    if(fabs(p.Xmin-hist3d->GetXaxis()->GetBinLowEdge(ixmin))>0.00001)
+	      PWarning(Form("[Plotter::GetHistFromSample] Xmin=%f is not exact edge... use %f",p.Xmin,hist3d->GetXaxis()->GetBinLowEdge(ixmin)));
+	    if(fabs(p.Xmax-hist3d->GetXaxis()->GetBinUpEdge(ixmax))>0.00001)
+	      PWarning(Form("[Plotter::GetHistFromSample] Xmax=%f is not exact edge... use %f",p.Xmax,hist3d->GetXaxis()->GetBinUpEdge(ixmin)));
 	  }
-	  if(plot.Ymin||plot.Ymax){
-	    iymin=hist3d->GetYaxis()->FindBin(plot.Ymin);
-	    iymax=hist3d->GetYaxis()->FindBin(plot.Ymax-0.00001);
-	    if(fabs(plot.Ymin-hist3d->GetYaxis()->GetBinLowEdge(iymin))>0.00001)
-	      PWarning(Form("[Plotter::GetHistFromSample] Ymin=%f is not exact edge... use %f",plot.Ymin,hist3d->GetYaxis()->GetBinLowEdge(iymin)));
-	    if(fabs(plot.Ymax-hist3d->GetYaxis()->GetBinUpEdge(iymax))>0.00001)
-	      PWarning(Form("[Plotter::GetHistFromSample] Ymax=%f is not exact edge... use %f",plot.Ymax,hist3d->GetYaxis()->GetBinUpEdge(iymax)));
+	  if(p.Ymin||p.Ymax){
+	    iymin=hist3d->GetYaxis()->FindBin(p.Ymin);
+	    iymax=hist3d->GetYaxis()->FindBin(p.Ymax-0.00001);
+	    if(fabs(p.Ymin-hist3d->GetYaxis()->GetBinLowEdge(iymin))>0.00001)
+	      PWarning(Form("[Plotter::GetHistFromSample] Ymin=%f is not exact edge... use %f",p.Ymin,hist3d->GetYaxis()->GetBinLowEdge(iymin)));
+	    if(fabs(p.Ymax-hist3d->GetYaxis()->GetBinUpEdge(iymax))>0.00001)
+	      PWarning(Form("[Plotter::GetHistFromSample] Ymax=%f is not exact edge... use %f",p.Ymax,hist3d->GetYaxis()->GetBinUpEdge(iymax)));
 	  }
-	  if(plot.Zmin||plot.Zmax){
-	    izmin=hist3d->GetZaxis()->FindBin(plot.Zmin);
-	    izmax=hist3d->GetZaxis()->FindBin(plot.Zmax-0.00001);
-	    if(fabs(plot.Zmin-hist3d->GetZaxis()->GetBinLowEdge(izmin))>0.00001)
-	      PWarning(Form("[Plotter::GetHistFromSample] Zmin=%f is not exact edge... use %f",plot.Zmin,hist3d->GetZaxis()->GetBinLowEdge(izmin)));
-	    if(fabs(plot.Zmax-hist3d->GetZaxis()->GetBinUpEdge(izmax))>0.00001)
-	      PWarning(Form("[Plotter::GetHistFromSample] Zmax=%f is not exact edge... use %f",plot.Zmax,hist3d->GetZaxis()->GetBinUpEdge(izmax)));
+	  if(p.Zmin||p.Zmax){
+	    izmin=hist3d->GetZaxis()->FindBin(p.Zmin);
+	    izmax=hist3d->GetZaxis()->FindBin(p.Zmax-0.00001);
+	    if(fabs(p.Zmin-hist3d->GetZaxis()->GetBinLowEdge(izmin))>0.00001)
+	      PWarning(Form("[Plotter::GetHistFromSample] Zmin=%f is not exact edge... use %f",p.Zmin,hist3d->GetZaxis()->GetBinLowEdge(izmin)));
+	    if(fabs(p.Zmax-hist3d->GetZaxis()->GetBinUpEdge(izmax))>0.00001)
+	      PWarning(Form("[Plotter::GetHistFromSample] Zmax=%f is not exact edge... use %f",p.Zmax,hist3d->GetZaxis()->GetBinUpEdge(izmax)));
 	  }
-	  if(plot.project=="") this_hist=(TH1*)hist3d->ProjectionZ("_pz",ixmin,ixmax,iymin,iymax);
-	  else if(plot.project=="x") this_hist=(TH1*)hist3d->ProjectionX("_px",iymin,iymax,izmin,izmax);
-	  else if(plot.project=="y") this_hist=(TH1*)hist3d->ProjectionY("_py",ixmin,ixmax,izmin,izmax);
-	  else if(plot.project=="z") this_hist=(TH1*)hist3d->ProjectionZ("_pz",ixmin,ixmax,iymin,iymax);
-	  else PError("[Plotter::GetHistFromSample] wrong projection or classname");
-	  delete hist3d;
+	  if(!p.option.Contains("noproject")){
+	    if(p.project=="") this_hist=(TH1*)hist3d->ProjectionZ("_pz",ixmin,ixmax,iymin,iymax);
+	    else if(p.project=="x") this_hist=(TH1*)hist3d->ProjectionX("_px",iymin,iymax,izmin,izmax);
+	    else if(p.project=="y") this_hist=(TH1*)hist3d->ProjectionY("_py",ixmin,ixmax,izmin,izmax);
+	    else if(p.project=="z") this_hist=(TH1*)hist3d->ProjectionZ("_pz",ixmin,ixmax,iymin,iymax);
+	    else PError("[Plotter::GetHistFromSample] wrong projection or classname");
+	    delete hist3d;
+	  }
 	}else{
 	  TObject* obj=(TObject*)this_hist;
-	  GetHistActionForAdditionalClass(obj,plot);
+	  GetHistActionForAdditionalClass(obj,p);
 	  this_hist=(TH1*)obj;
 	}
 	this_hist->SetName(sample.title);
@@ -423,6 +440,10 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,Plot plot,TString additiona
 	hist->Add(this_hist,sample.weight);
 	delete this_hist;
       }
+    }
+    if(!hist&&sample.HasTag(p.replace_tag)&&(p.replace_old!=""||p.replace_new!="")){
+      PWarning("[Plotter::GetHistFromSample] no "+histname+" "+sample.title+", use "+p.histname);
+      hist=GetHistFromSample(sample,pp+additional_option-"replace");
     }
   }
   if(hist){
@@ -449,15 +470,17 @@ TH1* Plotter::GetHistFromFile(TString filename,TString histname){
     if(!f->IsOpen()) PError("Cannot open the file");
     hist=(TH1*)f->Get(histname);
     if(hist){
-      hist->SetDirectory(pdir);
-      if(!hist->GetSumw2N()) hist->Sumw2();
-      PInfo("[Plotter::GetHistFromFile] get "+histname+" from "+filename);
-      if(histname.Contains("bjetCharge")){
-	double total_yield = hist->Integral(0,-1);
-	double SLminus_yield = hist->Integral(hist->GetXaxis()->FindBin(-3),hist->GetXaxis()->FindBin(-1));
-	double SLplus_yield = hist->Integral(hist->GetXaxis()->FindBin(1),hist->GetXaxis()->FindBin(3));
-	cout<<"Total yield : "<<total_yield<<", SL_yield : "<<SLminus_yield+SLplus_yield<<endl;
-      }
+      if(hist->InheritsFrom("TH1")){
+	hist->SetDirectory(pdir);
+	if(!hist->GetSumw2N()) hist->Sumw2();
+	PInfo("[Plotter::GetHistFromFile] get "+histname+" from "+filename);
+        if(histname.Contains("bjetCharge")){
+          double total_yield = hist->Integral(0,-1);
+          double SLminus_yield = hist->Integral(hist->GetXaxis()->FindBin(-3),hist->GetXaxis()->FindBin(-1));
+          double SLplus_yield = hist->Integral(hist->GetXaxis()->FindBin(1),hist->GetXaxis()->FindBin(3));
+          cout<<"Total yield : "<<total_yield<<", SL_yield : "<<SLminus_yield+SLplus_yield<<"=("<<SLminus_yield<<"+"<<SLplus_yield<<")"<<endl;
+        }
+      }else hist=NULL;
     }
     f->Close();
     delete f;
@@ -466,86 +489,136 @@ TH1* Plotter::GetHistFromFile(TString filename,TString histname){
     PDebug("[Plotter::GetHistFromFile] no "+histname+" in "+filename);
   return hist;
 }
-void Plotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot){
-  PError((TString)"[Plotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot)] Unsupported class "+obj->ClassName());
+void Plotter::GetHistActionForAdditionalClass(TObject*& obj,Plot p){
+  PError((TString)"[Plotter::GetHistActionForAdditionalClass(TObject*& obj,Plot p)] Unsupported class "+obj->ClassName());
 }
-tuple<TH1*,TH1*> Plotter::GetHistPair(const Sample& sample,const Plot& plot){
-  PInfo("[Plotter::GetHistPair] "+sample.title+" "+plot.name+" "+plot.histname);_depth++;
+vector<TH1*> Plotter::GetHistSys(const Sample& sample,const Plot& p){
+  PInfo("[Plotter::GetHistSys] "+sample.title+" "+p.name+" "+p.histname+" "+p.sysname);_depth++;
 
-  TH1* central=GetHist(sample,plot);
-  TH1 *total=NULL;
-  if(plot.sysname!=""){
-    THStack* hstack=NULL;
-    if(strstr(central->ClassName(),"THStack")!=NULL){
-      hstack=(THStack*)central;
-      central=GetTH1((TH1*)hstack);
-    }
-    int sysbit=systematics[plot.sysname].sysbit;
-    vector<TH1*> syss;
-    for(const auto& sysmap:systematics){
-      const Systematic& systematic=sysmap.second;
-      if(systematic.type==Systematic::Type::MULTI) continue;
-      if(sysbit&systematic.sysbit){
-	PDebug("[Plotter::GetHistPair] sysname='"+systematic.name+"' systype='"+systematic.GetTypeString()+"'");
+  vector<TH1*> hists;
+  hists.push_back(GetHist(sample,p));
+
+  if(p.sysname!=""&&hists.at(0)){
+    if(systematics.find(p.sysname)!=systematics.end()){
+      const Systematic& systematic=systematics[p.sysname];
+      if(systematic.type==Systematic::Type::MULTI){
+	vector<TH1*> syss;
+	for(const auto& this_key:systematic.keys){
+	  if(systematics.find(this_key)==systematics.end()){
+	    PError("[Plotter::GetHistSys] no systematic with key "+this_key);
+	  }else{
+	    vector<TH1*> this_histsys=GetHistSys(sample,p+("sysname:"+this_key)-"sysdetail"+"notaddsys");
+	    if(this_histsys.size()==2){
+	      //this_histsys.at(1)->SetName(this_key);
+	      //this_histsys.at(1)->SetTitle(systematics[this_key].title);
+	      this_histsys.at(1)->SetName(systematics[this_key].title);
+	      syss.push_back(this_histsys.at(1));
+	    }else if(this_histsys.size()>2) PError("[Plotter::GetHistSys] this_histsys.size() > 2");
+	  }
+	}
+	if(syss.size()>0){
+	  if(p.option.Contains("sysdetail")){
+	    for(int i=0;i<(int)syss.size();i++){
+	      if(i==0) AddError(syss.at(i),hists.at(0));
+	      else AddError(syss.at(i),syss.at(i-1));
+	      hists.push_back(syss.at(i));
+	    }
+	  }else{
+	    TH1* totalsys=syss.at(0);
+	    for(int i=1;i<(int)syss.size();i++){
+	      AddError(totalsys,syss.at(i));
+	      delete syss.at(i);
+	    }
+	    totalsys->SetName(systematic.title);
+	    //totalsys->SetTitle(systematic.title);
+	    if(!p.option.Contains("notaddsys")) AddError(totalsys,hists.at(0));
+	    hists.push_back(totalsys);
+	  }
+	}
+      }else if(sample.HasTag(systematic.tag)){
+	PDebug("[Plotter::GetHistSys] sysname='"+p.sysname+"' systype='"+systematic.GetTypeString()+"'");
 	vector<TH1*> variations;
-	for(const auto& suffix:systematic.suffixes){
-	  TH1* this_hist=GetHist(sample,plot,Form("suffix:%s varibit:%d sysname:",suffix.Data(),systematic.varibit));
-	  variations.push_back(GetTH1(this_hist,true));
+	for(const auto& replace:systematic.replaces){
+	  TH1* this_hist=GetHist(sample,p,Form("replace:%s->%s:%s",replace.first.Data(),replace.second.Data(),systematic.tag.Data()));
+	  this_hist=GetTH1(this_hist,true);
+	  if(this_hist){
+	    this_hist->SetName(this_hist->GetName()+replace.second);
+	    this_hist->SetTitle(this_hist->GetTitle()+replace.second);
+	  }
+	  variations.push_back(this_hist);
 	}
-	if(systematic.type==Systematic::Type::ENVELOPE){
-	  syss.push_back(GetEnvelope(central,variations));
-	}else if(systematic.type==Systematic::Type::GAUSSIAN){
-	  syss.push_back(GetRMSError(central,variations));
-	}else if(systematic.type==Systematic::Type::HESSIAN){
-	  syss.push_back(GetHessianError(central,variations));
+	PDebug("[Plotter::GetHistSys] '"+p.sysname+"': "+variations.size()+" variations");
+	if(p.option.Contains("sysdetail")){
+	  for(auto h:variations){
+	    if(h){
+	      h->SetOption("hist");
+	      h->SetFillColor(0);
+	    }
+	    hists.push_back(h);
+	  }
 	}else{
-	  PError((TString)"[Plotter::GetHistPair] Wrong Systematic::Type "+Form("%d",systematic.type));
-	}
-	PDebug("[Plotter::GetHistPair] '"+systematic.name+"': "+variations.size()+" variations");
-	for(unsigned int j=0;j<variations.size();j++){
-	  delete variations.at(j);
+	  TH1* histsys=NULL;
+	  if(systematic.type==Systematic::Type::ENVELOPE){
+	    histsys=GetEnvelope(hists.at(0),variations);
+	  }else if(systematic.type==Systematic::Type::GAUSSIAN){
+	    histsys=GetRMSError(hists.at(0),variations);
+	  }else if(systematic.type==Systematic::Type::HESSIAN){
+	    histsys=GetHessianError(hists.at(0),variations);
+	  }else{
+	    PError((TString)"[Plotter::GetHistSys] Wrong Systematic::Type "+Form("%d",systematic.type));
+	  }
+	  for(unsigned int j=0;j<variations.size();j++){
+	    delete variations.at(j);
+	  }
+	  if(histsys){
+	    sample.ApplyStyle(histsys,true);
+	    histsys->SetName(systematic.title);
+	    if(!p.option.Contains("notaddsys")) AddError(histsys,hists.at(0));
+	    hists.push_back(histsys);
+	  }
 	}
       }
     }
-    if(syss.size()>0){
-      total=(TH1*)central->Clone();
-      total->SetDirectory(pdir);
-      for(int i=0;i<(int)syss.size();i++){
-	AddError(total,syss.at(i));
-	delete syss.at(i);
-      }
-    }
-    if(hstack){
-      delete central;
-      central=(TH1*)hstack;
-    }
-    sample.ApplyStyle(total,true);
+    //sample.ApplyStyle(total,true);
   }
-  //if(plot.option.Contains("norm")){
-  //Normalize(total);
-  //Normalize(central);
-  //}
+  for(int i=0,n=hists.size();i<n;i++)
+    sample.ApplyStyle(hists.at(i),i);
   _depth--;
-  return make_tuple(central,total);
+  return hists;
 }
-vector<tuple<TH1*,TH1*>> Plotter::GetHistPairs(Plot& plot){
-  vector<tuple<TH1*,TH1*>> histpairs;
-  for(const auto& entry:entries) histpairs.push_back(GetHistPair(entry,plot));
-  if(plot.option.Contains("norm")&&histpairs.size()>1){
-    TH1* h=GetTH1(get<0>(histpairs.at(0)));
+vector<vector<TH1*>> Plotter::GetHists(Plot& p){
+  vector<vector<TH1*>> hists;
+  for(const auto& entry:entries) hists.push_back(GetHistSys(entry,p));
+  if(p.option.Contains("norm")&&hists.size()>1){
+    TH1* h=GetTH1(hists.at(0).at(0));
     if(h){
-      double val=h->Integral();
+      TString integraloption="";
+      if(p.option.Contains("widthweight")) integraloption="width";
+      double val=h->Integral(integraloption);
       delete h;
-      vector<tuple<double,double>> scales=Normalize(histpairs,val);
+      vector<vector<double>> scales=Normalize(hists,val,integraloption);
       if(scales.size()>1){
-	TString newytitle="'"+plot.ytitle+Form(" (Norm. SF=%.3f",get<0>(scales.at(1)));
-	for(unsigned int i=2;i<scales.size();i++) newytitle+=Form(",%.3f",get<0>(scales.at(i)));
+	TString newytitle="'"+p.ytitle+Form(" (Norm. SF=%.3f",scales.at(1).at(0));
+	for(unsigned int i=2;i<scales.size();i++) newytitle+=Form(",%.3f",scales.at(i).at(0));
 	newytitle+=")'";
-	plot.SetOption("1:ytitle:"+newytitle);
+	p.SetOption("1:ytitle:"+newytitle);
       }
     }
   }
-  return histpairs;
+  if(p.blind_xmin||p.blind_xmax){
+    for(int i=0,n=entries.size();i<n;i++){
+      if(entries[i].HasTag("data",false)){
+	for(auto& h:hists.at(i)){
+	  if(!h) continue;
+	  for(int ibin=h->FindBin(p.blind_xmin);ibin<h->FindBin(p.blind_xmax);ibin++){
+	    h->SetBinContent(ibin,0);
+	    h->SetBinError(ibin,0);
+	  }
+	}
+      }
+    }
+  }
+  return hists;
 }  
 
 
@@ -566,7 +639,7 @@ TH1* Plotter::GetEnvelope(TH1* central,const vector<TH1*>& variations){
   }
   return syshist;
 }
-TH1* Plotter::GetEnvelope(TH1* central,TH1* variation1,TH1* variation2=NULL,TH1* variation3=NULL,TH1* variation4=NULL,TH1* variation5=NULL,TH1* variation6=NULL,TH1* variation7=NULL,TH1* variation8=NULL,TH1* variation9=NULL){
+TH1* Plotter::GetEnvelope(TH1* central,TH1* variation1,TH1* variation2,TH1* variation3,TH1* variation4,TH1* variation5,TH1* variation6,TH1* variation7,TH1* variation8,TH1* variation9){
   vector<TH1*> variations;
   if(variation1) variations.push_back(variation1);
   if(variation2) variations.push_back(variation2);
@@ -610,6 +683,20 @@ TH1* Plotter::GetRMSError(TH1* central,const vector<TH1*>& variations){
 }  
 int Plotter::AddError(TH1* hist,TH1* sys){
   PAll("[Plotter::AddError]");
+  if(!hist){
+    PError("[Plotter::AddError] null hist");
+    return -1;
+  }
+  if(!sys){
+    PError("[Plotter::AddError] null sys");
+    return -1;
+  }
+  if(sys->InheritsFrom("THStack")){
+    sys=GetTH1(sys);
+    int ret=AddError(hist,sys);
+    delete sys;
+    return ret;
+  }
   for(int i=1;i<hist->GetNbinsX()+1;i++){
     if(fabs(hist->GetBinContent(i)-sys->GetBinContent(i))*1000000>fabs(hist->GetBinContent(i))){
       PError("[Plotter::AddError] systematic hist is wrong");
@@ -630,437 +717,520 @@ int Plotter::AddError(TH1* hist,TH1* sys){
 /////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// Canvas ///////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-TCanvas* Plotter::GetCompare(vector<tuple<TH1*,TH1*>> histpairs,Plot plot){
-  PInfo("[Plotter::GetCompare] "+plot.option);_depth++;
-  vector<TH1*> hists=VectorTH1(histpairs);
-  TH1* axisowner=get<1>(histpairs[0]);
-  if(!axisowner) axisowner=get<0>(histpairs[0]);
-  
-  TCanvas* c=new TCanvas;
-  if(strstr(axisowner->ClassName(),"THStack")==NULL){
-    axisowner->SetStats(0);
-    axisowner->Draw(axisowner->GetOption());
-    cout<<axisowner->GetOption()<<endl;
-  }else{
-    axisowner->Draw();
-    axisowner=((THStack*)axisowner)->GetHistogram();
-    axisowner->SetName("hframe");
-    axisowner->Draw();
-  }
-  if(c->GetPrimitive("title")) ((TPaveText*)c->GetPrimitive("title"))->SetTextSize(0.075);
-
-  for(const auto& hist:hists)
-    if(strstr(hist->ClassName(),"THStack")){
-      hist->Draw("same");
-      TH1* hist_sum=GetTH1(hist);
-      hist_sum->Draw(TString("same ")+hist->GetOption());
+void Plotter::DrawHistograms(Plot p){
+  for(const vector<TH1*>& hists:p.hists){
+    if(hists.size()&&hists.at(0)){
+      if(hists.at(0)->InheritsFrom("THStack")){
+	if(GetAxisParent()){
+	  hists.at(0)->Draw("same");
+	  TH1* hist_sum=GetTH1(hists.at(0));
+	  hist_sum->Draw(TString("same ")+hists.at(0)->GetOption());
+	}else{
+	  TH1* hist_sum=GetTH1(hists.at(0));
+	  hist_sum->Draw(hists.at(0)->GetOption());
+	  hists.at(0)->Draw("same");
+	}
+	for(int i=hists.size()-1;i>0;i--){
+	  hists.at(i)->Draw(TString("same ")+hists.at(i)->GetOption());
+	}
+      }
     }
-
-  for(const auto& hist:hists)
-    if(strstr(hist->ClassName(),"THStack")==NULL&&hist->GetFillColor()>0)
-      hist->Draw(TString("same ")+hist->GetOption());
-
-  for(const auto& hist:hists)
-    if(strstr(hist->ClassName(),"THStack")==NULL&&hist->GetFillColor()==0)
-      hist->Draw(TString("same ")+hist->GetOption());
-
-  TLegend* legend=GetLegend(histpairs,plot.option);
-  if(!plot.option.Contains("noleg")) legend->Draw();
-
-  if(plot.option.Contains("logx")){c->SetLogx();axisowner->GetXaxis()->SetMoreLogLabels();}
-  if(plot.option.Contains("logy")){
-    tuple<double,double> minmax=GetMinMax(hists);
-    double minimum=get<0>(minmax),maximum=get<1>(minmax);
-    if(minimum<=0) minimum=maximum/1000;
-    axisowner->GetYaxis()->SetRangeUser(minimum/100,maximum*20);
-    c->SetLogy();
-  }else{
-    tuple<double,double> minmax=GetMinMax(hists);
-    double minimum=get<0>(minmax),maximum=get<1>(minmax);
-    double range=fabs(maximum-minimum);
-    axisowner->GetYaxis()->SetRangeUser(minimum/range<-0.01?minimum-0.1*range:0,maximum+0.1*range);
   }
-  if(plot.ymin||plot.ymax){
-    axisowner->GetYaxis()->SetRangeUser(plot.ymin,plot.ymax);
+
+  for(const vector<TH1*>& hists:p.hists){
+    if(hists.size()&&hists.at(0)){
+      if(!hists.at(0)->InheritsFrom("THStack")&&hists.at(0)->GetFillColor()>0){
+	for(int i=hists.size()-1;i>=0;i--){
+	  if(GetAxisParent()) hists.at(i)->Draw(TString("same ")+hists.at(i)->GetOption());
+	  else{
+	    hists.at(i)->Draw(hists.at(i)->GetOption());
+	    hists.at(i)->SetStats(0);
+	  }
+	}
+      }
+    }
   }
-  axisowner->GetXaxis()->SetTitle(plot.xtitle);
-  axisowner->GetYaxis()->SetTitle(plot.ytitle);
-  gPad->RedrawAxis();
-  _depth--;
-  return c;
+  
+  for(const vector<TH1*>& hists:p.hists){
+    if(hists.size()&&hists.at(0)){
+      if(!hists.at(0)->InheritsFrom("THStack")&&hists.at(0)->GetFillColor()==0){
+	for(int i=hists.size()-1;i>=0;i--){
+	  if(GetAxisParent()) hists.at(i)->Draw(TString("same ")+hists.at(i)->GetOption());
+	  else{
+	    hists.at(i)->Draw(hists.at(i)->GetOption());
+	    hists.at(i)->SetStats(0);
+	  }
+	}
+      }
+    }
+  }
 }
-vector<tuple<TH1*,TH1*>> Plotter::GetRatioHistPairs(vector<tuple<TH1*,TH1*>> histpairs,TString option){
-  vector<tuple<TH1*,TH1*>> histpairs_new;
+
+void Plotter::DrawCompare(Plot p){
+  PInfo("[Plotter::DrawCompare] "+p.option);_depth++;
+  if(!gPad) gROOT->MakeDefCanvas();
+
+  DrawHistograms(p);
+  TH1* axisparent=GetAxisParent();
+  axisparent->SetTickLength(0.015,"Y");
+  double scale=1/TMath::Min(gPad->GetHNDC(),gPad->GetWNDC());
+  axisparent->SetTitleSize(0.04*scale,"XYZ");
+  axisparent->SetLabelSize(0.04*scale,"XYZ");
+  if(p.option.Contains("xtitle++")) axisparent->SetTitleSize(axisparent->GetTitleSize("x")*1.5,"x");
+  else if(p.option.Contains("xtitle+")) axisparent->SetTitleSize(axisparent->GetTitleSize("x")*1.2,"x");
+  else if(p.option.Contains("xtitle--")) axisparent->SetTitleSize(axisparent->GetTitleSize("x")*0.6,"x");
+  else if(p.option.Contains("xtitle-")) axisparent->SetTitleSize(axisparent->GetTitleSize("x")*0.8,"x");
+  if(p.option.Contains("ytitle++")) axisparent->SetTitleSize(axisparent->GetTitleSize("y")*1.5,"y");
+  else if(p.option.Contains("ytitle+")) axisparent->SetTitleSize(axisparent->GetTitleSize("y")*1.2,"y");
+  else if(p.option.Contains("ytitle--")) axisparent->SetTitleSize(axisparent->GetTitleSize("y")*0.8,"y");
+  else if(p.option.Contains("ytitle-")) axisparent->SetTitleSize(axisparent->GetTitleSize("y")*0.6,"y");
+  axisparent->GetYaxis()->SetTitleOffset(1.8/scale);
+
+  TLegend* legend=NULL;
+  if(!p.option.Contains("noleg")) DrawLegend(p);
+  if(p.option.Contains("sysleg")) DrawLegendSys(p);
+
+  if(p.option.Contains("logx")){
+    gPad->SetLogx();
+    axisparent->GetXaxis()->SetMoreLogLabels();
+    if(axisparent->GetXaxis()->GetBinLowEdge(axisparent->GetXaxis()->GetFirst())==0){
+      axisparent->GetXaxis()->SetRange(axisparent->GetXaxis()->GetFirst()+1,axisparent->GetXaxis()->GetLast());
+    }
+  }
+  if(p.option.Contains("logy")){
+    pair<double,double> minmax=GetMinMax(p.hists,"pos");
+    double minimum=minmax.first,maximum=minmax.second;
+    if(minimum<=0) minimum=maximum/1000;
+    axisparent->GetYaxis()->SetRangeUser(minimum/20,maximum*20);
+    gPad->SetLogy();
+  }else{
+    pair<double,double> minmax=GetMinMax(p.hists);
+    double minimum=minmax.first,maximum=minmax.second;
+    double range=fabs(maximum-minimum);
+    double ymin=minimum/range<-0.01?minimum-0.1*range:0;
+    double ymax=maximum+0.1*(maximum-ymin);
+    axisparent->GetYaxis()->SetRangeUser(ymin,ymax);
+  }
+  if(p.ymin||p.ymax){
+    axisparent->GetYaxis()->SetRangeUser(p.ymin,p.ymax);
+  }
+  axisparent->GetXaxis()->SetTitle(p.xtitle);
+  axisparent->GetYaxis()->SetTitle(p.ytitle); 
+  axisparent->SetTitle(p.title);
+  gPad->SetFillStyle(0);
+  gPad->RedrawAxis();
+  gPad->Update();
+  if(gPad->GetPrimitive("title")){
+    TPaveText* pt=(TPaveText*)gPad->GetPrimitive("title");
+    pt->SetTextSize(0.05);
+    if(p.option.Contains("title++")) pt->SetTextSize(pt->GetTextSize()*1.4);
+    else if(p.option.Contains("title+")) pt->SetTextSize(pt->GetTextSize()*1.2);
+  }
+  _depth--;
+}
+vector<vector<TH1*>> Plotter::GetRatioHists(Plot p){
   TH1* base=NULL;
-  TString baseopt=option("base:[0-9]*");
-  if(baseopt!="") base=GetTH1(get<0>(histpairs[((TString)baseopt(5,100)).Atoi()]));
-  else if(histpairs.size()>2) base=GetTH1(get<0>(histpairs[0]));
-  else base=GetTH1(get<0>(histpairs[1]));
+  TString baseopt=p.option("base:[0-9]*");
+  if(baseopt!="") base=GetTH1(p.hists[((TString)baseopt(5,100)).Atoi()][0]);
+  else if(p.hists.size()>2) base=GetTH1(p.hists[0][0]);
+  else base=GetTH1(p.hists[1][0]);
     
+  vector<vector<TH1*>> hists_new;
   if(base){
     for(int i=0;i<base->GetNbinsX()+2;i++){
       base->SetBinError(i,0);
     }
-    for(const auto& [hist0,hist1]:histpairs){
-      TH1 *hist0_new=NULL,*hist1_new=NULL;
-      if(hist0){
-	hist0_new=GetTH1(hist0);
-	hist0_new->Divide(base);
+    for(const vector<TH1*>& this_hists:p.hists){
+      vector<TH1*> this_hists_new;
+      for(const auto& hist:this_hists){
+	TH1* hist_new=NULL;
+	if(hist){
+	  hist_new=GetTH1(hist);
+	  hist_new->Divide(base);
+	}
+	this_hists_new.push_back(hist_new);
       }
-      if(hist1){
-	hist1_new=GetTH1(hist1);
-	hist1_new->Divide(base);
-      }
-      histpairs_new.push_back(make_tuple(hist0_new,hist1_new));
+      hists_new.push_back(this_hists_new);
     }  
     delete base;
   }
-  return histpairs_new;
+  return hists_new;
 }  
-TCanvas* Plotter::GetRatio(vector<tuple<TH1*,TH1*>> histpairs,Plot plot){
-  PInfo("[Plotter::GetRatio] "+plot.option);_depth++;
-  vector<tuple<TH1*,TH1*>> histpairs_new=GetRatioHistPairs(histpairs,plot.option);
-  TCanvas* c=GetCompare(histpairs_new,plot-"norm");
-  TH1* axisowner=GetAxisParent(c);
-  plot.Print();
-  if(axisowner){
-    if(plot.ytitle=="") axisowner->GetYaxis()->SetTitle("Ratio");
-    if(plot.option.Contains("widewidey")){
-      //axisowner->GetYaxis()->SetRangeUser(0.01,1.99);
-      axisowner->GetYaxis()->SetRangeUser(-1.01,3.01);
-      axisowner->GetYaxis()->SetNdivisions(506);
-    }else if(plot.option.Contains("widey")){
-      axisowner->GetYaxis()->SetRangeUser(0.501,1.499);
-      axisowner->GetYaxis()->SetNdivisions(506);
+void Plotter::DrawRatio(Plot p){
+  PInfo("[Plotter::DrawRatio] "+p.option);_depth++;
+  if(!gPad) gROOT->MakeDefCanvas();
+
+  p.hists=GetRatioHists(p);
+  DrawCompare(p-"norm");
+  TH1* axisparent=GetAxisParent();
+  if(axisparent){
+    if(p.ytitle=="") axisparent->GetYaxis()->SetTitle("Ratio");
+    if(p.ymin||p.ymax){
+      axisparent->GetYaxis()->SetRangeUser(p.ymin,p.ymax);
+    }else if(p.option.Contains("widewidey")){
+      axisparent->GetYaxis()->SetRangeUser(0.01,1.99);
+      axisparent->GetYaxis()->SetNdivisions(506);
+    }else if(p.option.Contains("widey")){
+      axisparent->GetYaxis()->SetRangeUser(0.501,1.499);
+      axisparent->GetYaxis()->SetNdivisions(506);
     }else{
-      axisowner->GetYaxis()->SetRangeUser(0.801,1.199);
-      axisowner->GetYaxis()->SetNdivisions(504);
+      axisparent->GetYaxis()->SetRangeUser(0.801,1.199);
+      axisparent->GetYaxis()->SetNdivisions(504);
     }
   }
   _depth--;
-  return c;
 }
-TCanvas* Plotter::GetDiff(vector<tuple<TH1*,TH1*>> tu_hists,Plot plot){
-  PInfo("[Plotter::GetDiff]"+plot.option);
-  vector<tuple<TH1*,TH1*>> tu_hists_new;
+void Plotter::DrawDiff(Plot p){
+  PInfo("[Plotter::DrawDiff]"+p.option);_depth++;
+  if(!gPad) gROOT->MakeDefCanvas();
+
   TH1* base=NULL;
-  TString baseopt=plot.option("base:[0-9]*");
-  if(baseopt!="") base=GetTH1(get<0>(tu_hists[((TString)baseopt(5,100)).Atoi()]));
-  else if(tu_hists.size()>2) base=GetTH1(get<0>(tu_hists[0]));
-  else base=GetTH1(get<0>(tu_hists[1]));
-  
+  TString baseopt=p.option("base:[0-9]*");
+  if(baseopt!="") base=GetTH1(p.hists[((TString)baseopt(5,100)).Atoi()][0]);
+  else if(p.hists.size()>2) base=GetTH1(p.hists[0][0]);
+  else base=GetTH1(p.hists[1][0]);  
   for(int i=0;i<base->GetNbinsX()+2;i++){
     base->SetBinError(i,0);
   }
-  for(const auto& histtuple:tu_hists){
-    TH1 *hist0=NULL,*hist1=NULL;
-    if(get<0>(histtuple)){
-      hist0=GetTH1(get<0>(histtuple));
-      hist0->Add(base,-1);
+
+  vector<vector<TH1*>> hists_new;
+  for(const vector<TH1*>& this_hists:p.hists){
+    vector<TH1*> this_hists_new;
+    for(const auto& hist:this_hists){
+      TH1* hist_new=NULL;
+      if(hist){
+	hist_new=GetTH1(hist);
+	hist_new->Add(base,-1);
+      }
+      this_hists_new.push_back(hist_new);
     }
-    if(get<1>(histtuple)){
-      hist1=(TH1*)get<1>(histtuple)->Clone();
-      hist1->SetDirectory(pdir);
-      hist1->Add(base,-1);
-    }
-    tu_hists_new.push_back(make_tuple(hist0,hist1));
+    hists_new.push_back(this_hists_new);
   }  
   delete base;
-  TCanvas* c=GetCompare(tu_hists_new,plot);
-  TH1* axisowner=GetAxisParent(c);
-  
-  axisowner->GetYaxis()->SetTitle("Diff");
-  axisowner->GetYaxis()->SetLabelSize(0.06);
 
-  tuple<double,double> minmax=GetMinMax(VectorTH1(tu_hists_new));
-  double minimum=get<0>(minmax),maximum=get<1>(minmax);
-  double range=fabs(maximum-minimum);
-  axisowner->GetYaxis()->SetRangeUser(minimum/range<-0.01?minimum-0.1*range:0,maximum+0.1*range);
-  _depth--;
-  return c;
-}
-TCanvas* Plotter::GetSig(vector<tuple<TH1*,TH1*>> tu_hists,Plot plot){
-  PInfo("[Plotter::GetSig] "+plot.option);_depth++;
-  vector<TH1*> hists;
-  for(auto tu_hist:tu_hists){
-    if(get<1>(tu_hist)) hists.push_back(get<1>(tu_hist));
-    else hists.push_back(get<0>(tu_hist));
+  p.hists=hists_new;
+  DrawCompare(p);
+  TH1* axisparent=GetAxisParent();
+  if(axisparent){
+    if(p.ytitle=="") axisparent->GetYaxis()->SetTitle("Difference");
+    if(p.ymin||p.ymax){
+      axisparent->GetYaxis()->SetRangeUser(p.ymin,p.ymax);
+    }else{
+      pair<double,double> minmax=GetMinMax(p.hists);
+      double minimum=minmax.first,maximum=minmax.second;
+      double range=fabs(maximum-minimum);
+      axisparent->GetYaxis()->SetRangeUser(minimum/range<-0.01?minimum-0.1*range:0,maximum+0.1*range);
+    }
   }
+  _depth--;
+}
+void Plotter::DrawSig(Plot p){
+  PInfo("[Plotter::DrawSig] "+p.option);_depth++;
+  if(!gPad) gROOT->MakeDefCanvas();
+
   TH1* base=NULL;
-  TString baseopt=plot.option("base:[0-9]*");
-  if(baseopt!="") base=GetTH1(hists[((TString)baseopt(5,100)).Atoi()]);
-  else if(tu_hists.size()>2) base=GetTH1(hists[0]);
-  else base=GetTH1(hists[1]);
-  
-  vector<tuple<TH1*,TH1*>> tu_hists_new;
-  for(auto hist:hists){
-    if(hist){
-      hist=GetTH1(hist,true);
-      for(int i=0;i<hist->GetNbinsX()+2;i++){
-	double error=sqrt(pow(hist->GetBinError(i),2)+pow(base->GetBinError(i),2));
-	double content=(hist->GetBinContent(i)-base->GetBinContent(i))/error;
-	hist->SetBinContent(i,content);
-	hist->SetBinError(i,0);
+  TString baseopt=p.option("base:[0-9]*");
+  if(baseopt!="") base=GetTH1(p.hists[((TString)baseopt(5,100)).Atoi()].back());
+  else if(p.hists.size()>2) base=GetTH1(p.hists[0].back());
+  else base=GetTH1(p.hists[1].back());
+
+  TH1* sigma1=(TH1*)base->Clone("sigma1");
+  sigma1->SetTitle("#pm 1 #sigma");
+  sigma1->SetFillColor(kGreen);
+  sigma1->SetFillStyle(3001);
+  sigma1->SetMarkerSize(0);
+  for(int i=0;i<sigma1->GetNbinsX()+2;i++){
+    sigma1->SetBinContent(i,0);
+    sigma1->SetBinError(i,1);
+  }
+  TH1* sigma2=(TH1*)sigma1->Clone("simga2");
+  for(int i=0;i<sigma2->GetNbinsX()+2;i++){
+    sigma2->SetBinError(i,2);
+  }
+  sigma2->SetTitle("#pm 2 #sigma");
+  sigma2->SetFillColor(kYellow);
+  sigma2->Draw("e2");
+  sigma1->Draw("same e2");  
+
+  vector<vector<TH1*>> hists_new;
+  for(const vector<TH1*>& this_hists:p.hists){
+    TH1* hist=NULL;
+    for(int i=this_hists.size()-1;i>=0;i--){
+      hist=this_hists.at(i);
+      if(hist){
+	hist=GetTH1(hist);
+	for(int i=0;i<hist->GetNbinsX()+2;i++){
+	  double content=0;
+	  if(hist->GetBinError(i)&&base->GetBinError(i)){
+	    double error=sqrt(pow(hist->GetBinError(i),2)+pow(base->GetBinError(i),2));
+	    content=(hist->GetBinContent(i)-base->GetBinContent(i))/error;
+	  }
+	  hist->SetBinContent(i,content);
+	  if(content) hist->SetBinError(i,content*1e-30);
+	  else hist->SetBinError(i,0);
+	}
+	break;
       }
     }
-    tu_hists_new.push_back(make_tuple(hist,(TH1*)NULL));
+    hists_new.push_back({hist});
   }
-  TCanvas* c=GetCompare(tu_hists_new,plot);
-  TH1* axisowner=GetAxisParent(c);
-  
-  axisowner->GetYaxis()->SetTitle("Difference (#sigma)");
-  axisowner->GetYaxis()->SetLabelSize(0.06);
-
-  if(plot.option.Contains("widey")) axisowner->GetYaxis()->SetRangeUser(-4.9,4.9);
-  else axisowner->GetYaxis()->SetRangeUser(-2.9,2.9);
-  //tuple<double,double> minmax=GetMinMax(VectorTH1(tu_hists_new));
-  //double minimum=get<0>(minmax),maximum=get<1>(minmax);
-  //double range=fabs(maximum-minimum);
-  //axisowner->GetYaxis()->SetRangeUser(minimum/range<-0.01?minimum-0.1*range:0,maximum+0.1*range);
-  _depth--;
-  return c;
-}
-TCanvas* Plotter::GetCompareAndRatio(vector<tuple<TH1*,TH1*>> hists,Plot plot){
-  PInfo("[Plotter::GetCompareAndRatio] "+plot.option);_depth++;
-    
-  TCanvas* c=new TCanvas;
-  c->Divide(1,2);
-  TCanvas* c1temp=GetCompare(hists,plot.GetSubPlot(1));
-  c->cd(1);
-  c1temp->DrawClonePad();
-  delete c1temp;
-  gPad->SetPad(0,0.35,1,1);
-  gPad->SetBottomMargin(0.02);
-  TH1* axisparent=GetAxisParent(gPad);
-  axisparent->GetYaxis()->SetLabelSize(0.06);
-  axisparent->GetYaxis()->SetTitleSize(0.06);
-  axisparent->GetYaxis()->SetTitleOffset(1.2);
-  axisparent->GetXaxis()->SetLabelSize(0);
-  axisparent->GetXaxis()->SetTitle("");
-  if(plot.option.Contains("preliminary")){
-    axisparent->SetTitle("");
-    TLatex latex;
-    latex.SetTextSize(0.05);
-    latex.SetNDC();
-    latex.DrawLatex(0.16,0.92,"CMS #bf{#it{Preliminary}}");
-    if(plot.histname.Contains("2016")){
-      latex.DrawLatex(0.71,0.92,"35.9 fb^{-1} (13 TeV)");
-    }else if(plot.histname.Contains("2017/")){
-      latex.DrawLatex(0.71,0.92,"41.5 fb^{-1} (13 TeV)");
-    }else if(plot.histname.Contains("2018/")){
-      latex.DrawLatex(0.71,0.92,"59.7 fb^{-1} (13 TeV)");
-    }else if(plot.histname.Contains("201[6-8]")){
-      latex.DrawLatex(0.71,0.92,"137 fb^{-1} (13 TeV)");      
+  p.hists=hists_new;
+  DrawCompare(p);
+  TH1* axisparent=GetAxisParent();
+  if(axisparent){
+    if(p.ytitle=="") axisparent->GetYaxis()->SetTitle("Difference (#sigma)");
+    if(p.ymin||p.ymax){
+      axisparent->GetYaxis()->SetRangeUser(p.ymin,p.ymax);
+    }else if(p.option.Contains("widey")){
+      axisparent->GetYaxis()->SetRangeUser(-7.99,7.99);
+      axisparent->GetYaxis()->SetNdivisions(504);
+    }else{
+      axisparent->GetYaxis()->SetRangeUser(-3.99,3.99);
+      axisparent->GetYaxis()->SetNdivisions(504);
     }
-    latex.SetTextSize(0.05);
-    latex.SetTextColor(2);
-    latex.DrawLatex(0.4,0.92,"#it{Working in progress}");
-  }else{
-    if(c->GetPad(1)->GetPrimitive("title")) ((TPaveText*)c->GetPad(1)->GetPrimitive("title"))->SetTextSize(0.075);
+  }
+  _depth--;
+}
+void Plotter::DrawCompareAndRatio(Plot p){
+  PInfo("[Plotter::DrawCompareAndRatio] "+p.option);_depth++;
+  if(!gPad) gROOT->MakeDefCanvas();
+  
+  TVirtualPad* pad=gPad;
+  pad->Divide(1,2);
+  pad->cd(1);
+  gPad->SetPad(0,0.35,1,1);
+  gPad->SetBottomMargin(0.02);
+  gPad->SetTopMargin(pad->GetTopMargin()/0.65);
+  DrawCompare(p.GetSubPlot(1));
+  TH1* axisparent=GetAxisParent();
+  axisparent->GetXaxis()->SetLabelSize(0);
+  axisparent->GetXaxis()->SetTitle("");
+  if(gPad->GetPrimitive("title")){
+    TPaveText* pt=(TPaveText*)gPad->GetPrimitive("title");
+    pt->SetTextSize(0.075);
+    pt->SetY1NDC(pt->GetY1NDC()-0.02);
+    pt->SetY2NDC(pt->GetY2NDC()-0.02);
+    if(p.option.Contains("title++")) pt->SetTextSize(pt->GetTextSize()*1.4);
+    else if(p.option.Contains("title+")) pt->SetTextSize(pt->GetTextSize()*1.2);
   }
   gPad->Update();
   gPad->Modified();
-
-  TCanvas* c2temp=GetRatio(hists,(plot+"noleg").GetSubPlot(2));
-  c->cd(2);
-  if(c2temp){
-    c2temp->DrawClonePad();
-    delete c2temp;
-  }
+  
+  pad->cd(2);
   gPad->SetPad(0,0,1,0.365);
   gPad->SetTopMargin(0.02);
-  gPad->SetBottomMargin(0.3);
+  gPad->SetBottomMargin(pad->GetBottomMargin()/0.35);
   gPad->SetGridx();gPad->SetGridy();
-  gPad->SetFillStyle(0);
-  axisparent=GetAxisParent(gPad);
-  if(axisparent){
-    axisparent->SetTitle("");
-    axisparent->SetStats(0);
-    axisparent->GetYaxis()->SetLabelSize(0.1);
-    //axisparent->GetYaxis()->SetTitle("Ratio");
-    axisparent->GetYaxis()->SetTitleSize(0.12);
-    axisparent->GetYaxis()->SetTitleOffset(0.6);
-    axisparent->GetXaxis()->SetTitle(plot.xtitle);
-    axisparent->GetXaxis()->SetTitleSize(0.12);
-    axisparent->GetXaxis()->SetLabelSize(0.12);
-  }
+  DrawRatio((p+"noleg").GetSubPlot(2));
+  axisparent=GetAxisParent();
+  if(axisparent) axisparent->SetTitle("");
   gPad->Update();
   gPad->Modified();
   _depth--;
-  return c;
 }
-TCanvas* Plotter::GetCompareAndSig(vector<tuple<TH1*,TH1*>> hists,Plot plot){
-  PInfo("[Plotter::GetCompareAndSig] "+plot.option);_depth++;
+void Plotter::DrawCompareAndSig(Plot p){
+  PInfo("[Plotter::DrawCompareAndSig] "+p.option);_depth++;
+  if(!gPad) gROOT->MakeDefCanvas();
     
-  TCanvas* c=new TCanvas;
-  c->Divide(1,2);
-  TCanvas* c1temp=GetCompare(hists,plot-"2:");
-  c->cd(1);
-  c1temp->DrawClonePad();
-  delete c1temp;
-  if(c->GetPad(1)->GetPrimitive("title")) ((TPaveText*)c->GetPad(1)->GetPrimitive("title"))->SetTextSize(0.075);
+  TVirtualPad* pad=gPad;
+  pad->Divide(1,2);
+  pad->cd(1);
   gPad->SetPad(0,0.35,1,1);
   gPad->SetBottomMargin(0.02);
-  TH1* axisparent=GetAxisParent(gPad);
-  axisparent->GetYaxis()->SetLabelSize(0.06);
-  axisparent->GetYaxis()->SetTitleSize(0.06);
-  axisparent->GetYaxis()->SetTitleOffset(1.2);
+  gPad->SetTopMargin(pad->GetTopMargin()/0.65);
+  DrawCompare(p.GetSubPlot(1));
+  TH1* axisparent=GetAxisParent();
   axisparent->GetXaxis()->SetLabelSize(0);
   axisparent->GetXaxis()->SetTitle("");
+  if(gPad->GetPrimitive("title")){
+    TPaveText* pt=(TPaveText*)gPad->GetPrimitive("title");
+    pt->SetTextSize(0.075);
+    pt->SetY1NDC(pt->GetY1NDC()-0.02);
+    pt->SetY2NDC(pt->GetY2NDC()-0.02);
+    if(p.option.Contains("title++")) pt->SetTextSize(pt->GetTextSize()*1.4);
+    else if(p.option.Contains("title+")) pt->SetTextSize(pt->GetTextSize()*1.2);
+  }
   gPad->Update();
   gPad->Modified();
 
-  TCanvas* c2temp=GetSig(hists,plot-"1:"+"noleg");
-  c->cd(2);
-  if(c2temp){
-    c2temp->DrawClonePad();
-    delete c2temp;
-  }
+  pad->cd(2);
   gPad->SetPad(0,0,1,0.365);
   gPad->SetTopMargin(0.02);
-  gPad->SetBottomMargin(0.3);
-  gPad->SetGridy();
-  gPad->SetFillStyle(0);
-  axisparent=GetAxisParent(gPad);
-  if(axisparent){
-    axisparent->SetTitle("");
-    axisparent->SetStats(0);
-    axisparent->GetYaxis()->SetLabelSize(0.1);
-    axisparent->GetYaxis()->SetTitleSize(0.12);
-    axisparent->GetYaxis()->SetTitleOffset(0.6);
-    axisparent->GetXaxis()->SetTitleSize(0.12);
-    axisparent->GetXaxis()->SetLabelSize(0.12);
-  }
+  gPad->SetBottomMargin(pad->GetBottomMargin()/0.35);
+  DrawSig((p+"noleg").GetSubPlot(2));
+  axisparent=GetAxisParent();
+  if(axisparent) axisparent->SetTitle("");
   gPad->Update();
   gPad->Modified();
   _depth--;
-  return c;
 }
-TCanvas* Plotter::GetCompareAndDiff(vector<tuple<TH1*,TH1*>> hists,Plot plot){
-  PInfo("[Plotter::GetCompareAndDiff] "+plot.option);_depth++;
+void Plotter::DrawCompareAndDiff(Plot p){
+  PInfo("[Plotter::DrawCompareAndDiff] "+p.option);_depth++;
+  if(!gPad) gROOT->MakeDefCanvas();
     
-  TCanvas* c=new TCanvas;
-  c->Divide(1,2);
-  TCanvas* c1temp=GetCompare(hists,plot-"2:");
-  c->cd(1);
-  c1temp->DrawClonePad();
-  delete c1temp;
-  if(c->GetPad(1)->GetPrimitive("title")) ((TPaveText*)c->GetPad(1)->GetPrimitive("title"))->SetTextSize(0.075);
+  TVirtualPad* pad=gPad;
+  pad->Divide(1,2);
+  pad->cd(1);
   gPad->SetPad(0,0.35,1,1);
   gPad->SetBottomMargin(0.02);
-  TH1* axisparent=GetAxisParent(gPad);
-  axisparent->GetYaxis()->SetLabelSize(0.06);
-  axisparent->GetYaxis()->SetTitleSize(0.06);
-  axisparent->GetYaxis()->SetTitleOffset(1.2);
+  gPad->SetTopMargin(pad->GetTopMargin()/0.65);
+  DrawCompare(p.GetSubPlot(1));
+  TH1* axisparent=GetAxisParent();
   axisparent->GetXaxis()->SetLabelSize(0);
   axisparent->GetXaxis()->SetTitle("");
+  if(gPad->GetPrimitive("title")){
+    TPaveText* pt=(TPaveText*)gPad->GetPrimitive("title");
+    pt->SetTextSize(0.075);
+    pt->SetY1NDC(pt->GetY1NDC()-0.02);
+    pt->SetY2NDC(pt->GetY2NDC()-0.02);
+    if(p.option.Contains("title++")) pt->SetTextSize(pt->GetTextSize()*1.4);
+    else if(p.option.Contains("title+")) pt->SetTextSize(pt->GetTextSize()*1.2);
+  }
   gPad->Update();
   gPad->Modified();
 
-  TCanvas* c2temp=GetDiff(hists,plot-"1:"+"noleg");
-  c->cd(2);
-  if(c2temp){
-    c2temp->DrawClonePad();
-    delete c2temp;
-  }
+  pad->cd(2);
   gPad->SetPad(0,0,1,0.365);
   gPad->SetTopMargin(0.02);
-  gPad->SetBottomMargin(0.3);
+  gPad->SetBottomMargin(pad->GetBottomMargin()/0.35);
   gPad->SetGridx();gPad->SetGridy();
-  gPad->SetFillStyle(0);
-
-  axisparent=GetAxisParent(gPad);
+  DrawDiff((p+"noleg").GetSubPlot(2));
+  axisparent=GetAxisParent();
   if(axisparent){
     axisparent->SetTitle("");
-    axisparent->SetStats(0);
-    axisparent->GetYaxis()->SetLabelSize(0.1);
-    axisparent->GetYaxis()->SetTitleSize(0.12);
-    axisparent->GetYaxis()->SetTitleOffset(0.6);
     axisparent->GetYaxis()->SetNdivisions(305);
-    axisparent->GetXaxis()->SetTitle(axisparent->GetTitle());
-    axisparent->GetXaxis()->SetTitleSize(0.12);
-    axisparent->GetXaxis()->SetLabelSize(0.12);
   }
   gPad->Update();
   gPad->Modified();
   _depth--;
-  return c;
 }
-TCanvas* Plotter::GetDoubleRatio(Plot& plot){
-  vector<vector<tuple<TH1*,TH1*>>> vec_histpairs;
-  for(auto& sub:plot.subplots){
-    vec_histpairs.push_back(GetRatioHistPairs(GetHistPairs(sub),plot.option));
+void Plotter::DrawDoubleRatio(Plot& p){
+  if(!gPad) gROOT->MakeDefCanvas();
+
+  vector<vector<vector<TH1*>>> vec_hists;
+  for(auto& sub:p.subplots){
+    vec_hists.push_back(GetRatioHists(p));
   }
   int baseindex=0;
-  if(plot.subplots.size()==2){
+  if(p.subplots.size()==2){
     baseindex=1;
-    TString baseopt=plot.option("base:[0-9]*");
+    TString baseopt=p.option("base:[0-9]*");
     if(baseopt!="") baseindex=((TString)baseopt(5,100)).Atoi();
-    for(int i=0;i<vec_histpairs[baseindex].size();i++){
-      TH1* hist=get<0>(vec_histpairs[baseindex][i]);
+    for(int i=0;i<vec_hists[baseindex].size();i++){
+      TH1* hist=vec_hists[baseindex][i][0];
       bool flag=false;
       for(int j=1;j<hist->GetNbinsX()+1;j++) if(hist->GetBinContent(j)!=1.) flag=true;
       if(!flag){
-	for(int j=0;j<vec_histpairs.size();j++){
-	  vec_histpairs[j].erase(vec_histpairs[j].begin()+i);
+	for(int j=0;j<vec_hists.size();j++){
+	  vec_hists[j].erase(vec_hists[j].begin()+i);
 	}
       }
     }
-    vector<tuple<TH1*,TH1*>> histpairs_new;
-    for(int i=0;i<vec_histpairs[baseindex].size();i++){
-      TH1* base=(TH1*)get<0>(vec_histpairs[baseindex][i])->Clone();
+    vector<vector<TH1*>> hists_new;
+    for(int i=0;i<vec_hists[baseindex].size();i++){
+      TH1* base=(TH1*)vec_hists[baseindex][i][0]->Clone();
       for(int j=0;j<base->GetNbinsX()+2;j++) base->SetBinError(j,0);
-      for(int j=0;j<vec_histpairs.size();j++){
-	if(get<0>(vec_histpairs[j][i])) get<0>(vec_histpairs[j][i])->Divide(base);
-	if(get<1>(vec_histpairs[j][i])) get<1>(vec_histpairs[j][i])->Divide(base);
-	histpairs_new.push_back(make_tuple(get<0>(vec_histpairs[j][i]),get<1>(vec_histpairs[j][i])));
+      for(int j=0;j<vec_hists.size();j++){
+	vector<TH1*> this_hists_new;
+	for(int k=0;k<vec_hists[j][i].size();k++){
+	  if(vec_hists[j][i][k]) vec_hists[j][i][k]->Divide(base);
+	  this_hists_new.push_back(vec_hists[j][i][k]);
+	}
+	hists_new.push_back(this_hists_new);
       }
       delete base;
     }
-    TCanvas* c=GetCompare(histpairs_new,plot.option.ReplaceAll("norm",""));
-    TH1* axisowner=GetAxisParent(c);
-    axisowner->SetTitle(plot.name);
-    c->SetGridy();
-    axisowner->GetYaxis()->SetTitle("DoubleRatio");
-    if(plot.option.Contains("widewidey")){
-      axisowner->GetYaxis()->SetRangeUser(0.01,1.99);
-      axisowner->GetYaxis()->SetNdivisions(506);
-    }else if(plot.option.Contains("widey")){
-      axisowner->GetYaxis()->SetRangeUser(0.501,1.499);
-      axisowner->GetYaxis()->SetNdivisions(506);
+    p.hists=hists_new;
+    DrawCompare(p-"norm");
+    TH1* axisparent=GetAxisParent();
+    axisparent->SetTitle(p.title);
+    gPad->SetGridy();
+    axisparent->GetYaxis()->SetTitle("DoubleRatio");
+    if(p.option.Contains("widewidey")){
+      axisparent->GetYaxis()->SetRangeUser(0.01,1.99);
+      axisparent->GetYaxis()->SetNdivisions(506);
+    }else if(p.option.Contains("widey")){
+      axisparent->GetYaxis()->SetRangeUser(0.501,1.499);
+      axisparent->GetYaxis()->SetNdivisions(506);
     }else{
-      axisowner->GetYaxis()->SetRangeUser(0.801,1.199);
-      axisowner->GetYaxis()->SetNdivisions(504);
+      axisparent->GetYaxis()->SetRangeUser(0.801,1.199);
+      axisparent->GetYaxis()->SetNdivisions(504);
     }
-    return c;
   }else{
     PError("not supported");
     exit(1);
   }
 }
 
-TCanvas* Plotter::DrawPlot(Plot plot,TString additional_option){
-  PInfo("[Plotter::DrawPlot] "+plot.name+" "+plot.histname+" "+plot.option+" "+additional_option);_depth++;
-  plot.SetOption(additional_option);
-  TCanvas* c=NULL;
-  if(plot.type==Plot::Type::DoubleRatio){
-    c=GetDoubleRatio(plot);
-  }else{
-    vector<tuple<TH1*,TH1*>> histpairs=GetHistPairs(plot);
-    vector<TH1*> hists=VectorTH1(histpairs);
-    if(hists.size()<entries.size()){
-      PError("[Plotter::DrawPlot] #hists < #entries ");
-      _depth--;
-      return NULL;
+TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
+  PInfo("[Plotter::DrawPlot] "+p.name+" "+p.histname+" "+p.option+" "+additional_option);_depth++;
+  if(!pdir) pdir=new TDirectory("plotdir","plotdir");
+  p.SetOption(additional_option);
+  p.hists=GetHists(p);
+  vector<TH1*> hists=VectorTH1(p.hists);
+  if(hists.size()<entries.size()){
+    PError("[Plotter::DrawPlot] #hists < #entries ");
+    _depth--;
+    return NULL;
+  }
+  TCanvas* c=gROOT->MakeDefCanvas();
+  if(p.type==Plot::Type::Compare) DrawCompare(p);
+  else if(p.type==Plot::Type::Ratio) DrawRatio(p);
+  else if(p.type==Plot::Type::Diff) DrawDiff(p);
+  else if(p.type==Plot::Type::Sig) DrawSig(p);
+  else if(p.type==Plot::Type::CompareAndRatio) DrawCompareAndRatio(p);
+  else if(p.type==Plot::Type::CompareAndDiff) DrawCompareAndDiff(p);
+  else if(p.type==Plot::Type::CompareAndSig) DrawCompareAndSig(p);
+  else if(p.type==Plot::Type::DoubleRatio) DrawDoubleRatio(p);
+  if(p.option.Contains("preliminary")){
+    c->cd(1);
+    TH1* axisparent=GetAxisParent();
+    if(axisparent) axisparent->SetTitle("");
+    c->cd();
+    axisparent=GetAxisParent();
+    if(axisparent) axisparent->SetTitle("");
+    TLatex latex;
+    latex.SetTextSize(0.035);
+    latex.SetNDC();
+    latex.SetTextAlign(11);
+    latex.DrawLatex(0.16,0.91,"CMS #bf{#it{Preliminary}}");
+    if(!p.option.Contains("nolumi")){
+      latex.SetTextAlign(31);
+      if(p.histname.Contains("2016a/")||p.era=="2016preVFP"){
+	latex.DrawLatex(0.9,0.91,"19.5 fb^{-1} (13 TeV)");
+      }else if(p.histname.Contains("2016b/")||p.era=="2016postVFP"){
+	latex.DrawLatex(0.9,0.91,"16.8 fb^{-1} (13 TeV)");
+      }else if(p.histname.Contains("2016[ab]/")||p.era=="2016"){
+	latex.DrawLatex(0.9,0.91,"36.3 fb^{-1} (13 TeV)");
+      }else if(p.histname.Contains("2017/")||p.era=="2017"){
+	latex.DrawLatex(0.9,0.91,"41.5 fb^{-1} (13 TeV)");
+      }else if(p.histname.Contains("2018/")||p.era=="2018"){
+	latex.DrawLatex(0.9,0.91,"59.8 fb^{-1} (13 TeV)");
+      }else if(p.histname.Contains("201[6-8]/")||p.histname.Contains("201[678ab]+/")||p.histname.Contains("201[6-8][ab]?/")||p.histname.Contains("201[678][ab]?/")||p.era=="Run2"){
+	latex.DrawLatex(0.9,0.91,"138 fb^{-1} (13 TeV)");      
+      }
     }
-    if(plot.type==Plot::Type::Compare) c=GetCompare(histpairs,plot);
-    else if(plot.type==Plot::Type::Ratio) c=GetRatio(histpairs,plot);
-    else if(plot.type==Plot::Type::Diff) c=GetDiff(histpairs,plot);
-    else if(plot.type==Plot::Type::Sig) c=GetSig(histpairs,plot);
-    else if(plot.type==Plot::Type::CompareAndRatio) c=GetCompareAndRatio(histpairs,plot);
-    else if(plot.type==Plot::Type::CompareAndDiff) c=GetCompareAndDiff(histpairs,plot);
-    else if(plot.type==Plot::Type::CompareAndSig) c=GetCompareAndSig(histpairs,plot);
-  }    
+    if(!p.option.Contains("noera")){
+      latex.SetTextAlign(31);
+      if(p.histname.Contains("2016a/")||p.era=="2016preVFP"){
+	latex.DrawLatex(0.9,0.95,"Run 2016preVFP");
+      }else if(p.histname.Contains("2016b/")||p.era=="2016postVFP"){
+	latex.DrawLatex(0.9,0.95,"Run 2016postVFP");
+      }else if(p.histname.Contains("2016[ab]/")||p.era=="2016"){
+	latex.DrawLatex(0.9,0.95,"Run 2016");
+      }else if(p.histname.Contains("2017/")||p.era=="2017"){
+	latex.DrawLatex(0.9,0.95,"Run 2017");
+      }else if(p.histname.Contains("2018/")||p.era=="2018"){
+	latex.DrawLatex(0.9,0.95,"Run 2018");
+      }else if(p.histname.Contains("201[6-8]/")||p.histname.Contains("201[678ab]+/")||p.histname.Contains("201[6-8][ab]?/")||p.histname.Contains("201[678][ab]?/")||p.era=="Run2"){
+	latex.DrawLatex(0.9,0.95,"Run II");
+      }
+    }
+    latex.SetTextSize(0.035);
+    latex.SetTextColor(2);
+    latex.SetTextAlign(11);
+    latex.DrawLatex(0.38,0.91,"#it{Working in progress}");
+  }
   c->Update();
   c->Modified();
   _depth--;
@@ -1077,18 +1247,20 @@ vector<TCanvas*> Plotter::DrawPlots(TRegexp plotkey,TString additional_option){
 }
 void Plotter::SavePlot(TString plotkey,TString option,bool delete_canvas){
   PDebug("[Plotter::SavePlot(TString plotkey)]");
-  pdir=new TDirectory;
   TString format="png";
   if(option.Contains("pdf")) format="pdf";
   TCanvas* c=DrawPlot(plotkey,option);
+  SaveCanvas(c,plotkey+"."+format,delete_canvas);
+}
+void Plotter::SaveCanvas(TCanvas *c,TString path,bool delete_canvas){
   if(c){
-    gSystem->Exec("mkdir -p "+plotdir+"/"+Dirname(plotkey));
-    c->SaveAs(plotdir+"/"+plotkey+"."+format);
+    gSystem->Exec("mkdir -p "+plotdir+"/"+Dirname(path));
+    c->SaveAs(plotdir+"/"+path);
     if(delete_canvas){
       delete c;
-      pdir->Delete();
+      if(pdir) pdir->Delete();
     }
-  }
+  }  
 }
 void Plotter::SavePlots(TRegexp plotkey){
   for(const auto& [key,plot]:plots)
@@ -1109,22 +1281,49 @@ TString Plotter::GetHistNameWithPrefixAndSuffix(TString histname,TString prefix,
 }
 TH1* Plotter::GetAxisParent(TVirtualPad* pad){
   PAll("[Plotter::GetAxisParent(TVirtualPad* pad)]");
+  if(!pad) pad=gPad;
   if(pad){
-    if(pad->FindObject("hframe")) return (TH1*)pad->FindObject("hframe");
     TList* list=pad->GetListOfPrimitives();
     for(int i=0;i<list->GetSize();i++){
-      if(strstr(list->At(i)->ClassName(),"TH")!=NULL) return (TH1*)list->At(i);
+      if(list->At(i)->InheritsFrom("THStack")) return ((THStack*)list->At(i))->GetHistogram();
+      if(list->At(i)->InheritsFrom("TH1")) return (TH1*)list->At(i);
+      if(list->At(i)->InheritsFrom("TGraph")) return ((TGraph*)list->At(i))->GetHistogram();
     }
   }
   return NULL;
 }
-TH1* Plotter::GetTH1(TH1* hstack,bool deleteorigin){
+TLegend* Plotter::GetLegend(TVirtualPad* pad){
+  PAll("[Plotter::GetLegend(TVirtualPad* pad)]");
+  if(!pad) pad=gPad;
+  if(pad){
+    TList* list=pad->GetListOfPrimitives();
+    for(int i=0;i<list->GetSize();i++){
+      if(list->At(i)->InheritsFrom("TLegend")) return (TLegend*)list->At(i);
+    }
+  }
+  return NULL;
+}
+void Plotter::SetLegendEntryLabel(TLegend* legend,int i,TString label){
+  if(!legend){
+    cout<<"[Plotter::SetLegendEntryLabel] null legend"<<endl;
+    return;
+  }
+  TList* list=legend->GetListOfPrimitives();
+  if(i>=list->GetSize()){
+    cout<<"[Plotter::SetLegendEntryLabel] i="+TString(i)+" entries="+TString(list->GetSize())<<endl;
+    return;
+  }   
+  TLegendEntry* entry=(TLegendEntry*)list->At(i);
+  entry->SetLabel(label);
+}
+TH1* Plotter::GetTH1(TH1* hstack,bool deleteorigin) const{
   PAll("[Plotter::GetTH1(TH1* hstack)]");
   TH1* hist=NULL;
   if(hstack){
-    if(strstr(hstack->ClassName(),"THStack")!=NULL){
+    if(hstack->InheritsFrom("THStack")){
       hist=(TH1*)((THStack*)hstack)->GetHists()->Last()->Clone();
       hist->SetDirectory(pdir);
+      hist->SetStats(0);
       hist->Reset();
       for(const auto& entry:entries){
 	if(entry.title==hstack->GetName()){
@@ -1144,56 +1343,72 @@ TH1* Plotter::GetTH1(TH1* hstack,bool deleteorigin){
   }
   return hist;
 }
-bool Plotter::CheckHists(vector<TH1*> hists){
-  PAll("[Plotter::CheckHists(vector<TH1*> hists)]");
-  bool flag_data=false,flag_signal=false;
-  for(unsigned int i=0;i<entries.size();i++){
-    if(!hists.at(i)) continue;
-    if(entries[i].type==Sample::Type::DATA) flag_data=true;
-    if(entries[i].type==Sample::Type::SIGNAL) flag_signal=true;
-  }
-  if(flag_data&&flag_signal) return true;
-  else return false;
-}
-vector<TH1*> Plotter::VectorTH1(vector<tuple<TH1*,TH1*>>& hists){
-  PAll("[Plotter::VectorTH1(const vector<tuple<TH1*,TH1*>>& hists)]");
+vector<TH1*> Plotter::VectorTH1(const vector<vector<TH1*>>& hists){
+  PAll("[Plotter::VectorTH1(const vector<vector<TH1*>>& hists)]");
   vector<TH1*> hists_out;
-  for(const auto& tu:hists){
-    TH1* hist0=get<0>(tu); TH1* hist1=get<1>(tu); 
-    if(hist1) hists_out.push_back(hist1);
-    if(hist0) hists_out.push_back(hist0);
+  for(const vector<TH1*>& this_hists:hists){
+    for(const auto& hist:this_hists){
+      if(hist) hists_out.push_back(hist);
+    }
   }
   return hists_out;
 }
-tuple<double,double> Plotter::GetMinMax(const vector<TH1*>& hists){
-  PAll("[Plotter::GetMinMax(vector<TH1*> hists)]");
+pair<double,double> Plotter::GetMinMax(const vector<TH1*>& hists,TString option) const{
+  PAll("[Plotter::GetMinMax(const vector<TH1*>& hists)]");
   double maximum=-999999999;
   double minimum=999999999;
   for(auto hist:hists){
     if(hist){
-      if(strstr(hist->ClassName(),"THStack")) hist=GetTH1(hist);
-      double this_maximum=hist->GetBinContent(hist->GetMaximumBin());
-      double this_minimum=hist->GetBinContent(hist->GetMinimumBin());
-      if(maximum<this_maximum) maximum=this_maximum;
-      if(minimum>this_minimum) minimum=this_minimum;
+      if(hist->InheritsFrom("THStack")) hist=GetTH1(hist);
+      for(int i=hist->GetXaxis()->GetFirst(),n=hist->GetXaxis()->GetLast()+1;i<n;i++){
+	double content=hist->GetBinContent(i);
+	if(!option.Contains("pos")){
+	  if(maximum<content) maximum=content;
+	  if(minimum>content) minimum=content;
+	}else{
+	  if(maximum<content && content>0) maximum=content;
+	  if(minimum>content && content>0) minimum=content;
+	}
+      }	
     }
   }
-  return make_tuple(minimum,maximum);
+  return make_pair(minimum,maximum);
 }
-void Plotter::RebinXminXmax(TH1* hist,Plot plot){
+pair<double,double> Plotter::GetMinMax(const vector<vector<TH1*>>& hists,TString option) const{
+  return GetMinMax(VectorTH1(hists),option);
+}
+void Plotter::RebinXminXmax(TH1* hist,Plot p){
   PAll("[Plotter::RebinXminXmax]");
   if(hist){
     if(hist->InheritsFrom("THStack")){
       for(const auto& obj:*((THStack*)hist)->GetHists())
-	RebinXminXmax((TH1*)obj,plot);
-    }else if(strstr(hist->ClassName(),"TH1")){
-      if(plot.rebin){
-	double this_xmin=hist->GetBinLowEdge(hist->GetXaxis()->GetFirst());
-	double this_xmax=hist->GetBinLowEdge(hist->GetXaxis()->GetLast()+1);
-	hist->Rebin(plot.rebin);
-	hist->GetXaxis()->SetRangeUser(this_xmin,this_xmax);
+	RebinXminXmax((TH1*)obj,p);
+    }else if(hist->InheritsFrom("TH4D")){
+      if(p.rebin!=""){
+	PError((TString)"[Plotter::RebinXminXmax] Unsupported class for rebin "+hist->ClassName());
       }
-      if(plot.xmin==0&&plot.xmax==0){
+      if(p.xmin!=0||p.xmax!=0)
+	hist->GetXaxis()->SetRangeUser(p.xmin,p.xmax);
+    }else if(hist->InheritsFrom("TH3")){
+      if(p.rebin!=""){
+	PError((TString)"[Plotter::RebinXminXmax] Unsupported class for rebin "+hist->ClassName());
+      }
+      if(p.xmin!=0||p.xmax!=0)
+	hist->GetXaxis()->SetRangeUser(p.xmin,p.xmax);
+    }else if(strstr(hist->ClassName(),"TH1")){
+      if(p.rebin!=""){
+	if(p.rebin.IsDec()){
+	  double this_xmin=hist->GetBinLowEdge(hist->GetXaxis()->GetFirst());
+	  double this_xmax=hist->GetBinLowEdge(hist->GetXaxis()->GetLast()+1);
+	  hist->Rebin(p.rebin.Atoi());
+	  hist->GetXaxis()->SetRangeUser(this_xmin,this_xmax);
+	}else{
+	  vector<double> bins=VectorDouble(p.rebin);
+	  TH1* newhist=hist->Rebin(bins.size()-1,hist->GetName(),&bins[0]);
+	  newhist->Copy(*hist);
+	}
+      }
+      if(p.xmin==0&&p.xmax==0){
 	if(hist->GetXaxis()->GetFirst()==1&&hist->GetXaxis()->GetLast()==hist->GetNbinsX()){
 	  int start=0,end=0;
 	  for(int i=0;i<hist->GetNbinsX()+2;i++){
@@ -1210,41 +1425,41 @@ void Plotter::RebinXminXmax(TH1* hist,Plot plot){
 	  }
 	  if(start<end) hist->GetXaxis()->SetRange(start,end);
 	}
-      }else hist->GetXaxis()->SetRangeUser(plot.xmin,plot.xmax);
+      }else hist->GetXaxis()->SetRangeUser(p.xmin,p.xmax);
     }else{
       PError((TString)"[Plotter::RebinXminXmax] Unsupported class "+hist->ClassName());
     }
   }
 }
 
-double Plotter::Normalize(TH1* hist,double val){
-  PAll("[Plotter::Normalize(TH1* hists,double val=1.)]");
+double Plotter::Normalize(TH1* hist,double val,TString option){
+  PAll("[Plotter::Normalize(TH1* hist,double val=1.,TString option="")]");
   double scale=1.;
   if(hist){
     if(strstr(hist->ClassName(),"THStack")){
       TH1* hsim=GetTH1(hist);
-      scale=val/hsim->Integral();
+      scale=val/hsim->Integral(option);
       for(auto obj:*((THStack*)hist)->GetHists()){
 	TH1* hsim_sub=(TH1*)obj;
 	hsim_sub->Scale(scale);
       }
     }else{
-      scale=val/hist->Integral();
+      scale=val/hist->Integral(option);
       hist->Scale(scale);
     }
   }
   //cout<<"[Plotter::Normalize] "<<hist->GetName()<<" "<<scale<<endl;
   return scale;
 }
-vector<double> Plotter::Normalize(vector<TH1*> hists,double val){
+vector<double> Plotter::Normalize(vector<TH1*> hists,double val,TString option){
   vector<double> scales;
-  for(auto& hist:hists) scales.push_back(Normalize(hist,val));
+  for(auto& hist:hists) scales.push_back(Normalize(hist,val,option));
   return scales;
 }
-vector<tuple<double,double>> Plotter::Normalize(vector<tuple<TH1*,TH1*>> histpairs,double val){
-  vector<tuple<double,double>> scales;
-  for(auto& pair:histpairs)
-    scales.push_back(make_tuple(Normalize(get<0>(pair),val),Normalize(get<1>(pair),val)));
+vector<vector<double>> Plotter::Normalize(vector<vector<TH1*>> histss,double val,TString option){
+  vector<vector<double>> scales;
+  for(auto& hists:histss)
+    scales.push_back(Normalize(hists,val,option));
   return scales;
 }
 void Plotter::WidthWeight(TH1* hist){
@@ -1276,59 +1491,97 @@ bool Plotter::IsEntry(const Sample& sample){
   return false;
 }
 
-TLegend* Plotter::GetLegend(const vector<TH1*>& hists,TString option){
-  PAll("[Plotter::GetLegend(const vector<TH1*>& hists,TString option)]");
-  vector<TH1*> hists_th1;
-  for(const auto& hist:hists){
+TLegend* Plotter::DrawLegend(const Plot& p){
+  PAll("[Plotter::DrawLegend(const Plot& p)]");
+  vector<TH1*> hists;
+  for(const auto& this_hists:p.hists){
+    TH1* hist=this_hists[0];
     if(hist){
       if(strstr(hist->ClassName(),"THStack")){
 	TIter next(((THStack*)hist)->GetHists(),kIterBackward);
 	while(TObject *obj = next()){
-	  hists_th1.push_back((TH1*)obj);
+	  hists.push_back((TH1*)obj);
 	}
-      }else hists_th1.push_back(hist);
+      }else hists.push_back(hist);
     }
   }
-  int maxlen=0;
-  for(const auto& hist:hists_th1){
-    TString name=hist->GetName();
-    name.ReplaceAll("#rightarrow",">");
-    name.ReplaceAll("#gamma","a");
-    name.ReplaceAll("#tau","t");
-    if(name.Length()>maxlen) maxlen=name.Length();
+  TVirtualPad* pad=gPad;
+  TCanvas* c=pad->GetCanvas();
+  double maxwidth=0;
+  double maxheight=0;
+  c->cd();
+  for(const auto& hist:hists){
+    TLatex latex(-1,-1,hist->GetName());
+    latex.SetTextSize(0.04);
+    UInt_t w,h;
+    latex.GetBoundingBox(w,h);
+    if(1.0*w/c->GetWw()>maxwidth) maxwidth=1.0*w/c->GetWw();
+    if(1.0*h/c->GetWh()>maxheight) maxheight=1.0*h/c->GetWh();
   }
 
-  if(maxlen<7) maxlen=7;
-  if(maxlen>10) maxlen=10;
-  int entry_size=hists_th1.size();
-  if(entry_size>3) entry_size=3;
+  if(maxwidth<0.1) maxwidth=0.1;
+  if(maxwidth>0.5) maxwidth=0.5;
+  int entry_size=hists.size();
+  if(entry_size<3) entry_size=3;
+  if(entry_size>7) entry_size=7;
   
   vector<double> coordinates;
-  double char_unit=0.02,entry_unit=0.13;
-  if(option.Contains("topleftleg")||option.Contains("TLleg")) coordinates={0.16,0.89,0.16+maxlen*char_unit,0.89-entry_size*entry_unit};
-  else if(option.Contains("topmiddleleg")||option.Contains("TMleg")) coordinates={0.5-0.5*maxlen*char_unit,0.89,0.5+0.5*maxlen*char_unit,0.89-entry_size*entry_unit};
-  else if(option.Contains("bottomleftleg")||option.Contains("BLleg")) coordinates={0.16,0.05,0.16+maxlen*char_unit,0.05+entry_size*entry_unit};
-  else if(option.Contains("bottommiddleleg")||option.Contains("BMleg")) coordinates={0.5-0.5*maxlen*char_unit,0.05,0.5+0.5*maxlen*char_unit,0.05+entry_size*entry_unit};
-  else if(option.Contains("bottomrightleg")||option.Contains("BRleg")) coordinates={0.89,0.05,0.89-maxlen*char_unit,0.05+entry_size*entry_unit};
-  else coordinates={0.89,0.89,0.89-maxlen*char_unit,0.89-entry_size*entry_unit};
-  TLegend* legend=new TLegend(coordinates[0],coordinates[1],coordinates[2],coordinates[3]);
+  double width=(maxwidth+0.03)/pad->GetWNDC();
+  double height=(maxheight*entry_size)/pad->GetHNDC();
+  if(p.option.Contains("topleftleg")||p.option.Contains("TLleg")) coordinates={pad->GetLeftMargin()+0.01,1-pad->GetTopMargin()-0.01,pad->GetLeftMargin()+0.01+width,1-pad->GetTopMargin()-0.01-height};
+  else if(p.option.Contains("topmiddleleg")||p.option.Contains("TMleg")) coordinates={0.5-0.5*width,1-pad->GetTopMargin()-0.01,0.5+0.5*width,1-pad->GetTopMargin()-0.01-height};
+  else if(p.option.Contains("bottomleftleg")||p.option.Contains("BLleg")) coordinates={pad->GetLeftMargin()+0.01,pad->GetBottomMargin()+0.01,pad->GetLeftMargin()+0.01+width,pad->GetBottomMargin()+0.01+height};
+  else if(p.option.Contains("bottommiddleleg")||p.option.Contains("BMleg")) coordinates={0.5-0.5*width,pad->GetBottomMargin()+0.01,0.5+0.5*width,pad->GetBottomMargin()+0.01+height};
+  else if(p.option.Contains("bottomrightleg")||p.option.Contains("BRleg")) coordinates={1-pad->GetRightMargin()-0.01,pad->GetBottomMargin()+0.01,1-pad->GetRightMargin()-width,pad->GetBottomMargin()+0.01+height};
+  else coordinates={1-pad->GetRightMargin()-0.01,1-pad->GetTopMargin()-0.01,1-pad->GetRightMargin()-0.01-width,1-pad->GetTopMargin()-0.01-height};
 
-  for(const auto& hist:hists_th1) legend->AddEntry(hist,hist->GetName());
+  TLegend* legend=new TLegend(coordinates[0],coordinates[1],coordinates[2],coordinates[3]);
+  for(const auto& hist:hists) legend->AddEntry(hist,hist->GetName());
   legend->SetBorderSize(0);
+  pad->cd();
+  legend->Draw();
   return legend;
 }
-TLegend* Plotter::GetLegend(const vector<tuple<TH1*,TH1*>>& hists,TString option){
-  vector<TH1*> hists_final;
-  for(const auto& histtuple : hists){
-    hists_final.push_back(get<0>(histtuple));
+TLegend* Plotter::DrawLegendSys(const Plot& p){
+  PAll("[Plotter::DrawLegendSys(const Plot& p)]");
+  vector<pair<TString,TH1*>> hists;
+  for(const auto& this_hists:p.hists){
+    for(int i=0,n=this_hists.size();i<n;i++){
+      TH1* hist=this_hists.at(i);
+      if(hist){
+	if(i==0) hists.push_back(make_pair(TString()+hist->GetName()+" stat.",hist));
+	else hists.push_back(make_pair(TString()+"#oplus "+hist->GetName(),hist));
+      }
+    }
   }
-  return GetLegend(hists_final,option);
+  TVirtualPad* pad=gPad;
+  TCanvas* c=pad->GetCanvas();
+  double maxwidth=0;
+  double maxheight=0;
+  c->cd();
+  for(const auto& [title,hist]:hists){
+    TLatex latex(-1,-1,title);
+    latex.SetTextSize(0.04);
+    UInt_t w,h;
+    latex.GetBoundingBox(w,h);
+    if(1.0*w/c->GetWw()>maxwidth) maxwidth=1.0*w/c->GetWw();
+    if(1.0*h/c->GetWh()>maxheight) maxheight=1.0*h/c->GetWh();
+  }
+  double height=maxheight/pad->GetHNDC();
+
+  TLegend* legend=new TLegend(pad->GetLeftMargin()+0.01,1-pad->GetTopMargin()-0.01,1-pad->GetRightMargin()-0.01,1-pad->GetTopMargin()-0.01-height);
+  legend->SetNColumns(hists.size());
+  for(const auto& [title,hist]:hists) legend->AddEntry(hist,title);
+  legend->SetBorderSize(0);
+  pad->cd();
+  legend->Draw();
+  return legend;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// Plot /////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-set<TString> Plotter::GetHistKeys(TDirectory* dir,TRegexp regexp=".*"){
+set<TString> Plotter::GetHistKeys(TDirectory* dir,TRegexp regexp){
   PAll("[Plotter::GetHistKeys(TDirectory* dir,TRegexp regexp=\".*\")]");
   set<TString> histkeys;
   for(const auto& obj:*(dir->GetListOfKeys())){
@@ -1346,7 +1599,7 @@ set<TString> Plotter::GetHistKeys(TDirectory* dir,TRegexp regexp=".*"){
   }
   return histkeys;
 }
-set<TString> Plotter::GetHistKeys(TString filename,TString regexp=".*"){
+set<TString> Plotter::GetHistKeys(TString filename,TString regexp){
   PAll("[Plotter::GetHistKeys(TString filename=\""+filename+",TString regexp=\""+regexp+"\")]");
   if(histkeys_cache.find(filename)==histkeys_cache.end()){
     TFile *f=new TFile(filename);
@@ -1361,10 +1614,10 @@ set<TString> Plotter::GetHistKeys(TString filename,TString regexp=".*"){
     return histkeys;
   }
 }
-set<TString> Plotter::GetHistKeys(const Sample& sample,TString regexp=".*"){
+set<TString> Plotter::GetHistKeys(const Sample& sample,TString regexp){
   PAll("[Plotter::GetHistKeys]");
   set<TString> histkeys;
-  if(sample.type==Sample::Type::FILE){
+  if(sample.IsFile()){
     set<TString> this_histkeys=GetHistKeys(sample.title,regexp);
     histkeys.insert(this_histkeys.begin(),this_histkeys.end());
   }else if(sample.subs.size()){
@@ -1376,49 +1629,37 @@ set<TString> Plotter::GetHistKeys(const Sample& sample,TString regexp=".*"){
   return histkeys;
 }
 Plot Plotter::MakePlot(TString name,TString option){
-  Plot plot;
-  plot.name=name;
-  plot.title=name;
-  plot.histname=name;
-  if(entries.size()==1) plot.type=Plot::Type::Compare;
-  plot.SetOption(option);
+  Plot p;
+  p.name=name;
+  p.title=name;
+  p.histname=name;
+  if(entries.size()==1) p.type=Plot::Type::Compare;
+  p.SetOption(option);
   /*
-  if(plot.type==Plot::Type::DoubleRatio){
+  if(p.type==Plot::Type::DoubleRatio){
     for(auto const& [k,p]:plots){
-      if(k.Contains(TRegexp(plotkey+"$"))) plot.subplots.push_back(p);
+      if(k.Contains(TRegexp(plotkey+"$"))) p.subplots.push_back(p);
     }
-    if(plot.subplots.size()!=2){
-      PError(Form("[Plotter::MakePlot] DoubleRatio should have 2 subplots (%zu!=2)",plot.subplots.size()));
-      plot.Print();
+    if(p.subplots.size()!=2){
+      PError(Form("[Plotter::MakePlot] DoubleRatio should have 2 subplots (%zu!=2)",p.subplots.size()));
+      p.Print();
       exit(1);
     }
   }
   */
-  return plot;
+  return p;
 } 
 
 ///////////////////////////////////////////////////////////////////////
-///////////////////// MakeSysteamtic //////////////////////////////////
+///////////////////// Systeamtic /////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
-Systematic Plotter::MakeSystematic(TString name,Systematic::Type type,int varibit,vector<TString> includes){
-  Systematic this_sys=Systematic(name,type,varibit);
-  if(this_sys.type==Systematic::Type::MULTI){
-    this_sys.sysbit=0;
-    for(const auto& [syskey,sys]:systematics)
-      for(int j=0;j<includes.size();j++)
-        if(syskey==includes[j]){
-          this_sys.sysbit|=sys.sysbit;
-          break;
-        }
-  }else{
-    this_sys.sysbit=1<<systematics.size();
-    this_sys.suffixes=includes;
-  }
-  //if(Verbosity) this_sys.Print();
-  return this_sys;
+void Plotter::AddSystematic(TString key,TString title,Systematic::Type type,vector<TString> includes,TString tag){
+  auto it=systematics.find(key);
+  if(it==systematics.end()) systematics[key]=Systematic(title,type,includes,tag);
+  else PError("systematic "+key+" already exists");
 }
-Systematic Plotter::MakeSystematic(TString name,Systematic::Type type,int varibit,TString includes){
-  return MakeSystematic(name,type,varibit,Split(includes," "));
+void Plotter::AddSystematic(TString key,TString title,Systematic::Type type,TString includes,TString tag){
+  return AddSystematic(key,title,type,Split(includes," "),tag);
 }
 
 
@@ -1430,7 +1671,7 @@ int Plotter::GetAutoColor() const {
   for(const auto& color:colors){
     bool exist=false;
     for(const auto& entry:entries){
-      if(entry.style.linecolor==color){
+      if(entry.styles[0].linecolor==color){
 	exist=true;
 	break;
       }
@@ -1452,6 +1693,19 @@ double Plotter::GetChi2(TH1* h1,TH1* h2) const {
   }
   chi2/=h1->GetXaxis()->GetLast()-h1->GetXaxis()->GetFirst()+1;
   return chi2;
+}
+vector<int> Plotter::Range(int n){
+  return Range(0,n,1);
+}
+vector<int> Plotter::Range(int s,int n,int h){
+  vector<int> out;
+  for(int i=s;i<n;i+=h) out.push_back(i);
+  return out;
+}
+vector<TString> Plotter::FormRange(TString form,vector<int> range){
+  vector<TString> out;
+  for(auto d:range) out.push_back(Form(form,d));
+  return out;
 }
 
 //////////////////////working/////////////////////////
@@ -1588,7 +1842,7 @@ void Plotter::SavePlots(TString outputdir="plot",int njob=1,int ijob=0){
       dirs.insert(dir);
     }
     if(DEBUG>1) std::cout<<"###INFO#### [SavePlots] save "<<outputdir+"/"+histname+".png"<<endl;
-    c=GetCompare(histname,0,plot->rebin,plot->xmin,plot->xmax,plot->option);
+    c=GetCompare(histname,0,p->rebin,p->xmin,p->xmax,p->option);
     c->SaveAs(outputdir+"/"+histname+".png");
     THStack* hstack=(THStack*)c->GetPad(1)->GetPrimitive("hstack");
     if(hstack) hstack->GetHists()->Clear();
@@ -1601,7 +1855,7 @@ void Plotter::SavePlots(TString outputdir="plot",int njob=1,int ijob=0){
 	dirs.insert(this_dir);
       }
       if(DEBUG>1) std::cout<<"###INFO#### [SavePlots] save "<<this_dir+"/"+histname(histname.Last('/'),histname.Length())+".png"<<endl;
-      c=GetCompare(histname,systematics[is].sysbit,plot->rebin,plot->xmin,plot->xmax,plot->option);
+      c=GetCompare(histname,systematics[is].sysbit,p->rebin,p->xmin,p->xmax,p->option);
       if(c){
 	c->SaveAs(this_dir+"/"+histname(histname.Last('/'),histname.Length())+".png");
 	THStack* hstack=(THStack*)c->GetPad(1)->GetPrimitive("hstack");
@@ -1610,7 +1864,7 @@ void Plotter::SavePlots(TString outputdir="plot",int njob=1,int ijob=0){
       }
       if(systematics[is].suffixes.size()==1){
 	if(DEBUG>1) std::cout<<"###INFO#### [SavePlots] save "<<this_dir+"/"+histname(histname.Last('/'),histname.Length())+"_raw.png"<<endl;
-	c=GetCompare(histname+(systematics[is].vary_data?systematics[is].suffixes[0]:""),histname+(systematics[is].vary_signal?systematics[is].suffixes[0]:""),histname+(systematics[is].vary_bg?systematics[is].suffixes[0]:""),0,plot->rebin,plot->xmin,plot->xmax,plot->option);
+	c=GetCompare(histname+(systematics[is].vary_data?systematics[is].suffixes[0]:""),histname+(systematics[is].vary_signal?systematics[is].suffixes[0]:""),histname+(systematics[is].vary_bg?systematics[is].suffixes[0]:""),0,p->rebin,p->xmin,p->xmax,p->option);
 	if(c){
 	  c->SaveAs(this_dir+"/"+histname(histname.Last('/'),histname.Length())+"_raw.png");
 	  THStack* hstack=(THStack*)c->GetPad(1)->GetPrimitive("hstack");

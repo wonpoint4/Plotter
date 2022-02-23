@@ -1,5 +1,9 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__
+#include <TString.h>
+#include <TObjArray.h>
+#include <TObjString.h>
+#include <TRegexp.h>
 vector<TString> Split(TString s,TString del){
   TObjArray* array=s.Tokenize(del);
   vector<TString> out;
@@ -29,6 +33,19 @@ TString Strip(TString str,TString c){
   if(str.EndsWith(c)) str=str(0,str.Length()-c.Length());
   if(str.BeginsWith(c)) str=str(c.Length(),str.Length()-c.Length());
   return str;
+}
+TString Join(TString del,vector<TString> strs){
+  TString out;
+  for(const auto& s:strs) out+=s+del;
+  return out(0,out.Length()-del.Length());
+}
+vector<double> VectorDouble(TString str){
+  str=Strip(str,"{");
+  str=Strip(str,"}");
+  vector<TString> sdoubles=Split(str,",");
+  vector<double> out;
+  for(TString sdouble:sdoubles) out.push_back(sdouble.Atof());
+  return out;
 }
 
 #endif

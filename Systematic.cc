@@ -4,21 +4,28 @@
 class Systematic{
 public:
   enum Type{UNDEF,ENVELOPE,GAUSSIAN,HESSIAN,MULTI};
-  TString name;
+  TString title;
   Type type=Type::UNDEF;
-  vector<TString> suffixes;
-  int sysbit=0;
-  int varibit=0;
+  vector<pair<TString,TString>> replaces;
+  vector<TString> keys;
+  TString tag;
 
-  Systematic(TString name_="",Type type_=Type::UNDEF,int varibit_=0);
+  Systematic(TString title_="",Type type_=Type::UNDEF,vector<TString> includes={},TString tag_="");
   ~Systematic();
   TString GetTypeString() const;
   void Print() const;
 };
-Systematic::Systematic(TString name_,Type type_,int varibit_){
-  name=name_;
+Systematic::Systematic(TString title_,Type type_,vector<TString> includes,TString tag_){
+  title=title_;
   type=type_;
-  varibit=varibit_;
+  tag=tag_;
+  if(type==Systematic::Type::MULTI) keys=includes;
+  else{
+    for(const TString& replace:includes){
+      if(Split(replace,"->").size()!=2) replaces.push_back(make_pair("$",replace));
+      else replaces.push_back(make_pair(Split(replace,"->").at(0),Split(replace,"->").at(1)));
+    }
+  }
 }
 Systematic::~Systematic(){}
 
@@ -34,9 +41,9 @@ TString Systematic::GetTypeString() const{
 }
 void Systematic::Print() const{
   cout<<"------------------------"<<endl;
-  cout<<name<<" "<<GetTypeString()<<endl;
-  cout<<"sysbit:"<<sysbit<<" varibit:"<<varibit<<endl;
-  for(const auto& suffix:suffixes) cout<<suffix<<" ";
+  cout<<title<<" "<<GetTypeString()<<" tag:"<<tag<<endl;
+  if(type==MULTI) for(const auto& key:keys) cout<<key<<" ";
+  else for(const auto& replace:replaces) cout<<replace.first<<"->"<<replace.second<<" ";
   cout<<"\n"<<endl;
 }
 #endif

@@ -11,17 +11,16 @@ General purpose plotter using ROOT histogram
 ## Basic Classes
 ### Style
 ### Sample
-* Define a sample. It can be a file(`Sample::Type::FILE`), a sample, or a collection of samples(`Sample::Type::SUM||Sample::Type::STACK`)
+* Define a sample. It can be a file(FILE), a sample(SAMPLE), or a collection of samples(SUM,STACK)
 * main variables
   * title: the title of this sample in plots
   * subs: a vector of sub-samples for Collection type or files for Sample type
-  * style: a plotting style for this sample
-  * sytle_alt: an alternative plotting style for this sample (for systematic uncertainty)
+  * styles: a plotting style for this sample. Index 0 for the nominal and others for the systematics.
 ### Plot
 * Define a plot. It is passed as argument of `Plotter::GetHist` function
 ### Plotter
 * Base class for plotters
-* Draw or save a TCanvas with `vector<Sample> Plotter::entries`
+* Draw or save a TCanvas with sample entries(`vector<Sample> Plotter::entries`).
   
 ## Quick start using Plotter
 ```c++
@@ -62,8 +61,28 @@ root [7] aa.SavePlot("ee2016/m80to100/dimass_MediumID_Q","norm")
 You can make your own plotter class inherited from `Plotter`. See 'EfficiencyPlotter.cc' as an example.
 
 ## Draw and Save options
-* norm - Normalize to 1
+You can pass a option to a specific pad using `PADINDEX:OPTION` syntax. ex) `1:logy`  
+* absy - projection to absolute y
+* blind:FLOAT,FLOAT - remove data points for blind analyses. Needs two floating numbers to define range.
+* logx - log scale x-axis
+* logy - log scale y-axis
+* norm - Normalized
 * noleg - Do not draw a legend
+* preliminary - Draw "CMS preliminary working in progress" and lumi and era info
+* noera - In the preliminary option, do not draw era info
+* nolumi - In the preliminary option, do not draw lumi info
+* TLleg - top-left legend
+* TMleg - top-middle legend
+* BLleg - bottom-left legend
+* BMleg - bottom-middle legend
+* BRleg - bottom-right legend
+* rebin:INT - Rebinning by merging INT bins.
+* rebin:{bin0,bin1,...,binN} - Rebinning with new bin boundary.
+* replace:STRING->STRING[:tag] - Modify the histogram name. You can specify sample tag. You can also use regular expression.
+* suffix:STRING[:tag] - Add suffix to histogram name. Same with replace:$->STRING[:tag].
+* sysname:STRING - Draw with systematic uncertainties defined by AddSystematic.
+* sysdetail - Decompose systematic uncertainty.
+* sysleg - Draw legend for systematic uncertainties.
 * type:INT
     * 0:UNDEF
     * 1:Compare - Draw multiple histograms in entries
@@ -75,7 +94,20 @@ You can make your own plotter class inherited from `Plotter`. See 'EfficiencyPlo
     * 7:CompareAndSig - 'Compare' plot in the upper pannel and 'Sig' plot in the lower pannel 
     * 8:DoubleRatio (Developing)
     * 9:Collection (Developing)
-* xmin:FLOAT,xmax:FLOAT
+* xmin:FLOAT,xmax:FLOAT - x-axis range
+* ymin:FLOAT,ymax:FLOAT - y-axis range
+* Xmin:FLOAT,Xmax:FLOAT - x-axis projection range
+* Ymin:FLOAT,Ymax:FLOAT - y-axis projection range
+* Zmin:FLOAT,Zmax:FLOAT - z-axis projection range
+* Umin:FLOAT,Umax:FLOAT - u-axis projection range
+* title:STRING - set title, you can use single quote (') if title has spaces
+* title+,title++ - larger title
+* xtitle:STRING - set xtitle, you can use single quote (') if title has spaces
+* xtitle+,xtitle++ - larger xtitle
+* xtitle-,xtitle-- - smaller xtitle
+* ytitle:STRING - set ytitle, you can use single quote (') if title has spaces
+* ytitle+,ytitle++ - larger ytitle
+* ytitle-,ytitle-- - smaller ytitle
 * widey - For ratio plot, set yaxis range from 0.5 to 1.5
 * widewidey - For ratio plot, set yaxis range from 0.0 to 2.0
 * widthweight - For variable bin size, divide bin contents by bin size to get proper shape

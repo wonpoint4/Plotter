@@ -1,13 +1,17 @@
 #ifndef __AFBPLOTTER_CC__
 #define __AFBPLOTTER_CC__
 #include"Plotter.cc"
+//#if __has_include("TH4D.h")
+//#include "TH4D.h"
+//#endif
 class AFBPlotter:public Plotter{
 public:
   void SetupSystematics();
   int Setup(TString mode_);
   TString mode;
   TString analyzer;
-  AFBPlotter(TString mode_="data ^amc+tau_amc+vv+wjets+tttw+aa");
+  AFBPlotter(TString mode_="data ^Dyb_mi+Dybbar_mi+mi+Dyc_mi+Dycbar_mi+Dyudsg_mi+tau_mi+vv+tttw",TString analyzer_="AFBAnalyzer");
+  ~AFBPlotter();
 
   void SetupTH4D();
   pair<double,double> GetRange(TString histname,TString axisname);
@@ -15,6 +19,7 @@ public:
 
   using Plotter::GetHist;
   virtual TH1* GetHist(const Sample& sample,Plot plot,TString additional_option="");
+  virtual TH1* GetHist(int ientry,TString plotkey,TString additional_option="") {return Plotter::GetHist(ientry,plotkey,additional_option); } // for pyroot compatibility
   virtual void GetHistActionForAdditionalClass(TObject*& obj,Plot plot);
   virtual Plot MakePlot(TString name,TString option="");
 
@@ -22,80 +27,10 @@ public:
   TH1* GetHistAFB(TH1* hist_forward,TH1* hist_backward);
 
   //TCanvas* DrawPlot(TString plotkey,TString option="");
-  map<TString,TString> plot_axisnames;
-};
-/*
-TCanvas* AFBPlotter::DrawPlot(TString plotkey,TString option=""){
-  TCanvas* c=Plotter::DrawPlot(plotkey,option);
-  if(c){
-    Plot plot=plots[plotkey];
-    plot.SetOption(option);
-    for(auto [histname,axisname]:plot_axisnames){
-      if(plot.name.Contains(TRegexp("/[^/]*"+histname))){
-	if(plot.IsMultiPad()){
-	  c->GetPad(2)->cd();
-	}else{
-	  c->cd();
-	}
-	TH1* axisowner=GetAxisParent(gPad);
-	if(axisowner){
-	  if(plot.histname.Contains(TRegexp("^mm[0-9]"))) axisname.ReplaceAll("ll","#mu#mu");
-	  else if(plot.histname.Contains(TRegexp("^ee[0-9]"))) axisname.ReplaceAll("ll","ee");
-	  axisowner->GetXaxis()->SetTitle(axisname);
-	  gPad->Update();
-	  gPad->Modified();
-	}
-      }
-    }
-    if(plot.IsMultiPad()){
-      c->GetPad(1)->cd();
-    }else{
-      c->cd();
-    }
-    
-    TH1* axisowner=GetAxisParent(gPad);
-    if(axisowner){
-      if(plot.name.Contains("AFB")) axisowner->GetYaxis()->SetTitle("A_{FB}"); 
-      else if(plot.option.Contains("norm")) axisowner->GetYaxis()->SetTitle("Normalized");
-      else if(plot.option.Contains("widthweight")) axisowner->GetYaxis()->SetTitle("Events / 1 GeV");
-      //else axisowner->GetYaxis()->SetTitle(Form("Events / %g GeV",axisowner->GetBinWidth(1)));
-      else axisowner->GetYaxis()->SetTitle("Events");
-      
-      if(gPad->GetPrimitive("TPave")){
-	TLegend* leg=(TLegend*)gPad->GetPrimitive("TPave");
-	for(auto obj:*leg->GetListOfPrimitives()){
-	  TLegendEntry* entry=(TLegendEntry*)obj;
-	  TString label=entry->GetLabel();
-	  if(label.Contains("#rightarrowll")){
-	    if(plot.histname.Contains(TRegexp("^mm[0-9]"))) label.ReplaceAll("ll","#mu#mu");
-	    else if(plot.histname.Contains(TRegexp("^ee[0-9]"))) label.ReplaceAll("ll","ee");
-	    entry->SetLabel(label);
-	    break;
-	  }
-	}
-      }
 
-      //axisowner->SetTitle("");
-      TLatex latex;
-      latex.SetTextSize(0.07);
-      latex.SetNDC();
-      if(!(plot.IsMultiPad())) latex.SetTextSize(0.04);
-      //latex.DrawLatex(0.17,0.92,"CMS #bf{#it{Preliminary}}");
-      if(plot.histname.Contains(TRegexp("^[a-z]*2016/"))){
-	//latex.DrawLatex(0.6,0.92,"35.92 fb^{-1} (13 TeV)");
-      }else if(plot.histname.Contains(TRegexp("^[a-z]*2017/"))){
-	//latex.DrawLatex(0.6,0.92,"41.53 fb^{-1} (13 TeV)");
-      }else if(plot.histname.Contains(TRegexp("^[a-z]*2018/"))){
-	//latex.DrawLatex(0.6,0.92,"59.74 fb^{-1} (13 TeV)");
-      }	
-      
-      gPad->Update();
-      gPad->Modified();
-    }
-  }
-  return c;
-}
-*/
+  ClassDef(AFBPlotter,0);
+};
+ClassImp(AFBPlotter);
 pair<double,double> AFBPlotter::GetRange(TString histname,TString axisname){
   TString rangestring=histname(TRegexp(axisname+"[[-+0-9.]*,[-+0-9.]*]"));
   TString first=rangestring(axisname.Length()+1,rangestring.Index(',')-axisname.Length()-1);
@@ -112,6 +47,18 @@ TH1* AFBPlotter::GetHist(const Sample& sample,Plot plot,TString additional_optio
     TH1* hist_backward_num=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_num")+" Umin:-1 Umax:0");
     TH1* hist_backward_den=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_den")+" Umin:-1 Umax:0");
     hist=GetHistWeightedAFB(hist_forward_num,hist_forward_den,hist_backward_num,hist_backward_den);
+  }else if(plot.histname.Contains("AFBR")){
+    TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBR","costhetaR")+" Umin:0 Umax:1");
+    TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBR","costhetaR")+" Umin:-1 Umax:0");
+    hist=GetHistAFB(hist_forward,hist_backward);
+  }else if(plot.histname.Contains("AFBT")){
+    TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBT","costhetaT")+" Umin:0 Umax:1");
+    TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBT","costhetaT")+" Umin:-1 Umax:0");
+    hist=GetHistAFB(hist_forward,hist_backward);
+  }else if(plot.histname.Contains("AFBrecoil")){
+    TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil","costhetaRecoil")+" Umin:0 Umax:1");
+    TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil","costhetaRecoil")+" Umin:-1 Umax:0");
+    hist=GetHistAFB(hist_forward,hist_backward);
   }else if(plot.histname.Contains("AFB")){
     TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFB","costhetaCS")+" Umin:0 Umax:1");
     TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFB","costhetaCS")+" Umin:-1 Umax:0");
@@ -119,7 +66,7 @@ TH1* AFBPlotter::GetHist(const Sample& sample,Plot plot,TString additional_optio
   }
   if(hist){
     sample.ApplyStyle(hist);
-    hist->SetTitle(plot.name+plot.suffix);
+    hist->SetTitle(plot.title);
     hist->SetDirectory(pdir);
     return hist;
   }else{
@@ -129,6 +76,7 @@ TH1* AFBPlotter::GetHist(const Sample& sample,Plot plot,TString additional_optio
 void AFBPlotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot){
   PAll("[AFBPlotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot)");
   if(strstr(obj->ClassName(),"TH4D")!=NULL){
+    if(plot.option.Contains("noproject")) return;
     TH4D* hist4d=(TH4D*)obj;
     int ixmin=0,iymin=0,izmin=0,iumin=0;
     int ixmax=-1,iymax=-1,izmax=-1,iumax=-1;
@@ -316,64 +264,80 @@ TH1* AFBPlotter::GetHistAFB(TH1* hist_forward,TH1* hist_backward){
   return hist;
 }  
 
-AFBPlotter::AFBPlotter(TString mode_){
+AFBPlotter::AFBPlotter(TString mode_,TString analyzer_){
+  analyzer=analyzer_;
+  analyzer.ReplaceAll("_backup","");
   SetupTH4D();
-  ScanFiles(TString()+getenv("SKFlatOutputDir")+getenv("SKFlatV")+"/AFBAnalyzer/");
+  ScanFiles(TString()+getenv("SKFlatOutputDir")+getenv("SKFlatV")+"/"+analyzer_+"/");
   
-  samples["data"]=Sample("data",Sample::Type::DATA,kBlack,20)+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]")+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_.*EG.*_[A-Z]")+TRegexp("/DATA/AFBAnalyzer_.*Electron.*_[A-Z]");
-  samples["mm2016"]=Sample("data (#mu#mu2016)",Sample::Type::DATA,kBlack,20)+TRegexp("2016/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]");
-  samples["mm2017"]=Sample("data (#mu#mu2017)",Sample::Type::DATA,kRed,20)+TRegexp("2017/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]");
-  samples["mm2018"]=Sample("data (#mu#mu2018)",Sample::Type::DATA,kBlue,20)+TRegexp("2018/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]");
-  samples["ee2016"]=Sample("data (ee2016)",Sample::Type::DATA,kBlack,22)+TRegexp("2016/DATA/AFBAnalyzer_SkimTree_Dilepton_.*EG.*_[A-Z]");
-  samples["ee2017"]=Sample("data (ee2017)",Sample::Type::DATA,kRed,22)+TRegexp("2017/DATA/AFBAnalyzer_SkimTree_Dilepton_.*EG.*_[A-Z]");
-  samples["ee2018"]=Sample("data (ee2018)",Sample::Type::DATA,kBlue,22)+TRegexp("2018/DATA/AFBAnalyzer_SkimTree_Dilepton_.*EG.*_[A-Z]");
-  samples["mm"]=Sample("data (#mu#mu)",Sample::Type::DATA,kBlack,20)+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_DoubleMuon_[A-Z]");
-  samples["ee"]=Sample("data (ee)",Sample::Type::DATA,kRed,22)+TRegexp("/DATA/AFBAnalyzer_SkimTree_Dilepton_.*EG.*_[A-Z]");
+  samples["data"]=Sample("data","SAMPLE data",kBlack,20)+TRegexp("/DATA/"+analyzer+"_SkimTree_Dilepton_DoubleMuon_[A-Z]")+TRegexp("/DATA/"+analyzer+"_SkimTree_Dilepton_SingleMuon_[A-Z]")+TRegexp("/DATA/"+analyzer+"_SkimTree_Dilepton_SingleElectron_[A-Z]")+TRegexp("/DATA/"+analyzer+"_SkimTree_Dilepton_DoubleEG_[A-Z]")+TRegexp("/DATA/"+analyzer+"_SkimTree_Dilepton_EGamma_[A-Z]");
+  samples["mm2016"]=Sample("data (#mu#mu2016a)","SAMPLE data mm 2016a",kBlack,20)+TRegexp("2016preVFP.*/DATA/"+analyzer+"_SkimTree_Dilepton_DoubleMuon_[A-Z]");
+  samples["mm2016"]=Sample("data (#mu#mu2016b)","SAMPLE data mm 2016b",kBlack,20)+TRegexp("2016postVFP.*/DATA/"+analyzer+"_SkimTree_Dilepton_DoubleMuon_[A-Z]");
+  samples["mm2017"]=Sample("data (#mu#mu2017)","SAMPLE data mm 2017",kRed,20)+TRegexp("2017.*/DATA/"+analyzer+"_SkimTree_Dilepton_DoubleMuon_[A-Z]");
+  samples["mm2018"]=Sample("data (#mu#mu2018)","SAMPLE data mm 2018",kBlue,20)+TRegexp("2018.*/DATA/"+analyzer+"_SkimTree_Dilepton_DoubleMuon_[A-Z]");
+  samples["ee2016"]=Sample("data (ee2016a)","SAMPLE data ee 2016a",kBlack,22)+TRegexp("2016preVFP.*/DATA/"+analyzer+"_SkimTree_Dilepton_.*EG.*_[A-Z]");
+  samples["ee2016"]=Sample("data (ee2016b)","SAMPLE data ee 2016b",kBlack,22)+TRegexp("2016postVFP.*/DATA/"+analyzer+"_SkimTree_Dilepton_.*EG.*_[A-Z]");
+  samples["ee2017"]=Sample("data (ee2017)","SAMPLE data ee 2017",kRed,22)+TRegexp("2017.*/DATA/"+analyzer+"_SkimTree_Dilepton_.*EG.*_[A-Z]");
+  samples["ee2018"]=Sample("data (ee2018)","SAMPLE data ee 2018",kBlue,22)+TRegexp("2018.*/DATA/"+analyzer+"_SkimTree_Dilepton_.*EG.*_[A-Z]");
+  samples["mm"]=Sample("data (#mu#mu)","SAMPLE data",kBlack,20)+TRegexp("/DATA/"+analyzer+"_SkimTree_Dilepton_DoubleMuon_[A-Z]");
+  samples["ee"]=Sample("data (ee)","SAMPLE data",kRed,22)+TRegexp("/DATA/"+analyzer+"_SkimTree_Dilepton_.*EG.*_[A-Z]");
 
-  samples["ww"]=Sample("WW",Sample::Type::BG,kBlue)+TRegexp("/AFBAnalyzer_.*WW_pythia");
-  samples["wz"]=Sample("WZ",Sample::Type::BG,kGreen)+TRegexp("/AFBAnalyzer_.*WZ_pythia");
-  samples["zz"]=Sample("ZZ",Sample::Type::BG,kCyan)+TRegexp("/AFBAnalyzer_.*ZZ_pythia");
-  samples["vv"]=Sample("Diboson",Sample::Type::BG,kBlue)+TRegexp("/AFBAnalyzer_.*[W-Z][W-Z]_pythia");
-  samples["wjets"]=Sample("W",Sample::Type::BG,kYellow)+TRegexp("/AFBAnalyzer_.*WJets_MG");
-  samples["tt"]=Sample("t#bar{t}",Sample::Type::BG,kMagenta)+TRegexp("/AFBAnalyzer_.*TTLL_powheg");
-  samples["ttlj"]=Sample("TTLJ",Sample::Type::BG,kMagenta+6)+TRegexp("/AFBAnalyzer_.*TTLJ_powheg");
-  samples["tw"]=Sample("tW",Sample::Type::BG,kMagenta+10)+TRegexp("/AFBAnalyzer_.*SingleTop_tW_.*top_NoFullyHad");
-  samples["st"]=Sample("ST",Sample::Type::BG,kMagenta+12)+TRegexp("/AFBAnalyzer_.*SingleTop_[st]ch_.*");
-  samples["tttw"]=Sample("t#bar{t}, tW",Sample::Type::SUM,kMagenta)+"tt"+"tw";
-  samples["qcdm"]=Sample("QCD Mu-enriched",Sample::Type::BG,kCyan)+TRegexp("/AFBAnalyzer_.*QCD_Pt.*MuEnrichedPt5$");
-  samples["qcdm1"]=Sample("QCD Mu-enriched 10to20",Sample::Type::BG,1)+TRegexp("/AFBAnalyzer_.*QCD_Pt-15to20.*MuEnrichedPt5$");
-  samples["qcdm2"]=Sample("QCD Mu-enriched 20to30",Sample::Type::BG,2)+TRegexp("/AFBAnalyzer_.*QCD_Pt-20to30.*MuEnrichedPt5$");
-  samples["qcdm3"]=Sample("QCD Mu-enriched 30to50",Sample::Type::BG,3)+TRegexp("/AFBAnalyzer_.*QCD_Pt-30to50.*MuEnrichedPt5$");
-  samples["qcdm4"]=Sample("QCD Mu-enriched 50to80",Sample::Type::BG,4)+TRegexp("/AFBAnalyzer_.*QCD_Pt-50to80.*MuEnrichedPt5$");
-  samples["qcdm5"]=Sample("QCD Mu-enriched 80to120",Sample::Type::BG,5)+TRegexp("/AFBAnalyzer_.*QCD_Pt-80to120.*MuEnrichedPt5$");
-  samples["qcdm6"]=Sample("QCD Mu-enriched 120to170",Sample::Type::BG,6)+TRegexp("/AFBAnalyzer_.*QCD_Pt-120to170.*MuEnrichedPt5$");
-  samples["qcde"]=Sample("QCD EM-enriched",Sample::Type::BG,kCyan+4)+TRegexp("/AFBAnalyzer_.*QCD_Pt.*EMEnriched$");
-  samples["qcdee"]=Sample("QCD bcToE",Sample::Type::BG,kCyan)+TRegexp("/AFBAnalyzer_.*QCD_Pt.*bcToE$");
+  samples["ww"]=Sample("WW","SAMPLE sim",kBlue)+TRegexp("/"+analyzer+"_.*WW_pythia");
+  samples["wz"]=Sample("WZ","SAMPLE sim",kGreen)+TRegexp("/"+analyzer+"_.*WZ_pythia");
+  samples["zz"]=Sample("ZZ","SAMPLE sim",kCyan)+TRegexp("/"+analyzer+"_.*ZZ_pythia");
+  samples["vv"]=Sample("Diboson, WJets","SAMPLE sim",kOrange)+TRegexp("/"+analyzer+"_.*[W-Z][W-Z]_pythia")+TRegexp("/"+analyzer+"_.*WJets_MG");
+  samples["wjets"]=Sample("W","SAMPLE sim",kYellow)+TRegexp("/"+analyzer+"_.*WJets_MG");
+  samples["tt"]=Sample("t#bar{t}","SAMPLE sim tt",kMagenta)+TRegexp("/"+analyzer+"_.*TTLL_powheg");
+  samples["ttlj"]=Sample("TTLJ","SAMPLE sim",kMagenta+6)+TRegexp("/"+analyzer+"_.*TTLJ_powheg");
+  samples["tw"]=Sample("tW","SAMPLE sim",kMagenta+10)+TRegexp("/"+analyzer+"_.*SingleTop_tW_.*top_NoFullyHad");
+  samples["st"]=Sample("ST","SAMPLE sim",kMagenta+12)+TRegexp("/"+analyzer+"_.*SingleTop_[st]ch_.*");
+  samples["tttw"]=Sample("t#bar{t}, tW","SUM",kMagenta)+"tt"+"tw";
+  samples["qcdm"]=Sample("QCD Mu-enriched","SAMPLE sim",kCyan)+TRegexp("/"+analyzer+"_.*QCD_Pt.*MuEnrichedPt5$");
+  samples["qcdm1"]=Sample("QCD Mu-enriched 10to20","SAMPLE sim",1)+TRegexp("/"+analyzer+"_.*QCD_Pt-15to20.*MuEnrichedPt5$");
+  samples["qcdm2"]=Sample("QCD Mu-enriched 20to30","SAMPLE sim",2)+TRegexp("/"+analyzer+"_.*QCD_Pt-20to30.*MuEnrichedPt5$");
+  samples["qcdm3"]=Sample("QCD Mu-enriched 30to50","SAMPLE sim",3)+TRegexp("/"+analyzer+"_.*QCD_Pt-30to50.*MuEnrichedPt5$");
+  samples["qcdm4"]=Sample("QCD Mu-enriched 50to80","SAMPLE sim",4)+TRegexp("/"+analyzer+"_.*QCD_Pt-50to80.*MuEnrichedPt5$");
+  samples["qcdm5"]=Sample("QCD Mu-enriched 80to120","SAMPLE sim",5)+TRegexp("/"+analyzer+"_.*QCD_Pt-80to120.*MuEnrichedPt5$");
+  samples["qcdm6"]=Sample("QCD Mu-enriched 120to170","SAMPLE sim",6)+TRegexp("/"+analyzer+"_.*QCD_Pt-120to170.*MuEnrichedPt5$");
+  samples["qcde"]=Sample("QCD EM-enriched","SAMPLE sim",kCyan+4)+TRegexp("/"+analyzer+"_.*QCD_Pt.*EMEnriched$");
+  samples["qcdee"]=Sample("QCD bcToE","SAMPLE sim",kCyan)+TRegexp("/"+analyzer+"_.*QCD_Pt.*bcToE$");
 
-  samples["aa0j"]=Sample("#gamma#gamma#rightarrowll",Sample::Type::BG,kMagenta+12)+TRegexp("/AFBAnalyzer_.*GamGamToLL_0j$");
-  samples["aa"]=Sample("#gamma#gamma#rightarrowll",Sample::Type::BG,kYellow+1)+TRegexp("/AFBAnalyzer_.*GamGamToLL$");
+  samples["aa0j"]=Sample("#gamma#gamma#rightarrowll","SAMPLE sim",kMagenta+12)+TRegexp("/"+analyzer+"_.*GamGamToLL_0j$");
+  samples["aa"]=Sample("#gamma#gamma#rightarrowll","SAMPLE sim",kYellow+1)+TRegexp("/"+analyzer+"_.*GamGamToLL$");
 
-  samples["amc"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets$");
-  samples["amcJet"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DY[0-9]Jets$");
-  samples["amcPt"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets_Pt-[0-9]*To[0-9Inf]*$");
-  samples["amcM"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets_M-[0-9]*to[0-9Inf]*$");
-  samples["mg"]=Sample("#gamma*/Z#rightarrowll",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*DYJets_MG$");
-  samples["powheg"]=Sample("#gamma*/Z#rightarrowll (POWHEG)",Sample::Type::SIGNAL,kRed)+TRegexp("/AFBAnalyzer_.*ZToEE_M_50_120$");
-  TString dysamples[]={"amc","amcJet","amcPt","amcM","mg"};
+  samples["amc"]=Sample("DYJets+b#bar{b}","SAMPLE sim dy",kRed)+TRegexp("/"+analyzer+"_.*DYJets$");
+  samples["amcS19"]=Sample("DYJets+b#bar{b}","SAMPLE sim dy",kRed)+TRegexp("/"+analyzer+"_.*DYJets_Summer19$");
+  samples["amcJet"]=Sample("DYJets+b#bar{b}","SAMPLE sim dy",kRed)+TRegexp("/"+analyzer+"_.*DY[0-9]Jets$");
+  samples["amcPt"]=Sample("DYJets+b#bar{b}","SAMPLE sim dy",kRed)+TRegexp("/"+analyzer+"_.*DYJets_Pt-[0-9]*To[0-9Inf]*$");
+  samples["amcM"]=Sample("DYJets+b#bar{b}","SAMPLE sim dy",kRed)+TRegexp("/"+analyzer+"_.*DYJets_M-[0-9]*to[0-9Inf]*$");
+  samples["mg"]=Sample("DYJets+b#bar{b}","SAMPLE sim dy",kRed)+TRegexp("/"+analyzer+"_.*DYJets_MG$");
+  samples["powheg"]=Sample("DYJets+b#bar{b} (POWHEG)","SAMPLE sim dy",kRed)+TRegexp("/"+analyzer+"_.*ZToEE_M_50_120$");
+  samples["mi"]=Sample("DYJets+b#bar{b}","SAMPLE sim dy",kRed)+TRegexp("/"+analyzer+"_.*DYJetsTo[EMuTau]*_MiNNLO$");
+  TString dysamples[]={"amc","amcJet","amcPt","amcM","mg","mi"};
   for(auto dysample:dysamples){
-    samples["tau_"+dysample]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau",Sample::Type::BG,kGreen)+dysample);
-    samples["lhe_"+dysample]="lhe_"%(Sample("#gamma*/Z#rightarrowll (LHE)",Sample::Type::SIGNAL,kBlue)+dysample);
-    samples["gen_"+dysample]="gen_"%(Sample("#gamma*/Z#rightarrowll (GEN)",Sample::Type::SIGNAL,kGreen)+dysample);
-    samples["genfid_"+dysample]="genfid_"%(Sample("#gamma*/Z#rightarrowll (GEN fiducial)",Sample::Type::SIGNAL,kMagenta)+dysample);
-    samples["truth_"+dysample]="truth_"%(Sample("#gamma*/Z#rightarrowll (truth)",Sample::Type::SIGNAL,kCyan)+dysample);
+    samples["tau_"+dysample]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau","SAMPLE sim",kGreen+2)+dysample);
+    samples["Dyb_"+dysample]="Dyb_"%(Sample("DYJets+b","SAMPLE sim",kGreen)+dysample);
+    samples["Dybbar_"+dysample]="Dybbar_"%(Sample("DYJets+#bar{b}","SAMPLE sim",kBlue)+dysample);
+    samples["Dyc_"+dysample]="Dyc_"%(Sample("DYJets+c","SAMPLE sim",kYellow)+dysample);
+    samples["Dycbar_"+dysample]="Dycbar_"%(Sample("DYJets+#bar{c}","SAMPLE sim",kRed-5)+dysample);
+    samples["Dyudsg_"+dysample]="Dyudsg_"%(Sample("DYJets+uds","SAMPLE sim",kRed-10)+dysample);
+
+    samples["lhe_"+dysample]="lhe_"%(Sample("#gamma*/Z#rightarrowll (LHE)","SAMPLE sim dy",kBlue)+dysample);
+    samples["gen_"+dysample]="gen_"%(Sample("#gamma*/Z#rightarrowll (GEN)","SAMPLE sim dy",kGreen)+dysample);
+    samples["genfid_"+dysample]="genfid_"%(Sample("#gamma*/Z#rightarrowll (GEN fiducial)","SAMPLE sim dy",kMagenta)+dysample);
+    samples["truth_"+dysample]="truth_"%(Sample("#gamma*/Z#rightarrowll (truth)","SAMPLE sim dy",kCyan)+dysample);
+    samples["ss_"+dysample]="ss_"%(Sample("QCD multi-jet","SUM",kCyan)+"data"-dysample-("tau_"+dysample)-"vv"-"wjets"-"tt"-"tw");
   }
     
-  samples["ss"]="ss_"%(Sample("QCD multi-jet",Sample::Type::SUM,kCyan)+"data"-"amc"-"tau_amc"-"vv"-"wjets"-"tt"-"tw"-"aa");
+  samples["ss"]="ss_"%(Sample("QCD multi-jet","SUM",kCyan)+"data"-"amc"-"tau_amc"-"vv"-"wjets"-"tt"-"tw");
 
-  samples["amcPt_stack"]=Sample("DY Pt-binned",Sample::Type::STACK,kBlue)+TRegexp("/AFBAnalyzer_.*DYJets_Pt-[0-9]*To[0-9Inf]*$");
+  samples["amcPt_stack"]=Sample("DY Pt-binned","STACK",kBlue)+TRegexp("/"+analyzer+"_.*DYJets_Pt-[0-9]*To[0-9Inf]*$");
   for(auto& sub:samples["amcPt_stack"].subs) sub.title=sub.title(TRegexp("Pt-[0-9]*To[0-9Inf]*"));
-  samples["amcM_stack"]=Sample("DY M-binned",Sample::Type::STACK,kBlue)+TRegexp("/AFBAnalyzer_.*DYJets_M-[0-9]*to[0-9Inf]*$");
+  samples["amcM_stack"]=Sample("DY M-binned","STACK",kBlue)+TRegexp("/"+analyzer+"_.*DYJets_M-[0-9]*to[0-9Inf]*$");
   for(auto& sub:samples["amcM_stack"].subs) sub.title=sub.title(TRegexp("M-[0-9]*to[0-9Inf]*"));
+
+  samples["miel_nodata"]=Sample("SM Prediction","SUM",Style(kRed,-1,1001,"e2"),Style(kGreen,-1,1001,"e2"),Style(kBlue,-1,1001,"e2"),Style(kMagenta,-1,1001,"e2"))+"mi"+"tau_mi"+"vv"+"wjets"+"tttw"+"ss_mi";
+  samples["mimu_nodata"]=Sample("SM Prediction","SUM",Style(kRed,-1,1001,"e2"),Style(kGreen,-1,1001,"e2"),Style(kBlue,-1,1001,"e2"),Style(kMagenta,-1,1001,"e2"))+"mi"+"tau_mi"+"vv"+"wjets"+"tttw"+1.7*samples["ss_mi"];
 
   /*
   samples["private"]=Sample("aMC@NLO private",Sample::Type::A,Style(kBlue,20));
@@ -382,42 +346,20 @@ AFBPlotter::AFBPlotter(TString mode_){
   samples["private_correct"]=(Sample("correct direction",Sample::Type::A,Style(kRed,20))+"private")%"_correct";
   samples["private_0"]=(Sample("PDG sin^{2}#theta",Sample::Type::A,Style(kRed,20))+"private")%"_0";
   */
-  plot_axisnames["dimass"]="m(ll) [GeV]";
-  plot_axisnames["dirap"]="y(ll)";
-  plot_axisnames["dipt"]="p_{T}(ll) [GeV]";
-  plot_axisnames["costhetaCS"]="cos#theta_{CS}";
-  plot_axisnames["AFB(m)"]="m(ll) [GeV]";
-  plot_axisnames["AFB(y)"]="y(ll)";
-  plot_axisnames["AFB(pt)"]="p_{T}(ll) [GeV]";
-
   Setup(mode_);
 }
+AFBPlotter::~AFBPlotter(){}
 
 int AFBPlotter::Setup(TString mode_){
   Reset();
-  if(mode_=="dab"||mode_=="data:amc+bg") mode="data:amc+bg";
-  else if(mode_=="dabs"||mode_=="data:amc+bg+ss") mode="data:amc+bg+ss";
-  else if(mode_=="dba"||mode_=="data-bg:amc") mode="data-bg:amc";
-  else if(mode_=="dajb"||mode_=="data:amcJet+bg") mode="data:amcJet+bg";
-  else if(mode_=="dajbs"||mode_=="data:amcJet+bg+ss") mode="data:amcJet+bg+ss";
-  else if(mode_=="dbaj"||mode_=="data-bg:amcJet") mode="data-bg:amcJet";
-  else if(mode_=="damb"||mode_=="data:amcM+bg") mode="data:amcM+bg";
-  else if(mode_=="m"||mode_=="muon") mode="muon";
-  else if(mode_=="e"||mode_=="electron") mode="electron";
-  else if(mode_=="ae"||mode_=="amc_electron") mode="amc_electron";
-  else if(mode_=="aje"||mode_=="amcJet_electron") mode="amcJet_electron"; 
-  else if(mode_=="am"||mode_=="amc_muon") mode="amc_muon";
-  else if(mode_=="ajm"||mode_=="amcJet_muon") mode="amcJet_muon";
-  else if(mode_=="gae"||mode_=="genamc_electron") mode="genamc_electron";
-  else if(mode_=="gam"||mode_=="genamc_muon") mode="genamc_muon";
-  else if(mode_=="aga"||mode_=="amc:genamc") mode="amc:genamc";
-  else if(mode_=="wr") mode="wr";
-  else if(mode_=="appamm") mode="amc_pp:amc_mm";
-  else if(mode_=="mc") mode="mc";
+  if(mode_=="amcel") mode="data ^amc+tau_amc+vv+wjets+tttw+ss";
+  else if(mode_=="amcmu") mode="data ^amc+tau_amc+vv+wjets+tttw+1.7*ss";
+  else if(mode_=="mgel") mode="data ^mg+tau_mg+vv+wjets+tttw+ss_mg";
+  else if(mode_=="mgmu") mode="data ^mg+tau_mg+vv+wjets+tttw+1.7*ss_mg";
+  else if(mode_=="miel") mode="data ^mi+tau_mi+vv+wjets+tttw+ss_mi";
+  else if(mode_=="mimu") mode="data ^mi+tau_mi+vv+wjets+tttw+1.7*ss_mi";
   else {
     mode=mode_;
-    //cout<<"Invalid mode "<<mode_<<endl;
-    //exit(1);
   }
 
   SetupEntries(mode);
@@ -432,38 +374,67 @@ int AFBPlotter::Setup(TString mode_){
   
 void AFBPlotter::SetupSystematics(){
   if(Verbosity>VERBOSITY::WARNING)  std::cout<<"[AFBPlotter::SetupSystematics]"<<endl;
-  systematics["RECOSF"]=MakeSystematic("RECOSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_RECOSF_up _RECOSF_down");
-  systematics["IDSF"]=MakeSystematic("IDSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_IDSF_up _IDSF_down");
-  systematics["ISOSF"]=MakeSystematic("ISOSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_ISOSF_up _ISOSF_down");
-  systematics["triggerSF"]=MakeSystematic("triggerSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_triggerSF_up _triggerSF_down");
-  systematics["PUreweight"]=MakeSystematic("PUreweight",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_PUreweight_up _PUreweight_down");
-  systematics["prefireweight"]=MakeSystematic("prefireweight",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_prefireweight_up _prefireweight_down");
-  systematics["scale"]=MakeSystematic("scale",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_scale_up _scale_down");
-  systematics["smear"]=MakeSystematic("smear",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_smear_up _smear_down");
-  systematics["JER"]=MakeSystematic("JER",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_JER_up _JER_down");
-  systematics["JES"]=MakeSystematic("JES",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_JES_up _JES_down");
-  systematics["uncl"]=MakeSystematic("uncl",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_uncl_up _uncl_down");
-  systematics["metsys"]=MakeSystematic("totalsys",Systematic::Type::MULTI,0,"JER uncl JES");
-  systematics["alphaS"]=MakeSystematic("alphaS",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL),"_alphaS_up _alphaS_down");
-  systematics["scalevariation"]=MakeSystematic("scalevariation",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL),"_scalevariation0 _scalevariation1 _scalevariation2 _scalevariation3 _scalevariation4 _scalevariation6 _scalevariation8");
+  AddSystematic("efficiencySF_stat","efficiencySF_stat",Systematic::Type::GAUSSIAN,FormRange("_efficiencySF_stat%d",Range(20)),"sim");
+  AddSystematic("electronRECOSF_sys1","electronRECOSF_sys1",Systematic::Type::ENVELOPE,"_electronRECOSF_s1_m0","sim");
+  AddSystematic("electronRECOSF_sys2","electronRECOSF_sys2",Systematic::Type::ENVELOPE,"_electronRECOSF_s2_m0","sim");
+  AddSystematic("electronRECOSF_sys3","electronRECOSF_sys3",Systematic::Type::ENVELOPE,"_electronRECOSF_s3_m0","sim");
+  AddSystematic("electronRECOSF_sys4","electronRECOSF_sys4",Systematic::Type::ENVELOPE,"_electronRECOSF_s4_m0","sim");
+  AddSystematic("electronRECOSF_sys","electronRECOSF_sys",Systematic::Type::MULTI,"electronRECOSF_sys1 electronRECOSF_sys2 electronRECOSF_sys3 electronRECOSF_sys4");
+  AddSystematic("electronIDSF_sys1","electronIDSF_sys1",Systematic::Type::ENVELOPE,"_electronIDSF_s1_m0","sim");
+  AddSystematic("electronIDSF_sys2","electronIDSF_sys2",Systematic::Type::ENVELOPE,"_electronIDSF_s2_m0","sim");
+  AddSystematic("electronIDSF_sys3","electronIDSF_sys3",Systematic::Type::ENVELOPE,"_electronIDSF_s3_m0","sim");
+  AddSystematic("electronIDSF_sys4","electronIDSF_sys4",Systematic::Type::ENVELOPE,"_electronIDSF_s4_m0","sim");
+  AddSystematic("electronIDSF_sys","electronIDSF_sys",Systematic::Type::MULTI,"electronIDSF_sys1 electronIDSF_sys2 electronIDSF_sys3 electronIDSF_sys4");
+  AddSystematic("muonIDSF_sys1","muonIDSF_sys1",Systematic::Type::ENVELOPE,"_muonIDSF_s1_m0 _muonIDSF_s1_m1","sim");
+  AddSystematic("muonIDSF_sys2","muonIDSF_sys2",Systematic::Type::ENVELOPE,"_muonIDSF_s2_m0 _muonIDSF_s2_m1","sim");
+  AddSystematic("muonIDSF_sys3","muonIDSF_sys3",Systematic::Type::ENVELOPE,"_muonIDSF_s3_m0 _muonIDSF_s3_m1","sim");
+  AddSystematic("muonIDSF_sys4","muonIDSF_sys4",Systematic::Type::ENVELOPE,"_muonIDSF_s4_m0 _muonIDSF_s4_m1","sim");
+  AddSystematic("muonIDSF_sys","muonIDSF_sys",Systematic::Type::MULTI,"muonIDSF_sys1 muonIDSF_sys2 muonIDSF_sys3 muonIDSF_sys4");
+  AddSystematic("triggerSF_sys1","triggerSF_sys1",Systematic::Type::ENVELOPE,"_triggerSF_s1_m0 _triggerSF_s1_m1","sim");
+  AddSystematic("triggerSF_sys2","triggerSF_sys2",Systematic::Type::ENVELOPE,"_triggerSF_s2_m0 _triggerSF_s2_m1","sim");
+  AddSystematic("triggerSF_sys3","triggerSF_sys3",Systematic::Type::ENVELOPE,"_triggerSF_s3_m0 _triggerSF_s3_m1","sim");
+  AddSystematic("triggerSF_sys4","triggerSF_sys4",Systematic::Type::ENVELOPE,"_triggerSF_s4_m0 _triggerSF_s4_m1","sim");
+  AddSystematic("triggerSF_sys","triggerSF_sys",Systematic::Type::MULTI,"triggerSF_sys1 triggerSF_sys2 triggerSF_sys3 triggerSF_sys4");
+  AddSystematic("efficiencySF","efficiencySF",Systematic::Type::MULTI,"efficiencySF_stat electronRECOSF_sys electronIDSF_sys muonIDSF_sys triggerSF_sys");
+  AddSystematic("PUweight","PUweight",Systematic::Type::ENVELOPE,"_PUweight_up _PUweight_down","sim");
+  AddSystematic("prefireweight","prefiring unc.",Systematic::Type::ENVELOPE,"_prefireweight_up _prefireweight_down","sim");
+  AddSystematic("CFSF","charge-flip",Systematic::Type::ENVELOPE,"_CFSF_up _CFSF_down","sim");
+  AddSystematic("btagh","b tagging (heavy)",Systematic::Type::ENVELOPE,"_btagSF_hup _btagSF_hdown","sim");
+  AddSystematic("btagl","b tagging (light)",Systematic::Type::ENVELOPE,"_btagSF_lup _btagSF_ldown","sim");
+  AddSystematic("btag_old","b tagging",Systematic::Type::ENVELOPE,"_btagSF_up _btagSF_down","sim");
+  AddSystematic("btag","b tagging",Systematic::Type::MULTI,"btagh btagl");
+  AddSystematic("scale","scale",Systematic::Type::ENVELOPE,"_scale_up _scale_down","sim");
+  AddSystematic("smear","smear",Systematic::Type::ENVELOPE,"_smear_up _smear_down","sim");
+  AddSystematic("JER","JER",Systematic::Type::ENVELOPE,"_JER_up _JER_down","sim");
+  AddSystematic("JES","JES",Systematic::Type::ENVELOPE,"_JES_up _JES_down","sim");
+  AddSystematic("uncl","uncl",Systematic::Type::ENVELOPE,"_uncl_up _uncl_down","sim");
+  AddSystematic("metsys","totalsys",Systematic::Type::MULTI,"JER uncl JES");
 
-  vector<TString> prefixes;
-  for(int i=0;i<100;i++) prefixes.push_back(Form("_pdf%d",i));
-  systematics["pdfh"]=MakeSystematic("pdfh",Systematic::Type::HESSIAN,(1<<Sample::Type::SIGNAL),prefixes);
-  systematics["pdfg"]=MakeSystematic("pdfg",Systematic::Type::GAUSSIAN,(1<<Sample::Type::SIGNAL),prefixes);
+  AddSystematic("dyscale","#mu_{R}/#mu_{F}",Systematic::Type::ENVELOPE,"_scalevariation0 _scalevariation1 _scalevariation2 _scalevariation3 _scalevariation4 _scalevariation6 _scalevariation8","dy");
+  AddSystematic("dyalphaS","alphaS",Systematic::Type::ENVELOPE,"_alphaS_up _alphaS_down","dy");
+  AddSystematic("dypdf","PDF",Systematic::Type::HESSIAN,FormRange("_pdf%d",Range(100)),"dy");
 
-  systematics["noRECOSF"]=MakeSystematic("noRECOSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_noRECOSF");
-  systematics["noIDSF"]=MakeSystematic("noIDSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_noIDSF");
-  systematics["noISOSF"]=MakeSystematic("noISOSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_noISOSF");
-  systematics["notriggerSF"]=MakeSystematic("notriggerSF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_notriggerSF");
-  systematics["noPUreweight"]=MakeSystematic("noPUreweight",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_noPUreweight");
-  systematics["noprefireweight"]=MakeSystematic("noprefireweight",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_noprefireweight");
-  systematics["nozptcor"]=MakeSystematic("nozptcor",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL),"_nozptcor");
-  systematics["noefficiencySF"]=MakeSystematic("noefficiencySF",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_noefficiencySF");
-  systematics["IDSF_POG"]=MakeSystematic("IDSF_POG",Systematic::Type::ENVELOPE,(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_IDSF_POG");
-  systematics["selective"]=MakeSystematic("selective",Systematic::Type::ENVELOPE,(1<<Sample::Type::DATA)+(1<<Sample::Type::SIGNAL)+(1<<Sample::Type::BG),"_selective");
-  systematics["efficiencySF"]=MakeSystematic("efficiencySF",Systematic::Type::MULTI,0,"RECOSF IDSF ISOSF triggerSF");
-  systematics["totalsys"]=MakeSystematic("totalsys",Systematic::Type::MULTI,0,"RECOSF IDSF ISOSF triggerSF PUreweight prefireweight scale smear alphaS scalevariation pdf nozptcor");
+  AddSystematic("ttscale","#mu_{R}/#mu_{F}",Systematic::Type::ENVELOPE,"_scalevariation0 _scalevariation1 _scalevariation2 _scalevariation3 _scalevariation4 _scalevariation6 _scalevariation8","tt");
+  AddSystematic("ttalphaS","alphaS",Systematic::Type::ENVELOPE,"_alphaS_up _alphaS_down","tt");
+  AddSystematic("ttpdf","PDF",Systematic::Type::HESSIAN,FormRange("_pdf%d",Range(100)),"tt");
+
+  AddSystematic("noRECOSF","noRECOSF",Systematic::Type::ENVELOPE,"_noRECOSF","sim");
+  AddSystematic("noIDSF","noIDSF",Systematic::Type::ENVELOPE,"_noIDSF","sim");
+  AddSystematic("noISOSF","noISOSF",Systematic::Type::ENVELOPE,"_noISOSF","sim");
+  AddSystematic("notriggerSF","notriggerSF",Systematic::Type::ENVELOPE,"_notriggerSF","sim");
+  AddSystematic("noPUweight","noPUweight",Systematic::Type::ENVELOPE,"_noPUweight","sim");
+  AddSystematic("noprefireweight","noprefireweight",Systematic::Type::ENVELOPE,"_noprefireweight","sim");
+  AddSystematic("nozptcor","nozptcor",Systematic::Type::ENVELOPE,"_nozptcor","dy");
+  AddSystematic("noefficiencySF","noefficiencySF",Systematic::Type::ENVELOPE,"_noefficiencySF","sim");
+  AddSystematic("IDSF_POG","IDSF_POG",Systematic::Type::ENVELOPE,"_IDSF_POG","sim");
+  AddSystematic("selective","selective",Systematic::Type::ENVELOPE,"_selective");
+  //AddSystematic("totalsys","totalsys",Systematic::Type::MULTI,0,"RECOSF IDSF ISOSF triggerSF PUweight prefireweight scale smear alphaS scalevariation pdf nozptcor");
+   
+  AddSystematic("sys","syst. unc.",Systematic::Type::MULTI,"PUweight prefireweight btag CFSF efficiencySF");
+  AddSystematic("dytheory","theory (DY)",Systematic::Type::MULTI,"dyalphaS dyscale dypdf");
+  AddSystematic("tttheory","theory (t#bar{t})",Systematic::Type::MULTI,"ttalphaS ttscale ttpdf");
+  AddSystematic("totalsys","syst. unc.",Systematic::Type::MULTI,"sys dytheory tttheory");
+  AddSystematic("test","totalsys",Systematic::Type::MULTI,"btag dyscale ttscale");
 }
 
 void AFBPlotter::SetupTH4D(){
