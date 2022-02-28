@@ -1,14 +1,13 @@
 #ifndef __AFBPLOTTER_CC__
 #define __AFBPLOTTER_CC__
 #include"Plotter.cc"
-//#if __has_include("TH4D.h")
-//#include "TH4D.h"
-//#endif
+#if __has_include("TH4D.h")
+#include "TH4D.h"
+#endif
 class AFBPlotter:public Plotter{
 public:
   void SetupSystematics();
   int Setup(TString mode_);
-  TString mode;
   TString analyzer;
   AFBPlotter(TString mode_="data ^mi+tau_mi+vv+wjets+tttw+ss_mi+aa",TString analyzer_="AFBAnalyzer");
   ~AFBPlotter();

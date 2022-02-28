@@ -55,6 +55,11 @@ For Draw or save a plot
 ```c++
 root [6] aa.DrawPlot("ee2016/m80to100/dimass_MediumID_Q","norm")
 root [7] aa.SavePlot("ee2016/m80to100/dimass_MediumID_Q","norm")
+root [8] aa.SavePlot("ee2016/m80to100/dimass_MediumID_Q","norm save:myplotname.pdf")
+```
+For time-consuming jobs, You can use condor scheduler with *Plotter::SavePlotCondor*. It will submit a *SavePlot* job in background.
+```c++
+root [9] aa.SavePlotCondor("ee2016/m80to100/dimass_MediumID_Q","norm save:myplotname.pdf")
 ```
 
 ## Make your plotter
@@ -80,10 +85,12 @@ You can pass a option to a specific pad using `PADINDEX:OPTION` syntax. ex) `1:l
 * rebin:INT - Rebinning by merging INT bins.
 * rebin:{bin0,bin1,...,binN} - Rebinning with new bin boundary.
 * replace:STRING->STRING[:tag] - Modify the histogram name. You can specify sample tag. You can also use regular expression.
+* save:PATH - For *DrawPlot*, specify the path or file format (pdf or png)
 * suffix:STRING[:tag] - Add suffix to histogram name. Same with replace:$->STRING[:tag].
 * sysname:STRING - Draw with systematic uncertainties defined by AddSystematic.
 * sysdetail - Decompose systematic uncertainty.
 * sysleg - Draw legend for systematic uncertainties.
+* text:FLOAT,FLOAT,STRING - Add text on the plot. Consider PADINDEX syntax for multi-pad plots.
 * type:INT
     * 0:UNDEF
     * 1:Compare - Draw multiple histograms in entries
@@ -112,7 +119,6 @@ You can pass a option to a specific pad using `PADINDEX:OPTION` syntax. ex) `1:l
 * widey - For ratio plot, set yaxis range from 0.5 to 1.5
 * widewidey - For ratio plot, set yaxis range from 0.0 to 2.0
 * widthweight - For variable bin size, divide bin contents by bin size to get proper shape
-* pdf - Save as PDF format
   
 ## Verbosity
 You can set verbosity using `Verbosity` variable (QUIET, ERROR, WARNING, INFO, DEBUG, ALL)

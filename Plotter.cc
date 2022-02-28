@@ -21,12 +21,14 @@ public:
   map<TString,Plot> plots;
   map<TString,set<TString>> histkeys_cache;
   TDirectory *pdir=NULL;
+  TString mode;
   TString plotfile;
   TString plotdir="fig";
 
   //Setup
   void AddFile(TString key,TString file);
   void ScanFiles(TString path);
+  virtual int Setup(TString mode_);
   virtual void SetupEntries(TString mode);
   void Reset();
   const Sample& GetEntry(TString entrytitle) const;
@@ -76,6 +78,7 @@ public:
   vector<TCanvas*> DrawPlots(TRegexp plotkey,TString additional_option="");
   void SavePlots(TRegexp plotkey);
   void SavePlot(TString plotkey,TString option="",bool delete_canvas=true);
+  void SavePlotCondor(TString plotkey,TString option="");
   void SaveCanvas(TCanvas *c,TString path,bool delete_canvas=true);
   void SavePlotAll();
 
@@ -98,6 +101,7 @@ public:
   bool IsEntry(const Sample& sample);
   static TLegend* DrawLegend(const Plot& p);
   static TLegend* DrawLegendSys(const Plot& p);
+  static void DrawTexts(const Plot& p);
   
   //Plot
   set<TString> GetHistKeys(TDirectory* dir,TRegexp regexp=".*");
@@ -106,8 +110,10 @@ public:
   virtual Plot MakePlot(TString plotkey,TString plotoption="");
 
   //etc
+  TString ClassName() const;
   double GetChi2(TH1* h1,TH1* h2) const;
   int GetAutoColor() const;
+  TString ParseForCondorRun(TString str) const;
   static vector<int> Range(int n);
   static vector<int> Range(int s,int n,int h=1);
   static vector<TString> FormRange(TString form,vector<int> range);
@@ -153,7 +159,7 @@ void Plotter::AddFile(TString key,TString file){
   }else if(!samples[key].IsFile()||samples[key].title!=file) PError("[Plotter::AddFile] sample "+key+" already exists");
 }
 void Plotter::ScanFiles(TString path){
-  vector<TString> files=Split(gSystem->GetFromPipe("find "+path+" -type f -name '*.root'"),"\n");
+  vector<TString> files=Split(gSystem->GetFromPipe("find -L "+path+" -type f -name '*.root'"),"\n");
   if(!path.EndsWith("/")) path+="/";
   for(const auto& file:files){
     TString key=Replace(file,path,"");
@@ -161,10 +167,15 @@ void Plotter::ScanFiles(TString path){
     AddFile(key,file);
   }
 }
-void Plotter::SetupEntries(TString mode){
-  if(Verbosity>VERBOSITY::WARNING) std::cout<<"[Plotter::SetupEntries] mode = '"<<mode<<"'"<<endl;
+int Plotter::Setup(TString mode_){
+  mode=mode_;
+  SetupEntries(mode);
+  return true;
+}  
+void Plotter::SetupEntries(TString mode_){
+  if(Verbosity>VERBOSITY::WARNING) std::cout<<"[Plotter::SetupEntries] mode = '"<<mode_<<"'"<<endl;
   entries.clear();
-  vector<TString> entry_keys=Split(mode," ");
+  vector<TString> entry_keys=Split(mode_," ");
   for(auto entry_key:entry_keys) AddEntry(entry_key);
 }
 void Plotter::Reset(){
@@ -717,6 +728,7 @@ int Plotter::AddError(TH1* hist,TH1* sys){
 ////////////////////////////// Canvas ///////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 void Plotter::DrawHistograms(Plot p){
+  if(!p.hists.size()) return;
   for(const vector<TH1*>& hists:p.hists){
     if(hists.size()&&hists.at(0)){
       if(hists.at(0)->InheritsFrom("THStack")){
@@ -788,6 +800,7 @@ void Plotter::DrawCompare(Plot p){
   TLegend* legend=NULL;
   if(!p.option.Contains("noleg")) DrawLegend(p);
   if(p.option.Contains("sysleg")) DrawLegendSys(p);
+  DrawTexts(p);
 
   if(p.option.Contains("logx")){
     gPad->SetLogx();
@@ -831,8 +844,8 @@ vector<vector<TH1*>> Plotter::GetRatioHists(Plot p){
   TH1* base=NULL;
   TString baseopt=p.option("base:[0-9]*");
   if(baseopt!="") base=GetTH1(p.hists[((TString)baseopt(5,100)).Atoi()][0]);
-  else if(p.hists.size()>2) base=GetTH1(p.hists[0][0]);
-  else base=GetTH1(p.hists[1][0]);
+  else if(p.hists.size()==2) base=GetTH1(p.hists[1][0]);
+  else base=GetTH1(p.hists[0][0]);
     
   vector<vector<TH1*>> hists_new;
   if(base){
@@ -886,8 +899,8 @@ void Plotter::DrawDiff(Plot p){
   TH1* base=NULL;
   TString baseopt=p.option("base:[0-9]*");
   if(baseopt!="") base=GetTH1(p.hists[((TString)baseopt(5,100)).Atoi()][0]);
-  else if(p.hists.size()>2) base=GetTH1(p.hists[0][0]);
-  else base=GetTH1(p.hists[1][0]);  
+  else if(p.hists.size()==2) base=GetTH1(p.hists[1][0]);
+  else base=GetTH1(p.hists[0][0]);  
   for(int i=0;i<base->GetNbinsX()+2;i++){
     base->SetBinError(i,0);
   }
@@ -930,8 +943,8 @@ void Plotter::DrawSig(Plot p){
   TH1* base=NULL;
   TString baseopt=p.option("base:[0-9]*");
   if(baseopt!="") base=GetTH1(p.hists[((TString)baseopt(5,100)).Atoi()].back());
-  else if(p.hists.size()>2) base=GetTH1(p.hists[0].back());
-  else base=GetTH1(p.hists[1].back());
+  else if(p.hists.size()==2) base=GetTH1(p.hists[1].back());
+  else base=GetTH1(p.hists[0].back());
 
   TH1* sigma1=(TH1*)base->Clone("sigma1");
   sigma1->SetTitle("#pm 1 #sigma");
@@ -1166,6 +1179,11 @@ void Plotter::DrawDoubleRatio(Plot& p){
 
 TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
   PInfo("[Plotter::DrawPlot] "+p.name+" "+p.histname+" "+p.option+" "+additional_option);_depth++;
+  if(entries.size()==0){
+    PError("[Plotter::DrawPlot] Please SetupEntries ");
+    _depth--;
+    return NULL;
+  }
   if(!pdir) pdir=new TDirectory("plotdir","plotdir");
   p.SetOption(additional_option);
   p.hists=GetHists(p);
@@ -1248,11 +1266,29 @@ vector<TCanvas*> Plotter::DrawPlots(TRegexp plotkey,TString additional_option){
   return canvases;
 }
 void Plotter::SavePlot(TString plotkey,TString option,bool delete_canvas){
-  PDebug("[Plotter::SavePlot(TString plotkey)]");
-  TString format="png";
-  if(option.Contains("pdf")) format="pdf";
-  TCanvas* c=DrawPlot(plotkey,option);
-  SaveCanvas(c,plotkey+"."+format,delete_canvas);
+  PDebug("[Plotter::SavePlot(TString plotkey,TString option,bool delete_canvas=true)]");
+  Plot p=MakePlot(plotkey,option);
+  TCanvas* c=DrawPlot(p);
+  TString path=p.save;
+  if(path==""||path.Contains(TRegexp("^\\.?pdf$"))||path.Contains(TRegexp("^\\.?png$"))){
+    path=p.name;
+    TPRegexp("[/),(]").Substitute(path,"_","g");
+    path.ReplaceAll("[","_");
+    path.ReplaceAll("]","_");
+  }
+  if(p.save.Contains(TRegexp("^\\.?pdf$"))) path+=".pdf";
+  else if(p.save.Contains(TRegexp("^\\.?png$"))) path+=".png";
+  if(!Basename(path).Contains(".")){
+    path+=".png";
+  }
+  SaveCanvas(c,path,delete_canvas);
+}
+void Plotter::SavePlotCondor(TString plotkey,TString option){
+  plotkey=ParseForCondorRun(plotkey);
+  option=ParseForCondorRun(option);
+  TString classname=ClassName();
+  system("condor_run -a jobbatchname="+classname+" bash -c \\\"cd $PWD\\;export ROOT_HIST=0\\;echo -e \\'\\#include\\\\\\\""+classname+".cc\\\\\\\"\\\\n"+classname+" plotter\\;\\\\nplotter.Setup\\(\\\\\\\""+mode+"\\\\\\\"\\)\\;\\\\nplotter.plotdir=\\\\\\\""+plotdir+"\\\\\\\"\\;\\\\nplotter.SavePlot\\(\\\\\\\""+plotkey+"\\\\\\\",\\\\\\\""+option+"\\\\\\\"\\)\\\\n.q\\'\\|root -l -b\\\" 2>&1 |grep -v MakeDefCanvas &");
+  //system("condor_run bash -c \\\"cd $PWD\\;echo -e \\'\\#include\\\\\\\"AFBPlotter.cc\\\\\\\"\\\\nAFBPlotter plotter\\\\nplotter.Setup\\(\\\\\\\"data mi\\\\\\\"\\)\\\\nplotter.SavePlot\\(\\\\\\\"ee2016a/m[52,3000]/0bjet/dimass\\\\\\\",\\\\\\\"\\\\\\\"\\)\\\\n.q\\'\\|root -l -b\\\"")
 }
 void Plotter::SaveCanvas(TCanvas *c,TString path,bool delete_canvas){
   if(c){
@@ -1579,6 +1615,15 @@ TLegend* Plotter::DrawLegendSys(const Plot& p){
   legend->Draw();
   return legend;
 }
+void Plotter::DrawTexts(const Plot& p){
+  TLatex latex;
+  latex.SetNDC();
+  latex.SetTextSize(0.035/TMath::Min(gPad->GetHNDC(),gPad->GetWNDC()));
+  for(auto [x,y,t]:p.texts){
+    latex.DrawLatex(x,y,t);
+  }
+  return;
+}
 
 /////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// Plot /////////////////////////////////////////
@@ -1668,6 +1713,10 @@ void Plotter::AddSystematic(TString key,TString title,Systematic::Type type,TStr
 ///////////////////////////////////////////////////////////////////////
 ///////////////////// etc /////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
+TString Plotter::ClassName() const {
+  TString raw=typeid(*this).name();
+  return gSystem->GetFromPipe("c++filt -t "+raw);
+}
 int Plotter::GetAutoColor() const {
   set<int> colors={1,2,3,4,5,6,7,8,9};
   for(const auto& color:colors){
@@ -1695,6 +1744,11 @@ double Plotter::GetChi2(TH1* h1,TH1* h2) const {
   }
   chi2/=h1->GetXaxis()->GetLast()-h1->GetXaxis()->GetFirst()+1;
   return chi2;
+}
+TString Plotter::ParseForCondorRun(TString str) const {
+  str.ReplaceAll("'","\\\'\\\\\\\'\\\'");
+  for(TString a:{"<",">","(",")","#","{","}"}) str.ReplaceAll(a,"\\"+a);
+  return str;
 }
 vector<int> Plotter::Range(int n){
   return Range(0,n,1);
