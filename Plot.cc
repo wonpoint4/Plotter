@@ -16,6 +16,8 @@ public:
   TString xtitle,ytitle;
   TString project;
   TString era;
+  TString save;
+  vector<tuple<double,double,TString>> texts;
   Type type=Type::CompareAndRatio;
   TString rebin="";
   double xmin=0,xmax=0,ymin=0,ymax=0;
@@ -38,7 +40,7 @@ public:
   void Print(std::ostream& out=cout) const;
   void RemoveOption(TString option_);
   void SetOption(TString option_);
-  vector<TString> SplitOptions(TString option_);
+  vector<TString> SplitOptions(TString option_,TString del=" ");
 };
 Plot::Plot(vector<TString> words){
   int imax=words.size();
@@ -156,6 +158,8 @@ void Plot::RemoveOption(TString option_){
     else if(remove=="Umax") Umax=0;
     else if(remove=="era") era="";
     else if(remove=="sysname") sysname="";
+    else if(remove=="save") save="";
+    else if(remove=="text") texts={};
     else if(remove=="replace"){
       replace_old="";
       replace_new="";
@@ -193,6 +197,15 @@ void Plot::SetOption(TString option_){
     else if(opt.Contains(TRegexp("^ymin:"))) ymin=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^ymax:"))) ymax=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^sysname:"))) sysname=Strip(opt(8,999),"'");
+    else if(opt.Contains(TRegexp("^save:"))) save=Strip(opt(5,999),"'");
+    else if(opt.Contains(TRegexp("^text:"))){
+      vector<TString> words=SplitOptions(opt(5,999),",");
+      if(words.size()==3){
+	texts.push_back(make_tuple(words[0].Atof(),words[1].Atof(),Strip(words[2],"'")));
+      }else{
+	PError("Wrong syntax for text option "+opt);
+      }
+    }
     else if(opt.Contains(TRegexp("^suffix:"))){
       replace_old="$";
       replace_new=Strip(opt(7,999),"'");
@@ -241,11 +254,11 @@ void Plot::SetOption(TString option_){
     else option+=" "+opt;
   }
 }   
-vector<TString> Plot::SplitOptions(TString option_){
-  vector<TString> options_raw=Split(option_," ");
+vector<TString> Plot::SplitOptions(TString option_,TString del){
+  vector<TString> options_raw=Split(option_,del);
   vector<TString> options_out;
   for(const auto& opt:options_raw){
-    if(options_out.size()&&options_out.back().CountChar('\'')%2==1) options_out.back()+=" "+opt;
+    if(options_out.size()&&options_out.back().CountChar('\'')%2==1) options_out.back()+=del+opt;
     else options_out.push_back(opt);
   }
   return options_out;

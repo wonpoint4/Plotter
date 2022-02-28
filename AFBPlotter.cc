@@ -1,16 +1,15 @@
 #ifndef __AFBPLOTTER_CC__
 #define __AFBPLOTTER_CC__
 #include"Plotter.cc"
-//#if __has_include("TH4D.h")
-//#include "TH4D.h"
-//#endif
+#if __has_include("TH4D.h")
+#include "TH4D.h"
+#endif
 class AFBPlotter:public Plotter{
 public:
   void SetupSystematics();
   int Setup(TString mode_);
-  TString mode;
   TString analyzer;
-  AFBPlotter(TString mode_="data ^amc+tau_amc+vv+wjets+tttw",TString analyzer_="AFBAnalyzer");
+  AFBPlotter(TString mode_="data ^mi+tau_mi+vv+wjets+tttw+ss_mi+aa",TString analyzer_="AFBAnalyzer");
   ~AFBPlotter();
 
   void SetupTH4D();
@@ -298,7 +297,7 @@ AFBPlotter::AFBPlotter(TString mode_,TString analyzer_){
   samples["qcde"]=Sample("QCD EM-enriched","SAMPLE sim",kCyan+4)+TRegexp("/"+analyzer+"_.*QCD_Pt.*EMEnriched$");
   samples["qcdee"]=Sample("QCD bcToE","SAMPLE sim",kCyan)+TRegexp("/"+analyzer+"_.*QCD_Pt.*bcToE$");
 
-  samples["aa0j"]=Sample("#gamma#gamma#rightarrowll","SAMPLE sim",kMagenta+12)+TRegexp("/"+analyzer+"_.*GamGamToLL_0j$");
+  samples["aagr"]=Sample("#gamma#gamma#rightarrowll","SAMPLE sim",kYellow+1)+TRegexp("/"+analyzer+"_.*GamGamToLL_GR$");
   samples["aa"]=Sample("#gamma#gamma#rightarrowll","SAMPLE sim",kYellow+1)+TRegexp("/"+analyzer+"_.*GamGamToLL$");
 
   samples["amc"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/"+analyzer+"_.*DYJets$");
@@ -316,10 +315,10 @@ AFBPlotter::AFBPlotter(TString mode_,TString analyzer_){
     samples["gen_"+dysample]="gen_"%(Sample("#gamma*/Z#rightarrowll (GEN)","SAMPLE sim dy",kGreen)+dysample);
     samples["genfid_"+dysample]="genfid_"%(Sample("#gamma*/Z#rightarrowll (GEN fiducial)","SAMPLE sim dy",kMagenta)+dysample);
     samples["truth_"+dysample]="truth_"%(Sample("#gamma*/Z#rightarrowll (truth)","SAMPLE sim dy",kCyan)+dysample);
-    samples["ss_"+dysample]="ss_"%(Sample("QCD multi-jet","SUM",kCyan)+"data"-dysample-("tau_"+dysample)-"vv"-"wjets"-"tt"-"tw");
+    samples["ss_"+dysample]="ss_"%(Sample("QCD multi-jet","SUM",kCyan)+"data"-dysample-("tau_"+dysample)-"vv"-"wjets"-"tt"-"tw"-"aa");
   }
     
-  samples["ss"]="ss_"%(Sample("QCD multi-jet","SUM",kCyan)+"data"-"amc"-"tau_amc"-"vv"-"wjets"-"tt"-"tw");
+  samples["ss"]="ss_"%(Sample("QCD multi-jet","SUM",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"tt"-"tw");
 
   samples["amcPt_stack"]=Sample("DY Pt-binned","STACK",kBlue)+TRegexp("/"+analyzer+"_.*DYJets_Pt-[0-9]*To[0-9Inf]*$");
   for(auto& sub:samples["amcPt_stack"].subs) sub.title=sub.title(TRegexp("Pt-[0-9]*To[0-9Inf]*"));
@@ -342,12 +341,12 @@ AFBPlotter::~AFBPlotter(){}
 
 int AFBPlotter::Setup(TString mode_){
   Reset();
-  if(mode_=="amcel") mode="data ^amc+tau_amc+vv+wjets+tttw+ss";
-  else if(mode_=="amcmu") mode="data ^amc+tau_amc+vv+wjets+tttw+1.7*ss";
-  else if(mode_=="mgel") mode="data ^mg+tau_mg+vv+wjets+tttw+ss_mg";
-  else if(mode_=="mgmu") mode="data ^mg+tau_mg+vv+wjets+tttw+1.7*ss_mg";
-  else if(mode_=="miel") mode="data ^mi+tau_mi+vv+wjets+tttw+ss_mi";
-  else if(mode_=="mimu") mode="data ^mi+tau_mi+vv+wjets+tttw+1.7*ss_mi";
+  if(mode_=="amcel") mode="data ^amc+tau_amc+vv+wjets+tttw+ss_amc+aa";
+  else if(mode_=="amcmu") mode="data ^amc+tau_amc+vv+wjets+tttw+1.7*ss_amc+aa";
+  else if(mode_=="mgel") mode="data ^mg+tau_mg+vv+wjets+tttw+ss_mg+aa";
+  else if(mode_=="mgmu") mode="data ^mg+tau_mg+vv+wjets+tttw+1.7*ss_mg+aa";
+  else if(mode_=="miel") mode="data ^mi+tau_mi+vv+wjets+tttw+ss_mi+aa";
+  else if(mode_=="mimu") mode="data ^mi+tau_mi+vv+wjets+tttw+1.7*ss_mi+aa";
   else {
     mode=mode_;
   }
