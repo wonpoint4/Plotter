@@ -82,6 +82,9 @@ public:
   void SaveCanvas(TCanvas *c,TString path,bool delete_canvas=true);
   void SavePlotAll();
 
+  //Table
+  void PrintTable(int ientry,TString plotkey,TString option="");
+
   //Canvas tools
   TString GetHistNameWithPrefixAndSuffix(TString histname,TString prefix,TString suffix);
   static TH1* GetAxisParent(TVirtualPad* pad=NULL);
@@ -114,10 +117,7 @@ public:
   double GetChi2(TH1* h1,TH1* h2) const;
   int GetAutoColor() const;
   TString ParseForCondorRun(TString str) const;
-  static vector<int> Range(int n);
-  static vector<int> Range(int s,int n,int h=1);
-  static vector<TString> FormRange(TString form,vector<int> range);
-  
+
   //working
 
   //TCanvas* GetCompareAFBAll(vector<TString> histnames,int sysbit=0,TString option="");
@@ -195,7 +195,7 @@ void Plotter::AddEntry(TString key){
   TPRegexp("([+-])").Substitute(key," $1","g");
   Sample entry;
   if(key.BeginsWith("^")){
-    entry=Sample("simulation","STACK",Style(kRed,-1,3001,"e2"),Style(kGreen,-1,3017,"e2"),Style(kBlue,-1,3017,"e2"),Style(kRed,-1,3017,"e2"));
+    entry=Sample("simulation","STACK",Style(kRed,-1,3001,"e2"),Style(kGreen,-1,3001,"e2"),Style(kBlue,-1,3001,"e2"),Style(kOrange,-1,3001,"e2"));
     key=key(1,key.Length()-1);
   }else entry=Sample("simulation","SUM");
   vector<TString> sample_keys=Split(key," ");
@@ -367,6 +367,29 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,const Plot& pp,TString addi
 	}
       }
     }
+  }else if(p.option.Contains("absx")){
+    Plot temp_plot=p-"absx";
+    TH1* temp_hist=GetHistFromSample(sample,temp_plot);
+    int nbin=temp_hist->GetNbinsX();
+    bool ok=true;
+    vector<double> bins;
+    for(int i=1;i<=nbin/2;i++){
+      if(fabs(temp_hist->GetBinLowEdge(i)+temp_hist->GetBinLowEdge(nbin+2-i))>1e-10){
+	PError("[Plotter::GetHistFromSample] cannot do absx with asymmetric binning");
+	ok=false;
+      }
+      bins.push_back(temp_hist->GetBinLowEdge(nbin/2+i));
+    }
+    bins.push_back(temp_hist->GetBinLowEdge(nbin+1));
+    if(ok){
+      hist=new TH1D(temp_hist->GetName(),temp_hist->GetTitle(),nbin/2,&bins[0]);
+      hist->SetDirectory(pdir);
+      for(int i=1;i<nbin/2+2;i++){
+	hist->SetBinContent(i,temp_hist->GetBinContent(nbin/2+1-i)+temp_hist->GetBinContent(nbin/2+i));
+	hist->SetBinError(i,sqrt(pow(temp_hist->GetBinError(nbin/2+1-i),2)+pow(temp_hist->GetBinError(nbin/2+i),2)));
+      }
+      delete temp_hist;
+    }
   }else{
     for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(p.histname,newstr);
     TString histname=p.histname;
@@ -395,11 +418,13 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,const Plot& pp,TString addi
 	    if(fabs(p.Ymax-hist2d->GetYaxis()->GetBinUpEdge(iymax))>0.00001)
 	      PWarning(Form("[Plotter::GetHistFromSample] Ymax=%f is not exact edge... use %f",p.Ymax,hist2d->GetYaxis()->GetBinUpEdge(iymax)));
 	  }
-	  if(p.project=="") this_hist=(TH1*)hist2d->ProjectionY("_py",ixmin,ixmax);
-	  else if(p.project=="x") this_hist=(TH1*)hist2d->ProjectionX("_px",iymin,iymax);
-	  else if(p.project=="y") this_hist=(TH1*)hist2d->ProjectionY("_py",ixmin,ixmax);
-	  else PError("[Plotter::GetHistFromSample] wrong projection or classname");
-	  delete hist2d;
+	  if(!p.option.Contains("noproject")){
+	    if(p.project=="") this_hist=(TH1*)hist2d->ProjectionY("_py",ixmin,ixmax);
+	    else if(p.project=="x") this_hist=(TH1*)hist2d->ProjectionX("_px",iymin,iymax);
+	    else if(p.project=="y") this_hist=(TH1*)hist2d->ProjectionY("_py",ixmin,ixmax);
+	    else PError("[Plotter::GetHistFromSample] wrong projection or classname");
+	    delete hist2d;
+	  }
 	}else if(strstr(this_hist->ClassName(),"TH3")!=NULL){
 	  TH3* hist3d=(TH3*)this_hist;
 	  int ixmin=0,iymin=0,izmin=0;
@@ -529,8 +554,10 @@ vector<TH1*> Plotter::GetHistSys(const Sample& sample,const Plot& p){
 	if(syss.size()>0){
 	  if(p.option.Contains("sysdetail")){
 	    for(int i=0;i<(int)syss.size();i++){
-	      if(i==0) AddError(syss.at(i),hists.at(0));
-	      else AddError(syss.at(i),syss.at(i-1));
+	      if(!p.option.Contains("notaddsys")){
+		if(i==0) AddError(syss.at(i),hists.at(0));
+		else AddError(syss.at(i),syss.at(i-1));
+	      }
 	      hists.push_back(syss.at(i));
 	    }
 	  }else{
@@ -947,6 +974,8 @@ void Plotter::DrawSig(Plot p){
   else base=GetTH1(p.hists[0].back());
 
   TH1* sigma1=(TH1*)base->Clone("sigma1");
+  sigma1->SetStats(0);
+  sigma1->SetDirectory(pdir);
   sigma1->SetTitle("#pm 1 #sigma");
   sigma1->SetFillColor(kGreen);
   sigma1->SetFillStyle(3001);
@@ -956,6 +985,8 @@ void Plotter::DrawSig(Plot p){
     sigma1->SetBinError(i,1);
   }
   TH1* sigma2=(TH1*)sigma1->Clone("simga2");
+  sigma2->SetStats(0);
+  sigma2->SetDirectory(pdir);
   for(int i=0;i<sigma2->GetNbinsX()+2;i++){
     sigma2->SetBinError(i,2);
   }
@@ -1269,19 +1300,26 @@ void Plotter::SavePlot(TString plotkey,TString option,bool delete_canvas){
   PDebug("[Plotter::SavePlot(TString plotkey,TString option,bool delete_canvas=true)]");
   Plot p=MakePlot(plotkey,option);
   TCanvas* c=DrawPlot(p);
-  TString path=p.save;
-  if(path==""||path.Contains(TRegexp("^\\.?pdf$"))||path.Contains(TRegexp("^\\.?png$"))){
-    path=p.name;
-    TPRegexp("[/),(]").Substitute(path,"_","g");
-    path.ReplaceAll("[","_");
-    path.ReplaceAll("]","_");
+  vector<TString> saves=Split(p.save,",");
+  for(auto save:saves){
+    TString path=save;
+    if(save==""||save.Contains(TRegexp("^\\.?pdf$"))||save.Contains(TRegexp("^\\.?png$"))){
+      path=p.name;
+      TPRegexp("[/),(]").Substitute(path,"_","g");
+      path.ReplaceAll("[","_");
+      path.ReplaceAll("]","_");
+    }
+    if(save.Contains(TRegexp("^\\.?pdf$"))) path+=".pdf";
+    else if(save.Contains(TRegexp("^\\.?png$"))) path+=".png";
+    if(!Basename(path).Contains(".")){
+      path+=".png";
+    }
+    SaveCanvas(c,path,false);
   }
-  if(p.save.Contains(TRegexp("^\\.?pdf$"))) path+=".pdf";
-  else if(p.save.Contains(TRegexp("^\\.?png$"))) path+=".png";
-  if(!Basename(path).Contains(".")){
-    path+=".png";
+  if(delete_canvas){
+    delete c;
+    if(pdir) pdir->Delete();
   }
-  SaveCanvas(c,path,delete_canvas);
 }
 void Plotter::SavePlotCondor(TString plotkey,TString option){
   plotkey=ParseForCondorRun(plotkey);
@@ -1308,7 +1346,35 @@ void Plotter::SavePlotAll(){
   PAll("[Plotter::SavePlotAll(TString plotkey)]");
   for(const auto& [key,plot]:plots) SavePlot(key);
 }
-
+/////////////////////////////////////////////////////////////////////////////
+////////////////////////////// Table ////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+void Plotter::PrintTable(int ientry,TString plotkey,TString option){
+  vector<TH1*> hists=GetHistSys(entries[ientry],MakePlot(plotkey,option));
+  if(hists.size()==0||!hists[0]) return;
+  TH1* hist=hists[0];
+  cout<<"bin\t";
+  for(int j=0;j<hists.size();j++){
+    if(j==0) cout<<hists[j]->GetName()<<" stat ";
+    else cout<<hists[j]->GetName()<<" ";
+  }
+  cout<<endl;
+  for(int i=hist->GetXaxis()->GetFirst();i<hist->GetXaxis()->GetLast()+1;i++){
+    cout<<hist->GetXaxis()->GetBinLowEdge(i)<<"<=x<"<<hist->GetXaxis()->GetBinLowEdge(i+1)<<" ";
+    for(int j=0;j<hists.size();j++){
+      double scale=1.;
+      if(option.Contains("percent")) scale=fabs(100./hists[j]->GetBinContent(i));
+      else if(option.Contains("relerr")) scale=fabs(1/hists[j]->GetBinContent(i));
+      if(j==0){
+	cout<<hists[j]->GetBinContent(i)<<" "<<hists[j]->GetBinError(i)*scale<<" ";
+      }else{
+	cout<<hists[j]->GetBinError(i)*scale<<" ";
+      }
+    }
+    cout<<endl;
+  }
+}
+	
 /////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// Canvas Tools /////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
@@ -1428,6 +1494,12 @@ void Plotter::RebinXminXmax(TH1* hist,Plot p){
       if(p.xmin!=0||p.xmax!=0)
 	hist->GetXaxis()->SetRangeUser(p.xmin,p.xmax);
     }else if(hist->InheritsFrom("TH3")){
+      if(p.rebin!=""){
+	PError((TString)"[Plotter::RebinXminXmax] Unsupported class for rebin "+hist->ClassName());
+      }
+      if(p.xmin!=0||p.xmax!=0)
+	hist->GetXaxis()->SetRangeUser(p.xmin,p.xmax);
+    }else if(hist->InheritsFrom("TH2")){
       if(p.rebin!=""){
 	PError((TString)"[Plotter::RebinXminXmax] Unsupported class for rebin "+hist->ClassName());
       }
@@ -1749,19 +1821,6 @@ TString Plotter::ParseForCondorRun(TString str) const {
   str.ReplaceAll("'","\\\'\\\\\\\'\\\'");
   for(TString a:{"<",">","(",")","#","{","}"}) str.ReplaceAll(a,"\\"+a);
   return str;
-}
-vector<int> Plotter::Range(int n){
-  return Range(0,n,1);
-}
-vector<int> Plotter::Range(int s,int n,int h){
-  vector<int> out;
-  for(int i=s;i<n;i+=h) out.push_back(i);
-  return out;
-}
-vector<TString> Plotter::FormRange(TString form,vector<int> range){
-  vector<TString> out;
-  for(auto d:range) out.push_back(Form(form,d));
-  return out;
 }
 
 //////////////////////working/////////////////////////

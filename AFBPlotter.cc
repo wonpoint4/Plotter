@@ -168,11 +168,13 @@ Plot AFBPlotter::MakePlot(TString plotkey,TString option){
   if(plot.histname.Contains("mm201")) ll="#mu#mu";
   else if(plot.histname.Contains("ee201")) ll="ee";
 
-  if(plot.project=="x") plot.SetOption("xtitle:'m("+ll+") [GeV]'");
-  else if(plot.project=="y") plot.SetOption("xtitle:y("+ll+")");
-  else if(plot.project=="z") plot.SetOption("xtitle:'p_{T}("+ll+") [GeV]'");
-  else if(plot.project=="u"){
-    if(plot.histname.Contains("costhetaCS")) plot.SetOption("xtitle:cos#theta_{CS}");
+  if(plot.xtitle==""){
+    if(plot.project=="x") plot.SetOption("xtitle:'m("+ll+") [GeV]'");
+    else if(plot.project=="y") plot.SetOption("xtitle:y("+ll+")");
+    else if(plot.project=="z") plot.SetOption("xtitle:'p_{T}("+ll+") [GeV]'");
+    else if(plot.project=="u"){
+      if(plot.histname.Contains("costhetaCS")) plot.SetOption("xtitle:cos#theta_{CS}");
+    }
   }
   
   if(plot.type==Plot::Type::Compare){
@@ -316,6 +318,7 @@ AFBPlotter::AFBPlotter(TString mode_,TString analyzer_){
     samples["genfid_"+dysample]="genfid_"%(Sample("#gamma*/Z#rightarrowll (GEN fiducial)","SAMPLE sim dy",kMagenta)+dysample);
     samples["truth_"+dysample]="truth_"%(Sample("#gamma*/Z#rightarrowll (truth)","SAMPLE sim dy",kCyan)+dysample);
     samples["ss_"+dysample]="ss_"%(Sample("QCD multi-jet","SUM",kCyan)+"data"-dysample-("tau_"+dysample)-"vv"-"wjets"-"tt"-"tw"-"aa");
+    samples["fake_"+dysample]="fake_"%(Sample("QCD multi-jet","SUM",kOrange)+"data"-dysample-("tau_"+dysample)-"vv"-"wjets"-"tt"-"tw"-"aa");
   }
     
   samples["ss"]="ss_"%(Sample("QCD multi-jet","SUM",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"tt"-"tw");
@@ -423,6 +426,7 @@ void AFBPlotter::SetupSystematics(){
   AddSystematic("dytheory","theory (DY)",Systematic::Type::MULTI,"dyalphaS dyscale dypdf");
   AddSystematic("tttheory","theory (t#bar{t})",Systematic::Type::MULTI,"ttalphaS ttscale ttpdf");
   AddSystematic("totalsys","syst. unc.",Systematic::Type::MULTI,"sys dytheory tttheory");
+  AddSystematic("totalsys_table","syst. unc.",Systematic::Type::MULTI,"PUweight prefireweight btag CFSF efficiencySF dyalphaS dyscale dypdf ttalphaS ttscale ttpdf");
   AddSystematic("test","totalsys",Systematic::Type::MULTI,"btag dyscale ttscale");
 }
 

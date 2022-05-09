@@ -47,5 +47,18 @@ vector<double> VectorDouble(TString str){
   for(TString sdouble:sdoubles) out.push_back(sdouble.Atof());
   return out;
 }
+vector<int> Range(int s,int n,int h=1){
+  vector<int> out;
+  for(int i=s;i<n;i+=h) out.push_back(i);
+  return out;
+}
+vector<int> Range(int n){
+  return Range(0,n,1);
+}
+vector<TString> FormRange(TString form,vector<int> range){
+  vector<TString> out;
+  for(auto d:range) out.push_back(Form(form,d));
+  return out;
+}
 
 #endif
