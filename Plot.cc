@@ -5,7 +5,7 @@
 #include "Utils.h"
 class Plot{
 public:
-  enum Type{UNDEF,Compare,Ratio,Diff,Sig,CompareAndRatio,CompareAndDiff,CompareAndSig,DoubleRatio,Multi};
+  enum Type{UNDEF,Compare,Ratio,Diff,Sig,CompareAndRatio,CompareAndDiff,CompareAndSig,DoubleRatio,DoubleDiffAFB,Multi};
   TString name,title;
   TString histname;
   TString sysname;
@@ -16,6 +16,7 @@ public:
   TString xtitle,ytitle;
   TString project;
   TString era;
+  TString lumi;
   TString save;
   vector<tuple<double,double,TString>> texts;
   Type type=Type::CompareAndRatio;
@@ -157,6 +158,7 @@ void Plot::RemoveOption(TString option_){
     else if(remove=="Umin") Umin=0;
     else if(remove=="Umax") Umax=0;
     else if(remove=="era") era="";
+    else if(remove=="lumi") lumi="";
     else if(remove=="sysname") sysname="";
     else if(remove=="save") save="";
     else if(remove=="text") texts={};
@@ -243,12 +245,18 @@ void Plot::SetOption(TString option_){
       if(era=="2016a") era="2016preVFP";
       if(era=="2016b") era="2016postVFP";
     }
-    else if(opt.Contains(TRegexp("^blind:"))){
-      vector<TString> blindv=Split(opt(6,999),",");
-      if(blindv.size()!=2) PError("Wrong syntax for blind option "+opt);
-      else{
-	blind_xmin=blindv.at(0).Atof();
-	blind_xmax=blindv.at(1).Atof();
+    else if(opt.Contains(TRegexp("^lumi:"))) lumi=TString(opt(5,999));
+    else if(opt.Contains(TRegexp("^blind"))){
+      if(opt.Contains(TRegexp("^blind:"))){
+	vector<TString> blindv=Split(opt(6,999),",");
+	if(blindv.size()!=2) PError("Wrong syntax for blind option "+opt);
+	else{
+	  blind_xmin=blindv.at(0).Atof();
+	  blind_xmax=blindv.at(1).Atof();
+	}
+      }else{
+	blind_xmin=-1.;
+	blind_xmax=-1.;
       }
     }
     else option+=" "+opt;

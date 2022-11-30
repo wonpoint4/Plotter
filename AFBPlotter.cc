@@ -4,6 +4,9 @@
 #if __has_include("TH4D.h")
 #include "TH4D.h"
 #endif
+#if __has_include("AFBAnalyzer.h")
+#include "AFBAnalyzer.h"
+#endif
 class AFBPlotter:public Plotter{
 public:
   void SetupSystematics();
@@ -40,7 +43,183 @@ pair<double,double> AFBPlotter::GetRange(TString histname,TString axisname){
 TH1* AFBPlotter::GetHist(const Sample& sample,Plot plot,TString additional_option){
   TH1* hist=NULL;
   plot.SetOption(additional_option);
-  if(plot.histname.Contains("weightedAFB")){
+  for(auto [reg,newstr]:sample.replace)
+    if(reg!="^"&&reg!="$"&&reg!="/([^/]*)$")
+      TPRegexp(reg).Substitute(plot.histname,newstr);
+  if(plot.option.Contains("doublediff")){
+    TH1* hist_data_ee=GetHist(samples["data"],plot-"doublediff","histname:"+Replace(plot.histname,"LL201","ee201"));
+    TH1* hist_data_mm=GetHist(samples["data"],plot-"doublediff","histname:"+Replace(plot.histname,"LL201","mm201"));    
+    TH1* hist_sim_ee=GetHist(sample,plot-"doublediff","histname:"+Replace(plot.histname,"LL201","ee201"));
+    TH1* hist_sim_mm=GetHist(sample,plot-"doublediff","histname:"+Replace(plot.histname,"LL201","mm201"));
+    hist_data_mm->Add(hist_sim_mm,-1);
+    hist_data_ee->Add(hist_sim_ee,-1);
+    hist_data_mm->Add(hist_data_ee,-1);
+    return hist_data_mm;
+  }else if(plot.histname.Contains(TRegexp("unfold_afbpt_m[0-9]"))){
+    TString originalstring=plot.histname(TRegexp("unfold_afbpt_m[0-9]"));
+    int mbin=((TObjString*)TPRegexp("unfold_afbpt_m([0-9])").MatchS(plot.histname)->At(1))->GetString().Atoi();
+    double Xmin=-1,Xmax=-1;
+    if(mbin==0){ Xmin=52; Xmax=77; }
+    else if(mbin==1){ Xmin=77; Xmax=106; }
+    else if(mbin==2){ Xmin=106; Xmax=280; }
+    else if(mbin==3){ Xmin=280; Xmax=3000; }
+    if(sample.HasTag("nounfold")){
+      return GetHist(sample,plot,"histname:"+Replace(plot.histname,originalstring,"genfid_AFB_dressed")+" project:z"+Form(" Xmin:%f Xmax:%f",Xmin,Xmax));
+    }
+    TH1* hist_forward_reco=GetHist(sample,plot,"histname:"+Replace(plot.histname,originalstring,"costhetaCS")+Form(" Xmin:%f Xmax:%f",Xmin,Xmax)+" Umin:0 Umax:1 project:z");
+    TH1* hist_backward_reco=GetHist(sample,plot,"histname:"+Replace(plot.histname,originalstring,"costhetaCS")+Form(" Xmin:%f Xmax:%f",Xmin,Xmax)+" Umin:-1 Umax:0 project:z");
+    TH1* hist_reco=new TH1D(hist_forward_reco->GetName(),hist_forward_reco->GetTitle(),2*AFBAnalyzer::afb_ptbinnum,1,2*AFBAnalyzer::afb_ptbinnum+1);
+    hist_reco->SetDirectory(NULL);
+    for(int i=1;i<hist_forward_reco->GetNbinsX()+1;i++){
+      int ibin=AFBAnalyzer::GetUnfoldBin(AFBAnalyzer::afb_ptbinnum,AFBAnalyzer::afb_ptbin,hist_forward_reco->GetBinCenter(i),0.5);
+      hist_reco->SetBinContent(ibin,hist_forward_reco->GetBinContent(i));
+      hist_reco->SetBinError(ibin,hist_forward_reco->GetBinError(i));
+      ibin=AFBAnalyzer::GetUnfoldBin(AFBAnalyzer::afb_ptbinnum,AFBAnalyzer::afb_ptbin,hist_backward_reco->GetBinCenter(i),-0.5);
+      hist_reco->SetBinContent(ibin,hist_backward_reco->GetBinContent(i));
+      hist_reco->SetBinError(ibin,hist_backward_reco->GetBinError(i));
+    }
+      
+    TH2* response=NULL;
+    if(plot.histname.Contains("nbjet")) response=(TH2*)GetHist(samples["tt"],plot,"histname:"+Replace(plot.histname,"unfold_afbpt_m","response_afbpt_m")+" noproject Xmin:0 Xmax:0");
+    else response=(TH2*)GetHist(samples["mi"],plot,"histname:"+Replace(plot.histname,"unfold_afbpt_m","response_afbpt_m")+" noproject Xmin:0 Xmax:0");
+    response->Rebin2D(5,1);
+    int oldignorelevel=gErrorIgnoreLevel;
+    //gErrorIgnoreLevel=kWarning;
+    TUnfoldDensity unfold(response,TUnfold::kHistMapOutputHoriz,TUnfold::kRegModeNone,TUnfold::kEConstraintNone);
+    unfold.SetInput(hist_reco);
+    unfold.DoUnfold(0);
+    gErrorIgnoreLevel=oldignorelevel;
+    TH1* hist_unfold=unfold.GetOutput("unfolded");
+    hist_unfold->SetDirectory(NULL);
+    hist_forward_reco->Rebin(5);
+    hist_backward_reco->Rebin(5);
+    int nbin=hist_unfold->GetNbinsX();
+    for(int i=1;i<nbin/2+1;i++){
+      hist_forward_reco->SetBinContent(i,hist_unfold->GetBinContent(i+nbin/2));
+      hist_forward_reco->SetBinError(i,hist_unfold->GetBinError(i+nbin/2));
+      hist_backward_reco->SetBinContent(i,hist_unfold->GetBinContent(i));
+      hist_backward_reco->SetBinError(i,hist_unfold->GetBinError(i));
+    }
+    delete hist_unfold, hist_reco;
+    hist=GetHistAFB(hist_forward_reco,hist_backward_reco);
+  }else if(plot.histname.Contains("unfold_afbpt")){
+    if(sample.HasTag("nounfold")){
+      return GetHist(sample,plot,"histname:"+Replace(plot.histname,"unfold_afbpt","genfid_AFB_dressed")+" project:z");
+    }
+    TH1* hist_forward_reco=GetHist(sample,plot,"histname:"+Replace(plot.histname,"unfold_afbpt","costhetaCS")+" Xmin:52 Xmax:3000 Umin:0 Umax:1 project:z");
+    TH1* hist_backward_reco=GetHist(sample,plot,"histname:"+Replace(plot.histname,"unfold_afbpt","costhetaCS")+" Xmin:52 Xmax:3000 Umin:-1 Umax:0 project:z");
+    TH1* hist_reco=new TH1D(hist_forward_reco->GetName(),hist_forward_reco->GetTitle(),2*AFBAnalyzer::afb_ptbinnum,1,2*AFBAnalyzer::afb_ptbinnum+1);
+    hist_reco->SetDirectory(NULL);
+    for(int i=1;i<hist_forward_reco->GetNbinsX()+1;i++){
+      int ibin=AFBAnalyzer::GetUnfoldBin(AFBAnalyzer::afb_ptbinnum,AFBAnalyzer::afb_ptbin,hist_forward_reco->GetBinCenter(i),0.5);
+      hist_reco->SetBinContent(ibin,hist_forward_reco->GetBinContent(i));
+      hist_reco->SetBinError(ibin,hist_forward_reco->GetBinError(i));
+      ibin=AFBAnalyzer::GetUnfoldBin(AFBAnalyzer::afb_ptbinnum,AFBAnalyzer::afb_ptbin,hist_backward_reco->GetBinCenter(i),-0.5);
+      hist_reco->SetBinContent(ibin,hist_backward_reco->GetBinContent(i));
+      hist_reco->SetBinError(ibin,hist_backward_reco->GetBinError(i));
+    }
+      
+    TH2* response=NULL;
+    if(plot.histname.Contains("nbjet")) response=(TH2*)GetHist(samples["tt"],plot,"histname:"+Replace(plot.histname,"unfold_afbpt","response_afbpt")+" noproject Xmin:0 Xmax:0");
+    else response=(TH2*)GetHist(samples["mi"],plot,"histname:"+Replace(plot.histname,"unfold_afbpt","response_afbpt")+" noproject Xmin:0 Xmax:0");
+    response->Rebin2D(5,1);
+    int oldignorelevel=gErrorIgnoreLevel;
+    //gErrorIgnoreLevel=kWarning;
+    TUnfoldDensity unfold(response,TUnfold::kHistMapOutputHoriz,TUnfold::kRegModeNone,TUnfold::kEConstraintNone);
+    unfold.SetInput(hist_reco);
+    unfold.DoUnfold(0);
+    gErrorIgnoreLevel=oldignorelevel;
+    TH1* hist_unfold=unfold.GetOutput("unfolded");
+    hist_unfold->SetDirectory(NULL);
+    hist_forward_reco->Rebin(5);
+    hist_backward_reco->Rebin(5);
+    int nbin=hist_unfold->GetNbinsX();
+    for(int i=1;i<nbin/2+1;i++){
+      hist_forward_reco->SetBinContent(i,hist_unfold->GetBinContent(i+nbin/2));
+      hist_forward_reco->SetBinError(i,hist_unfold->GetBinError(i+nbin/2));
+      hist_backward_reco->SetBinContent(i,hist_unfold->GetBinContent(i));
+      hist_backward_reco->SetBinError(i,hist_unfold->GetBinError(i));
+    }
+    delete hist_unfold, hist_reco;
+    hist=GetHistAFB(hist_forward_reco,hist_backward_reco);
+  }else if(plot.histname.Contains("unfold_afby")){
+    TH1* hist_forward_reco=GetHist(sample,plot,"histname:"+Replace(plot.histname,"unfold_afby","costhetaCS")+" Xmin:52 Xmax:3000 Umin:0 Umax:1 project:y");
+    TH1* hist_backward_reco=GetHist(sample,plot,"histname:"+Replace(plot.histname,"unfold_afby","costhetaCS")+" Xmin:52 Xmax:3000 Umin:-1 Umax:0 project:y");
+    TH1* hist_reco=new TH1D(hist_forward_reco->GetName(),hist_forward_reco->GetTitle(),2*AFBAnalyzer::afb_ybinnum,1,2*AFBAnalyzer::afb_ybinnum+1);
+    hist_reco->SetDirectory(NULL);
+    for(int i=1;i<hist_forward_reco->GetNbinsX()+1;i++){
+      int ibin=AFBAnalyzer::GetUnfoldBin(AFBAnalyzer::afb_ybinnum,AFBAnalyzer::afb_ybin,hist_forward_reco->GetBinCenter(i),0.5);
+      hist_reco->SetBinContent(ibin,hist_forward_reco->GetBinContent(i));
+      hist_reco->SetBinError(ibin,hist_forward_reco->GetBinError(i));
+      ibin=AFBAnalyzer::GetUnfoldBin(AFBAnalyzer::afb_ybinnum,AFBAnalyzer::afb_ybin,hist_backward_reco->GetBinCenter(i),-0.5);
+      hist_reco->SetBinContent(ibin,hist_backward_reco->GetBinContent(i));
+      hist_reco->SetBinError(ibin,hist_backward_reco->GetBinError(i));
+    }
+      
+    TH2* response=NULL;
+    if(plot.histname.Contains("nbjet")) response=(TH2*)GetHist(samples["tt"],plot,"histname:"+Replace(plot.histname,"unfold_afby","response_afby")+" noproject Xmin:0 Xmax:0");
+    else response=(TH2*)GetHist(samples["mi"],plot,"histname:"+Replace(plot.histname,"unfold_afby","response_afby")+" noproject Xmin:0 Xmax:0");
+    response->Rebin2D(2,1);
+    int oldignorelevel=gErrorIgnoreLevel;
+    //gErrorIgnoreLevel=kWarning;
+    TUnfoldDensity unfold(response,TUnfold::kHistMapOutputHoriz,TUnfold::kRegModeNone,TUnfold::kEConstraintNone);
+    unfold.SetInput(hist_reco);
+    unfold.DoUnfold(0);
+    gErrorIgnoreLevel=oldignorelevel;
+    TH1* hist_unfold=unfold.GetOutput("unfolded");
+    hist_unfold->SetDirectory(NULL);
+    hist_forward_reco->Rebin(2);
+    hist_backward_reco->Rebin(2);
+    int nbin=hist_unfold->GetNbinsX();
+    for(int i=1;i<nbin/2+1;i++){
+      hist_forward_reco->SetBinContent(i,hist_unfold->GetBinContent(i+nbin/2));
+      hist_forward_reco->SetBinError(i,hist_unfold->GetBinError(i+nbin/2));
+      hist_backward_reco->SetBinContent(i,hist_unfold->GetBinContent(i));
+      hist_backward_reco->SetBinError(i,hist_unfold->GetBinError(i));
+    }
+    delete hist_unfold, hist_reco;
+    hist=GetHistAFB(hist_forward_reco,hist_backward_reco);
+  }else if(plot.histname.Contains("unfold_afbm")){
+    if(sample.HasTag("nounfold")){
+      return GetHist(sample,plot,"histname:"+Replace(plot.histname,"unfold_afbm","genfid_AFB_dressed")+" project:x");
+    }
+    TH1* hist_forward_reco=GetHist(sample,plot,"histname:"+Replace(plot.histname,"unfold_afbm","costhetaCS")+" Umin:0 Umax:1 project:x");
+    TH1* hist_backward_reco=GetHist(sample,plot,"histname:"+Replace(plot.histname,"unfold_afbm","costhetaCS")+" Umin:-1 Umax:0 project:x");
+    TH1* hist_reco=new TH1D(hist_forward_reco->GetName(),hist_forward_reco->GetTitle(),2*AFBAnalyzer::afb_mbinnum,1,2*AFBAnalyzer::afb_mbinnum+1);
+    hist_reco->SetDirectory(NULL);
+    for(int i=1;i<hist_forward_reco->GetNbinsX()+1;i++){
+      int ibin=AFBAnalyzer::GetUnfoldBin(AFBAnalyzer::afb_mbinnum,AFBAnalyzer::afb_mbin,hist_forward_reco->GetBinCenter(i),0.5);
+      hist_reco->SetBinContent(ibin,hist_forward_reco->GetBinContent(i));
+      hist_reco->SetBinError(ibin,hist_forward_reco->GetBinError(i));
+      ibin=AFBAnalyzer::GetUnfoldBin(AFBAnalyzer::afb_mbinnum,AFBAnalyzer::afb_mbin,hist_backward_reco->GetBinCenter(i),-0.5);
+      hist_reco->SetBinContent(ibin,hist_backward_reco->GetBinContent(i));
+      hist_reco->SetBinError(ibin,hist_backward_reco->GetBinError(i));
+    }
+      
+    TH2* response=NULL;
+    if(plot.histname.Contains("nbjet")) response=(TH2*)GetHist(samples["tt"],plot,"histname:"+Replace(plot.histname,"unfold_afbm","response_afbm")+" noproject Xmin:0 Xmax:0");
+    else response=(TH2*)GetHist(samples["mi"],plot,"histname:"+Replace(plot.histname,"unfold_afbm","response_afbm")+" noproject Xmin:0 Xmax:0");
+    response->Rebin2D(2,1);
+    int oldignorelevel=gErrorIgnoreLevel;
+    gErrorIgnoreLevel=kWarning;
+    TUnfoldDensity unfold(response,TUnfold::kHistMapOutputHoriz,TUnfold::kRegModeNone,TUnfold::kEConstraintNone);
+    unfold.SetInput(hist_reco);
+    unfold.DoUnfold(0);
+    gErrorIgnoreLevel=oldignorelevel;
+    TH1* hist_unfold=unfold.GetOutput("unfolded");
+    hist_unfold->SetDirectory(NULL);
+    hist_forward_reco->Rebin(2);
+    hist_backward_reco->Rebin(2);
+    int nbin=hist_unfold->GetNbinsX();
+    for(int i=1;i<nbin/2+1;i++){
+      hist_forward_reco->SetBinContent(i,hist_unfold->GetBinContent(i+nbin/2));
+      hist_forward_reco->SetBinError(i,hist_unfold->GetBinError(i+nbin/2));
+      hist_backward_reco->SetBinContent(i,hist_unfold->GetBinContent(i));
+      hist_backward_reco->SetBinError(i,hist_unfold->GetBinError(i));
+    }
+    delete hist_unfold, hist_reco;
+    hist=GetHistAFB(hist_forward_reco,hist_backward_reco);
+  }else if(plot.histname.Contains("weightedAFB")){
     TH1* hist_forward_num=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_num")+" Umin:0 Umax:1");
     TH1* hist_forward_den=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_den")+" Umin:0 Umax:1");
     TH1* hist_backward_num=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_num")+" Umin:-1 Umax:0");
@@ -177,17 +356,19 @@ Plot AFBPlotter::MakePlot(TString plotkey,TString option){
     }
   }
   
-  if(plot.type==Plot::Type::Compare){
-    if(plot.histname.Contains("AFB")) plot.SetOption("ytitle:A_{FB}");
-    else if(option.Contains("norm")) plot.SetOption("ytitle:Normalized");
-    else if(option.Contains("widthweight")) plot.SetOption("ytitle:'Events / 1 GeV'");
-    else plot.SetOption("ytitle:Events");
-  }else if(plot.IsMultiPad()){
-    if(plot.histname.Contains("AFB")) plot.SetOption("1:ytitle:A_{FB}");
-    else if(option.Contains("norm")) plot.SetOption("1:ytitle:Normalized");
-    else if(option.Contains("widthweight")) plot.SetOption("1:ytitle:'Events / 1 GeV'");
-    else plot.SetOption("1:ytitle:Events");
-  }    
+  if(plot.ytitle==""){
+    if(plot.type==Plot::Type::Compare){
+      if(plot.histname.Contains("AFB")) plot.SetOption("ytitle:A_{FB}");
+      else if(option.Contains("norm")) plot.SetOption("ytitle:Normalized");
+      else if(option.Contains("widthweight")) plot.SetOption("ytitle:'Events / 1 GeV'");
+      else plot.SetOption("ytitle:Events");
+    }else if(plot.IsMultiPad()){
+      if(plot.histname.Contains("AFB")) plot.SetOption("1:ytitle:A_{FB}");
+      else if(option.Contains("norm")) plot.SetOption("1:ytitle:Normalized");
+      else if(option.Contains("widthweight")) plot.SetOption("1:ytitle:'Events / 1 GeV'");
+      else plot.SetOption("1:ytitle:Events");
+    }
+  }
 
   if(plot.histname.Contains("AFB")&&entries.size()>1&&!option.Contains("type:")) plot.SetOption(Form("type:%d",Plot::Type::CompareAndSig));
   return plot;
@@ -299,8 +480,7 @@ AFBPlotter::AFBPlotter(TString mode_,TString analyzer_){
   samples["qcde"]=Sample("QCD EM-enriched","SAMPLE sim",kCyan+4)+TRegexp("/"+analyzer+"_.*QCD_Pt.*EMEnriched$");
   samples["qcdee"]=Sample("QCD bcToE","SAMPLE sim",kCyan)+TRegexp("/"+analyzer+"_.*QCD_Pt.*bcToE$");
 
-  samples["aagr"]=Sample("#gamma#gamma#rightarrowll","SAMPLE sim",kYellow+1)+TRegexp("/"+analyzer+"_.*GamGamToLL_GR$");
-  samples["aa"]=Sample("#gamma#gamma#rightarrowll","SAMPLE sim",kYellow+1)+TRegexp("/"+analyzer+"_.*GamGamToLL$");
+  samples["aa"]=Sample("#gamma#gamma#rightarrowll","SAMPLE sim",kYellow+1)+TRegexp("/"+analyzer+"_.*GGToLL$");
 
   samples["amc"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/"+analyzer+"_.*DYJets$");
   samples["amcS19"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/"+analyzer+"_.*DYJets_Summer19$");
@@ -344,17 +524,65 @@ AFBPlotter::~AFBPlotter(){}
 
 int AFBPlotter::Setup(TString mode_){
   Reset();
-  if(mode_=="amcel") mode="data ^amc+tau_amc+vv+wjets+tttw+ss_amc+aa";
-  else if(mode_=="amcmu") mode="data ^amc+tau_amc+vv+wjets+tttw+1.7*ss_amc+aa";
-  else if(mode_=="mgel") mode="data ^mg+tau_mg+vv+wjets+tttw+ss_mg+aa";
-  else if(mode_=="mgmu") mode="data ^mg+tau_mg+vv+wjets+tttw+1.7*ss_mg+aa";
-  else if(mode_=="miel") mode="data ^mi+tau_mi+vv+wjets+tttw+ss_mi+aa";
-  else if(mode_=="mimu") mode="data ^mi+tau_mi+vv+wjets+tttw+1.7*ss_mi+aa";
+  mode=mode_;
+  TString entrystring;
+  if(mode_=="amcel") entrystring="data ^amc+tau_amc+vv+wjets+tttw+ss_amc+aa";
+  else if(mode_=="amcmu") entrystring="data ^amc+tau_amc+vv+wjets+tttw+1.8*ss_amc+aa";
+  else if(mode_=="mgel") entrystring="data ^mg+tau_mg+vv+wjets+tttw+ss_mg+aa";
+  else if(mode_=="mgmu") entrystring="data ^mg+tau_mg+vv+wjets+tttw+1.8*ss_mg+aa";
+  else if(mode_=="miel") entrystring="data ^mi+tau_mi+vv+wjets+tttw+ss_mi+aa";
+  else if(mode_=="mimu") entrystring="data ^mi+tau_mi+vv+wjets+tttw+1.8*ss_mi+aa";
+  else if(mode_=="unfold0bjet") entrystring="data-tau_mi-vv-wjets-tttw-ss_mi-aa data-tau_mi-vv-wjets-tttw-1.8*ss_mi-aa mi mi";
+  else if(mode_=="unfoldnbjet") entrystring="data-mi-tau_mi-vv-wjets-tw-ss_mi-aa data-mi-tau_mi-vv-wjets-tw-1.8*ss_mi-aa tt tt";
+  else if(mode_=="doublediff") entrystring="mi+tau_mi+vv+wjets+tttw+ss_mi+aa";
   else {
-    mode=mode_;
+    entrystring=mode_;
   }
 
-  SetupEntries(mode);
+  SetupEntries(entrystring);
+  if(mode=="unfold0bjet"){
+    entries[0].title="unfolded data (ee)";
+    entries[0].replace["LL"]="ee";
+    entries[0].tags.push_back("data");
+    entries[1].title="unfolded data (#mu#mu)";
+    entries[1].replace["LL"]="mm";
+    entries[1].styles[0].linecolor=2;
+    entries[1].styles[0].markercolor=2;
+    entries[1].tags.push_back("data");
+    entries[2].title="POWHEG MiNNLO (ee)";
+    entries[2].replace["LL"]="ee";
+    entries[2].tags.push_back("nounfold");
+    entries[2].styles[0].linecolor=1;
+    entries[2].styles[0].linestyle=2;
+    entries[3].title="POWHEG MiNNLO (#mu#mu)";
+    entries[3].replace["LL"]="mm";
+    entries[3].tags.push_back("nounfold");
+    entries[3].styles[0].linecolor=2;
+    entries[3].styles[0].linestyle=2;
+  }
+  if(mode=="unfoldnbjet"){
+    entries[0].title="unfolded data (ee)";
+    entries[0].replace["LL"]="ee";
+    entries[0].tags.push_back("data");
+    entries[1].title="unfolded data (#mu#mu)";
+    entries[1].replace["LL"]="mm";
+    entries[1].styles[0].linecolor=2;
+    entries[1].styles[0].markercolor=2;
+    entries[1].tags.push_back("data");
+    entries[2].title="POWHEG TTLL (ee)";
+    entries[2].replace["LL"]="ee";
+    entries[2].tags.push_back("nounfold");
+    entries[2].styles[0].linecolor=1;
+    entries[2].styles[0].linestyle=2;
+    entries[3].title="POWHEG TTLL (#mu#mu)";
+    entries[3].replace["LL"]="mm";
+    entries[3].tags.push_back("nounfold");
+    entries[3].styles[0].linecolor=2;
+    entries[3].styles[0].linestyle=2;
+  }
+  if(mode=="doublediff"){
+    entries[0].title="[data_{#mu#mu}-sim_{#mu#mu}]-[data_{ee}-sim_{ee}]";
+  }
   SetupSystematics();
 
   if(Verbosity>VERBOSITY::WARNING) std::cout<<"[AFBPlotter::Setup] nentries: "<<entries.size()<<endl;

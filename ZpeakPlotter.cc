@@ -26,8 +26,7 @@ ZpeakPlotter::ZpeakPlotter(TString mode_){
   samples["tt"]=Sample("t#bar{t}","SAMPLE sim",kMagenta)+TRegexp("/ZpeakAnalyzer_SkimTree_Dilepton_TTLL_powheg$");
   samples["tw"]=Sample("t#bar{t}","SAMPLE sim",kMagenta+10)+TRegexp("/ZpeakAnalyzer_SkimTree_Dilepton_SingleTop_tW_.*top_NoFullyHad$");
   samples["tttw"]=Sample("t#bar{t}, tW","SUM",kMagenta)+"tt"+"tw";
-  samples["aagr"]=Sample("#gamma#gamma#rightarrowll","SAMPLE sim",kYellow+1)+TRegexp("/ZpeakAnalyzer_SkimTree_Dilepton_GamGamToLL_GR$");
-  samples["aa"]=Sample("#gamma#gamma#rightarrowll","SAMPLE sim",kYellow+1)+TRegexp("/ZpeakAnalyzer_SkimTree_Dilepton_GamGamToLL$");
+  samples["aa"]=Sample("#gamma#gamma#rightarrowll","SAMPLE sim",kYellow+1)+TRegexp("/ZpeakAnalyzer_SkimTree_Dilepton_GGToLL$");
   samples["ss"]="ss_"%(Sample("QCD multi-jet","SUM",kBlue-5)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"tttw"-"aa");
   samples["ss_mi"]="ss_"%(Sample("QCD multi-jet","SUM",kBlue-5)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"tttw"-"aa");
 

@@ -370,25 +370,27 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,const Plot& pp,TString addi
   }else if(p.option.Contains("absx")){
     Plot temp_plot=p-"absx";
     TH1* temp_hist=GetHistFromSample(sample,temp_plot);
-    int nbin=temp_hist->GetNbinsX();
-    bool ok=true;
-    vector<double> bins;
-    for(int i=1;i<=nbin/2;i++){
-      if(fabs(temp_hist->GetBinLowEdge(i)+temp_hist->GetBinLowEdge(nbin+2-i))>1e-10){
-	PError("[Plotter::GetHistFromSample] cannot do absx with asymmetric binning");
-	ok=false;
+    if(temp_hist){
+      int nbin=temp_hist->GetNbinsX();
+      bool ok=true;
+      vector<double> bins;
+      for(int i=1;i<=nbin/2;i++){
+	if(fabs(temp_hist->GetBinLowEdge(i)+temp_hist->GetBinLowEdge(nbin+2-i))>1e-10){
+	  PError("[Plotter::GetHistFromSample] cannot do absx with asymmetric binning");
+	  ok=false;
+	}
+	bins.push_back(temp_hist->GetBinLowEdge(nbin/2+i));
       }
-      bins.push_back(temp_hist->GetBinLowEdge(nbin/2+i));
-    }
-    bins.push_back(temp_hist->GetBinLowEdge(nbin+1));
-    if(ok){
-      hist=new TH1D(temp_hist->GetName(),temp_hist->GetTitle(),nbin/2,&bins[0]);
-      hist->SetDirectory(pdir);
-      for(int i=1;i<nbin/2+2;i++){
-	hist->SetBinContent(i,temp_hist->GetBinContent(nbin/2+1-i)+temp_hist->GetBinContent(nbin/2+i));
-	hist->SetBinError(i,sqrt(pow(temp_hist->GetBinError(nbin/2+1-i),2)+pow(temp_hist->GetBinError(nbin/2+i),2)));
+      bins.push_back(temp_hist->GetBinLowEdge(nbin+1));
+      if(ok){
+	hist=new TH1D(temp_hist->GetName(),temp_hist->GetTitle(),nbin/2,&bins[0]);
+	hist->SetDirectory(pdir);
+	for(int i=1;i<nbin/2+2;i++){
+	  hist->SetBinContent(i,temp_hist->GetBinContent(nbin/2+1-i)+temp_hist->GetBinContent(nbin/2+i));
+	  hist->SetBinError(i,sqrt(pow(temp_hist->GetBinError(nbin/2+1-i),2)+pow(temp_hist->GetBinError(nbin/2+i),2)));
+	}
+	delete temp_hist;
       }
-      delete temp_hist;
     }
   }else{
     for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(p.histname,newstr);
@@ -647,9 +649,14 @@ vector<vector<TH1*>> Plotter::GetHists(Plot& p){
       if(entries[i].HasTag("data",false)){
 	for(auto& h:hists.at(i)){
 	  if(!h) continue;
-	  for(int ibin=h->FindBin(p.blind_xmin);ibin<h->FindBin(p.blind_xmax);ibin++){
+	  int binmin=0,binmax=h->GetNcells();
+	  if(p.blind_xmin!=p.blind_xmax){
+	    binmin=h->FindBin(p.blind_xmin);
+	    binmax=h->FindBin(p.blind_xmax);
+	  }
+	  for(int ibin=binmin;ibin<binmax;ibin++){
 	    h->SetBinContent(ibin,0);
-	    h->SetBinError(ibin,0);
+	    //h->SetBinError(ibin,0);
 	  }
 	}
       }
@@ -971,7 +978,10 @@ void Plotter::DrawSig(Plot p){
   TString baseopt=p.option("base:[0-9]*");
   if(baseopt!="") base=GetTH1(p.hists[((TString)baseopt(5,100)).Atoi()].back());
   else if(p.hists.size()==2) base=GetTH1(p.hists[1].back());
-  else base=GetTH1(p.hists[0].back());
+  else if(p.hists.size()==1){
+    base=GetTH1(p.hists[0].back());
+    base->Reset();
+  }else base=GetTH1(p.hists[0].back());
 
   TH1* sigma1=(TH1*)base->Clone("sigma1");
   sigma1->SetStats(0);
@@ -984,7 +994,7 @@ void Plotter::DrawSig(Plot p){
     sigma1->SetBinContent(i,0);
     sigma1->SetBinError(i,1);
   }
-  TH1* sigma2=(TH1*)sigma1->Clone("simga2");
+  TH1* sigma2=(TH1*)sigma1->Clone("sigma2");
   sigma2->SetStats(0);
   sigma2->SetDirectory(pdir);
   for(int i=0;i<sigma2->GetNbinsX()+2;i++){
@@ -1004,13 +1014,16 @@ void Plotter::DrawSig(Plot p){
 	hist=GetTH1(hist);
 	for(int i=0;i<hist->GetNbinsX()+2;i++){
 	  double content=0;
-	  if(hist->GetBinError(i)&&base->GetBinError(i)){
+	  if(hist->GetBinError(i)||base->GetBinError(i)){
 	    double error=sqrt(pow(hist->GetBinError(i),2)+pow(base->GetBinError(i),2));
 	    content=(hist->GetBinContent(i)-base->GetBinContent(i))/error;
 	  }
 	  hist->SetBinContent(i,content);
 	  if(content) hist->SetBinError(i,content*1e-30);
 	  else hist->SetBinError(i,0);
+	  if(p.blind_xmin||p.blind_xmax){
+	    hist->SetBinContent(i,0);
+	  }
 	}
 	break;
       }
@@ -1022,6 +1035,7 @@ void Plotter::DrawSig(Plot p){
   TH1* axisparent=GetAxisParent();
   if(axisparent){
     if(p.ytitle=="") axisparent->GetYaxis()->SetTitle("Difference (#sigma)");
+    axisparent->GetYaxis()->UnZoom();
     if(p.ymin||p.ymax){
       axisparent->GetYaxis()->SetRangeUser(p.ymin,p.ymax);
     }else if(p.option.Contains("widey")){
@@ -1245,9 +1259,12 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
     latex.SetNDC();
     latex.SetTextAlign(11);
     latex.DrawLatex(0.16,0.91,"CMS #bf{#it{Preliminary}}");
+    if(p.blind_xmin||p.blind_xmax) latex.DrawLatex(0.5,0.95,"#bf{#it{Blinded}}");
     if(!p.option.Contains("nolumi")){
       latex.SetTextAlign(31);
-      if(p.histname.Contains("2016a/")||p.era=="2016preVFP"){
+      if(p.lumi!=""){
+	latex.DrawLatex(0.9,0.91,p.lumi+" fb^{-1} (13 TeV)");
+      }else if(p.histname.Contains("2016a/")||p.era=="2016preVFP"){
 	latex.DrawLatex(0.9,0.91,"19.5 fb^{-1} (13 TeV)");
       }else if(p.histname.Contains("2016b/")||p.era=="2016postVFP"){
 	latex.DrawLatex(0.9,0.91,"16.8 fb^{-1} (13 TeV)");
@@ -1301,19 +1318,21 @@ void Plotter::SavePlot(TString plotkey,TString option,bool delete_canvas){
   Plot p=MakePlot(plotkey,option);
   TCanvas* c=DrawPlot(p);
   vector<TString> saves=Split(p.save,",");
+  TString defaultname=p.name;
+  TPRegexp("[/),(]").Substitute(defaultname,"_","g");
+  defaultname.ReplaceAll("[","_");
+  defaultname.ReplaceAll("]","_");
   for(auto save:saves){
     TString path=save;
     if(save==""||save.Contains(TRegexp("^\\.?pdf$"))||save.Contains(TRegexp("^\\.?png$"))){
-      path=p.name;
-      TPRegexp("[/),(]").Substitute(path,"_","g");
-      path.ReplaceAll("[","_");
-      path.ReplaceAll("]","_");
+      path=defaultname;
     }
     if(save.Contains(TRegexp("^\\.?pdf$"))) path+=".pdf";
     else if(save.Contains(TRegexp("^\\.?png$"))) path+=".png";
     if(!Basename(path).Contains(".")){
       path+=".png";
     }
+    defaultname=path(0,path.Last('.'));
     SaveCanvas(c,path,false);
   }
   if(delete_canvas){

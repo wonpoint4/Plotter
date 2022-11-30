@@ -1,32 +1,32 @@
 #include"Plotter.cc"
-#ifndef __EFFICIENCYPLOTTER_CC__
-#define __EFFICIENCYPLOTTER_CC__
-class EfficiencyPlotter:public Plotter{
+#ifndef __EFFICIENCYPLOTTERW_CC__
+#define __EFFICIENCYPLOTTERW_CC__
+class EfficiencyPlotterW:public Plotter{
 public:
   void SetupSystematics();
   int Setup(TString mode_);
-  EfficiencyPlotter(TString mode_="data ^mi+tau_mi+vv+wjets+tttw+ss_mi+aa",TString suffix="");
+  EfficiencyPlotterW(TString mode_="data ^mi+tau_mi+vv+wjets+tttw+ss_mi+aa",TString suffix="");
 };
-EfficiencyPlotter::EfficiencyPlotter(TString mode_,TString suffix){
-  ScanFiles((TString)getenv("SKFlatOutputDir")+getenv("SKFlatV")+"/EfficiencyValidation"+suffix+"/");
+EfficiencyPlotterW::EfficiencyPlotterW(TString mode_,TString suffix){
+  ScanFiles((TString)getenv("SKFlatOutputDir")+getenv("SKFlatV")+"/EfficiencyValidationW"+suffix+"/");
 
-  samples["muon"]=Sample("data (#mu#mu)","SAMPLE data",kBlack,20)+TRegexp("/DATA/EfficiencyValidation_SkimTree_Dilepton_DoubleMuon_[A-Z]")+TRegexp("/DATA/EfficiencyValidation_SkimTree_Dilepton_SingleMuon_[A-Z]");
-  samples["electron"]=Sample("data (ee)","SAMPLE data",kBlack,20)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_.*EG.*_[A-Z]")+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_SingleElectron_[A-Z]");
+  samples["muon"]=Sample("data (#mu#mu)","SAMPLE data",kBlack,20)+TRegexp("/DATA/EfficiencyValidationW_DoubleMuon_[A-Z]")+TRegexp("/DATA/EfficiencyValidationW_SingleMuon_[A-Z]");
+  samples["electron"]=Sample("data (ee)","SAMPLE data",kBlack,20)+TRegexp("/EfficiencyValidationW_.*EG.*_[A-Z]")+TRegexp("/EfficiencyValidationW_SingleElectron_[A-Z]");
   samples["data"]=Sample("data","SAMPLE data",kBlack,20)+"muon"+"electron";
-  samples["amc"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJets$");
-  samples["tau_amc"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau","SAMPLE sim",kGreen)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJets$"));
-  samples["amcS20"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJets_Summer20$");
-  samples["tau_amcS20"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau","SAMPLE sim",kGreen)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJets_Summer20$"));
-  samples["mi"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJetsTo.*MiNNLO$");
-  samples["tau_mi"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau","SAMPLE sim",kGreen)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJetsTo.*MiNNLO$"));
-  samples["mg"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJets_MG$");
-  samples["tau_mg"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau","SAMPLE sim",kGreen)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_DYJets_MG$"));
-  samples["vv"]=Sample("Diboson","SAMPLE sim",kBlue)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_[W-Z][W-Z]_pythia$");
-  samples["wjets"]=Sample("W","SAMPLE sim",kYellow)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_WJets_MG$");
-  samples["tt"]=Sample("t#bar{t}","SAMPLE sim",kMagenta)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_TTLL_powheg$");
-  samples["tw"]=Sample("t#bar{t}","SAMPLE sim",kMagenta+10)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_SingleTop_tW_.*top_NoFullyHad$");
+  samples["amc"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/EfficiencyValidationW_DYJets$");
+  samples["tau_amc"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau","SAMPLE sim",kGreen)+TRegexp("/EfficiencyValidationW_DYJets$"));
+  samples["amcS20"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/EfficiencyValidationW_DYJets_Summer20$");
+  samples["tau_amcS20"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau","SAMPLE sim",kGreen)+TRegexp("/EfficiencyValidationW_DYJets_Summer20$"));
+  samples["mi"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/EfficiencyValidationW_DYJetsTo.*MiNNLO$");
+  samples["tau_mi"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau","SAMPLE sim",kGreen)+TRegexp("/EfficiencyValidationW_DYJetsTo.*MiNNLO$"));
+  samples["mg"]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy",kRed)+TRegexp("/EfficiencyValidationW_DYJets_MG$");
+  samples["tau_mg"]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau","SAMPLE sim",kGreen)+TRegexp("/EfficiencyValidationW_DYJets_MG$"));
+  samples["vv"]=Sample("Diboson","SAMPLE sim",kBlue)+TRegexp("/EfficiencyValidationW_[W-Z][W-Z]_pythia$");
+  samples["wjets"]=Sample("W","SAMPLE sim",kYellow)+TRegexp("/EfficiencyValidationW_WJets_MG$");
+  samples["tt"]=Sample("t#bar{t}","SAMPLE sim",kMagenta)+TRegexp("/EfficiencyValidationW_TTLL_powheg$")+TRegexp("/EfficiencyValidationW_TTLJ_powheg$");;
+  samples["tw"]=Sample("t#bar{t}","SAMPLE sim",kMagenta+10)+TRegexp("/EfficiencyValidationW_SingleTop_tW_.*top_NoFullyHad$");
   samples["tttw"]=Sample("t#bar{t}, tW","SUM",kMagenta)+"tt"+"tw";
-  samples["aa"]=Sample("#gamma#gamma#rightarrowll","SAMPLE sim",kYellow+1)+TRegexp("/EfficiencyValidation_SkimTree_Dilepton_GGToLL$");
+  samples["aa"]=Sample("#gamma#gamma#rightarrowll","SAMPLE sim",kYellow+1)+TRegexp("/EfficiencyValidationW_GGToLL$");
   samples["ss"]="ss_"%(Sample("QCD multi-jet","SUM",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"tttw"-"aa");
   samples["ss_mi"]="ss_"%(Sample("QCD multi-jet","SUM",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"tttw"-"aa");
 
@@ -39,7 +39,7 @@ EfficiencyPlotter::EfficiencyPlotter(TString mode_,TString suffix){
   Setup(mode_);
 }
 
-int EfficiencyPlotter::Setup(TString mode_){
+int EfficiencyPlotterW::Setup(TString mode_){
   Reset();
 
   mode=mode_;
@@ -53,7 +53,7 @@ int EfficiencyPlotter::Setup(TString mode_){
 
   return 1;
 }
-void EfficiencyPlotter::SetupSystematics(){
+void EfficiencyPlotterW::SetupSystematics(){
   if(DEBUG)  cout<<"[SetupSystematics]"<<endl;
   int nreplica=20;
   AddSystematic("efficiencySF_stat","efficiencySF_stat",Systematic::Type::GAUSSIAN,FormRange("_efficiencySF_stat%d",Range(20)),"sim");

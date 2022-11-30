@@ -68,9 +68,10 @@ You can make your own plotter class inherited from `Plotter`. See 'EfficiencyPlo
 ## Draw and Save options
 You can pass a option to a specific pad using `PADINDEX:OPTION` syntax. ex) `1:logy`  
 * absy - projection to absolute y
-* blind:FLOAT,FLOAT - remove data points for blind analyses. Needs two floating numbers to define range.
+* blind[:FLOAT,FLOAT] - remove data points for blind analyses. Needs two floating numbers to define range.
 * logx - log scale x-axis
 * logy - log scale y-axis
+* lumi:FLOAT - sepcify integrated luminosity
 * norm - Normalized
 * noleg - Do not draw a legend
 * preliminary - Draw "CMS preliminary working in progress" and lumi and era info
