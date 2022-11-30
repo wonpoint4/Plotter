@@ -28,7 +28,7 @@ public:
   //Setup
   void AddFile(TString key,TString file);
   void ScanFiles(TString path);
-  virtual int Setup(TString mode_);
+  virtual int Setup(TString path,TString mode_);
   virtual void SetupEntries(TString mode);
   void Reset();
   const Sample& GetEntry(TString entrytitle) const;
@@ -167,14 +167,15 @@ void Plotter::ScanFiles(TString path){
     AddFile(key,file);
   }
 }
-int Plotter::Setup(TString mode_){
-  mode=mode_;
-  SetupEntries(mode);
+int Plotter::Setup(TString path,TString mode_){
+  ScanFiles(path);
+  SetupEntries(mode_);
   return true;
 }  
 void Plotter::SetupEntries(TString mode_){
   if(Verbosity>VERBOSITY::WARNING) std::cout<<"[Plotter::SetupEntries] mode = '"<<mode_<<"'"<<endl;
   entries.clear();
+  mode=mode_;
   vector<TString> entry_keys=Split(mode_," ");
   for(auto entry_key:entry_keys) AddEntry(entry_key);
 }
