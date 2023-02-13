@@ -22,13 +22,15 @@ public:
   map<TString,set<TString>> histkeys_cache;
   TDirectory *pdir=NULL;
   TString mode;
+  TString scandir;
   TString plotfile;
   TString plotdir="fig";
 
   //Setup
   void AddFile(TString key,TString file);
   void ScanFiles(TString path);
-  virtual int Setup(TString path,TString mode_);
+  virtual int Setup(TString scandir,TString mode_);
+  virtual TString GetSetupStringForCondor();
   virtual void SetupEntries(TString mode);
   void Reset();
   const Sample& GetEntry(TString entrytitle) const;
@@ -159,6 +161,7 @@ void Plotter::AddFile(TString key,TString file){
   }else if(!samples[key].IsFile()||samples[key].title!=file) PError("[Plotter::AddFile] sample "+key+" already exists");
 }
 void Plotter::ScanFiles(TString path){
+  scandir=path;
   vector<TString> files=Split(gSystem->GetFromPipe("find -L "+path+" -type f -name '*.root'"),"\n");
   if(!path.EndsWith("/")) path+="/";
   for(const auto& file:files){
@@ -167,11 +170,14 @@ void Plotter::ScanFiles(TString path){
     AddFile(key,file);
   }
 }
-int Plotter::Setup(TString path,TString mode_){
-  ScanFiles(path);
+int Plotter::Setup(TString scandir,TString mode_){
+  ScanFiles(scandir);
   SetupEntries(mode_);
   return true;
 }  
+TString Plotter::GetSetupStringForCondor(){
+  return "Setup\\(\\\\\\\""+scandir+"\\\\\\\",\\\\\\\""+mode+"\\\\\\\"\\)";
+}
 void Plotter::SetupEntries(TString mode_){
   if(Verbosity>VERBOSITY::WARNING) std::cout<<"[Plotter::SetupEntries] mode = '"<<mode_<<"'"<<endl;
   entries.clear();
@@ -317,6 +323,7 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,const Plot& pp,TString addi
   //p.Print();
   p.SetOption(additional_option);
   TH1* hist=NULL;
+  if(!sample.PassFilter(p.histname)) return hist;
   if(sample.IsStack()){
     for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(p.histname,newstr);
     for(int i=sample.subs.size()-1;i>=0;i--){
@@ -492,6 +499,11 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,const Plot& pp,TString addi
       }
       hist->SetBinError(hist->GetNcells()/2,1e-10);
     }
+    for(auto [scale,tag]:p.scales){
+      if(sample.HasTag(tag,false)){
+	hist->Scale(scale);
+      }
+    }
   }
   _depth--;
   return hist;
@@ -578,13 +590,9 @@ vector<TH1*> Plotter::GetHistSys(const Sample& sample,const Plot& p){
       }else if(sample.HasTag(systematic.tag)){
 	PDebug("[Plotter::GetHistSys] sysname='"+p.sysname+"' systype='"+systematic.GetTypeString()+"'");
 	vector<TH1*> variations;
-	for(const auto& replace:systematic.replaces){
-	  TH1* this_hist=GetHist(sample,p,Form("replace:%s->%s:%s",replace.first.Data(),replace.second.Data(),systematic.tag.Data()));
+	for(const auto& option_variation:systematic.variations){
+	  TH1* this_hist=GetHist(sample,p,option_variation);
 	  this_hist=GetTH1(this_hist,true);
-	  if(this_hist){
-	    this_hist->SetName(this_hist->GetName()+replace.second);
-	    this_hist->SetTitle(this_hist->GetTitle()+replace.second);
-	  }
 	  variations.push_back(this_hist);
 	}
 	PDebug("[Plotter::GetHistSys] '"+p.sysname+"': "+variations.size()+" variations");
@@ -1345,8 +1353,7 @@ void Plotter::SavePlotCondor(TString plotkey,TString option){
   plotkey=ParseForCondorRun(plotkey);
   option=ParseForCondorRun(option);
   TString classname=ClassName();
-  system("condor_run -a jobbatchname="+classname+" bash -c \\\"cd $PWD\\;export ROOT_HIST=0\\;echo -e \\'\\#include\\\\\\\""+classname+".cc\\\\\\\"\\\\n"+classname+" plotter\\;\\\\nplotter.Setup\\(\\\\\\\""+mode+"\\\\\\\"\\)\\;\\\\nplotter.plotdir=\\\\\\\""+plotdir+"\\\\\\\"\\;\\\\nplotter.SavePlot\\(\\\\\\\""+plotkey+"\\\\\\\",\\\\\\\""+option+"\\\\\\\"\\)\\\\n.q\\'\\|root -l -b\\\" 2>&1 |grep -v MakeDefCanvas &");
-  //system("condor_run bash -c \\\"cd $PWD\\;echo -e \\'\\#include\\\\\\\"AFBPlotter.cc\\\\\\\"\\\\nAFBPlotter plotter\\\\nplotter.Setup\\(\\\\\\\"data mi\\\\\\\"\\)\\\\nplotter.SavePlot\\(\\\\\\\"ee2016a/m[52,3000]/0bjet/dimass\\\\\\\",\\\\\\\"\\\\\\\"\\)\\\\n.q\\'\\|root -l -b\\\"")
+  system("condor_run -a jobbatchname="+classname+" bash -c \\\"cd $PWD\\;export ROOT_HIST=0\\;echo -e \\'\\#include\\\\\\\""+classname+".cc\\\\\\\"\\\\n"+classname+" plotter\\;\\\\nplotter."+GetSetupStringForCondor()+"\\;\\\\nplotter.plotdir=\\\\\\\""+plotdir+"\\\\\\\"\\;\\\\nplotter.SavePlot\\(\\\\\\\""+plotkey+"\\\\\\\",\\\\\\\""+option+"\\\\\\\"\\)\\\\n.q\\'\\|root -l -b\\\" 2>&1 |grep -v MakeDefCanvas &");
 }
 void Plotter::SaveCanvas(TCanvas *c,TString path,bool delete_canvas){
   if(c){

@@ -6,24 +6,25 @@ public:
   enum Type{UNDEF,ENVELOPE,GAUSSIAN,HESSIAN,MULTI};
   TString title;
   Type type=Type::UNDEF;
-  vector<pair<TString,TString>> replaces;
+  vector<TString> variations;
   vector<TString> keys;
   TString tag;
 
-  Systematic(TString title_="",Type type_=Type::UNDEF,vector<TString> includes={},TString tag_="");
+  Systematic(TString title_="",Type type_=Type::UNDEF,vector<TString> variations_={},TString tag_="");
   ~Systematic();
   TString GetTypeString() const;
   void Print() const;
 };
-Systematic::Systematic(TString title_,Type type_,vector<TString> includes,TString tag_){
+Systematic::Systematic(TString title_,Type type_,vector<TString> variations_,TString tag_){
   title=title_;
   type=type_;
   tag=tag_;
-  if(type==Systematic::Type::MULTI) keys=includes;
+  if(type==Systematic::Type::MULTI) keys=variations_;
   else{
-    for(const TString& replace:includes){
-      if(Split(replace,"->").size()!=2) replaces.push_back(make_pair("$",replace));
-      else replaces.push_back(make_pair(Split(replace,"->").at(0),Split(replace,"->").at(1)));
+    for(const TString& variation:variations_){
+      if(variation.Contains(":")) variations.push_back(variation+":"+tag);
+      else if(Split(variation,"->").size()==2) variations.push_back(TString("replace:")+variation+":"+tag);
+      else variations.push_back(TString("replace:$->")+variation+":"+tag);
     }
   }
 }
@@ -43,7 +44,7 @@ void Systematic::Print() const{
   cout<<"------------------------"<<endl;
   cout<<title<<" "<<GetTypeString()<<" tag:"<<tag<<endl;
   if(type==MULTI) for(const auto& key:keys) cout<<key<<" ";
-  else for(const auto& replace:replaces) cout<<replace.first<<"->"<<replace.second<<" ";
+  else for(const auto& variation:variations) cout<<variation<<" ";
   cout<<"\n"<<endl;
 }
 #endif

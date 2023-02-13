@@ -24,6 +24,7 @@ public:
   double xmin=0,xmax=0,ymin=0,ymax=0;
   double Xmin=0,Xmax=0,Ymin=0,Ymax=0,Zmin=0,Zmax=0,Umin=0,Umax=0;
   double blind_xmin=0,blind_xmax=0;
+  vector<pair<double,TString>> scales;
   TString option;
   vector<Plot> subplots;
   bool root=false;
@@ -161,6 +162,7 @@ void Plot::RemoveOption(TString option_){
     else if(remove=="lumi") lumi="";
     else if(remove=="sysname") sysname="";
     else if(remove=="save") save="";
+    else if(remove=="scale") scales={};
     else if(remove=="text") texts={};
     else if(remove=="replace"){
       replace_old="";
@@ -215,6 +217,17 @@ void Plot::SetOption(TString option_){
 	replace_tag=replace_new(replace_new.Index(":")+1,replace_new.Length());
 	replace_new=replace_new(0,replace_new.Index(":"));
       }
+    }
+    else if(opt.Contains(TRegexp("^scale:"))){
+      TString scale=TString(opt(6,999));
+      TString tag="";
+      if(scale.Contains(":")){
+	tag=scale(scale.Index(":")+1,scale.Length());
+	scale=scale(0,scale.Index(":"));
+      }else{
+	PError("Wrong syntax for scale option "+opt);
+      }	
+      scales.push_back(make_pair(scale.Atof(),tag));
     }
     else if(opt.Contains(TRegexp("^replace:"))){
       vector<TString> replacev=Split(opt(8,999),"->");

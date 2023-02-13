@@ -13,6 +13,7 @@ public:
   TString type;
   vector<Style> styles;
   map<TString,TString> replace;
+  TString filter="";
   double weight=1.;
   vector<Sample> subs;
 
@@ -42,18 +43,20 @@ public:
   TString GetPrefix() const;
   TString GetSuffix() const;
   bool HasTag(TString tag,bool recursive=true) const;
+  void AddTag(TString tag);
+  void SetTags(TString tags_);
   bool IsCollection() const;
   bool IsStack() const;
   bool IsSum() const;
   bool IsSample() const;
   bool IsFile() const;
   void Print(bool detail=false,TString pre="") const;
+  bool PassFilter(TString histname) const;
   TString ReplaceToString() const;
   void SetHistPrefix(TString hprefix);
   void SetPrefix(TString prefix);
   void SetSuffix(TString suffix);
   void SetStyle(int color,int marker=-1,int fill=-1,TString drawoption="");
-  void SetTags(TString tag);
   void SetType(TString type_);
   void TurnOffFillColor();
   void TurnOnFillColor();
@@ -224,6 +227,23 @@ bool Sample::HasTag(TString tag,bool recursive) const {
     }
   }
 }
+void Sample::AddTag(TString tag){
+  if(tag=="STACK"||tag=="SUM"||tag=="SAMPLE"||tag=="FILE"){
+    SetType(tag);
+  }else if(tag.Contains(TRegexp("^filter:"))){
+    filter=tag(7,999);
+  }else if(!HasTag(tag,false)){
+    tags.push_back(tag);
+  }  
+}
+void Sample::SetTags(TString tags_){
+  tags.clear();
+  tags_.ReplaceAll(","," ");
+  vector<TString> vtags=Split(tags_," ");
+  for(auto tag:vtags){
+    AddTag(tag);
+  }
+}
 bool Sample::IsCollection() const {
   if(IsStack()||IsSum()) return true;
   else return false;
@@ -261,6 +281,20 @@ void Sample::Print(bool detail,TString pre) const{
     }
   }else cout<<pre<<"Title: "<<title<<" "<<"Type:"<<type<<endl;
 }
+bool Sample::PassFilter(TString histname) const {
+  if(filter=="") return true;
+  TString filter_modified=filter;
+  TPRegexp("[)(|&!]").Substitute(filter_modified," ","g");
+  vector<TString> filters=Split(filter_modified," ");
+  TString expr=filter;
+  for(auto this_filter:filters){
+    int start=expr.Index(this_filter);
+    if(histname.Contains(TRegexp(this_filter))) expr.Replace(start,this_filter.Length(),"true");
+    else expr.Replace(start,this_filter.Length(),"false");
+  }
+  TFormula test("test",expr,false);
+  return test.Eval(0);
+}
 TString Sample::ReplaceToString() const {
   TString out;
   for(const auto& [reg,newstr]:replace){
@@ -283,18 +317,6 @@ void Sample::SetStyle(int color,int marker,int fill,TString drawoption){
   
   if(IsStack()){
     styles[0].drawoption="e";
-  }
-}
-void Sample::SetTags(TString tag){
-  tags.clear();
-  tag.ReplaceAll(","," ");
-  vector<TString> tags_=Split(tag," ");
-  for(auto t:tags_){
-    if(t=="STACK"||t=="SUM"||t=="SAMPLE"||t=="FILE"){
-      SetType(t);
-      continue;
-    }
-    tags.push_back(t);
   }
 }
 void Sample::SetType(TString type_){

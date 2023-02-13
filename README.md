@@ -87,6 +87,7 @@ You can pass a option to a specific pad using `PADINDEX:OPTION` syntax. ex) `1:l
 * rebin:{bin0,bin1,...,binN} - Rebinning with new bin boundary.
 * replace:STRING->STRING[:tag] - Modify the histogram name. You can specify sample tag. You can also use regular expression.
 * save:PATH - For *DrawPlot*, specify the path or file format (pdf or png)
+* scale:FLOAT[:tag] - scale histogram
 * suffix:STRING[:tag] - Add suffix to histogram name. Same with replace:$->STRING[:tag].
 * sysname:STRING - Draw with systematic uncertainties defined by AddSystematic.
 * sysdetail - Decompose systematic uncertainty.
