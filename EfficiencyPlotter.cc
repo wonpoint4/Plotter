@@ -3,8 +3,7 @@
 #define __EFFICIENCYPLOTTER_CC__
 class EfficiencyPlotter:public SKFlatPlotter{
 public:
-  EfficiencyPlotter(TString mode_="data ^mi+tau_mi+vv+wjets+tttw+ss_mi+aa",TString suffix="");
+  EfficiencyPlotter(TString mode_="data ^mi+tau_mi+vv+wjets+tttw+qcdss+aa",TString Analyzer_="EfficiencyValidation");
 };
-EfficiencyPlotter::EfficiencyPlotter(TString mode_,TString suffix) : SKFlatPlotter("EfficiencyValidation"+suffix,mode_){
-}
+EfficiencyPlotter::EfficiencyPlotter(TString mode_,TString Analyzer_):SKFlatPlotter(mode_,Analyzer_){}
 #endif

@@ -29,7 +29,7 @@ public:
   //Setup
   void AddFile(TString key,TString file);
   void ScanFiles(TString path);
-  virtual int Setup(TString scandir,TString mode_);
+  virtual int Setup(TString mode_,TString scandir);
   virtual TString GetSetupStringForCondor();
   virtual void SetupEntries(TString mode);
   void Reset();
@@ -170,13 +170,13 @@ void Plotter::ScanFiles(TString path){
     AddFile(key,file);
   }
 }
-int Plotter::Setup(TString scandir,TString mode_){
+int Plotter::Setup(TString mode_,TString scandir){
   ScanFiles(scandir);
   SetupEntries(mode_);
   return true;
 }  
 TString Plotter::GetSetupStringForCondor(){
-  return "Setup\\(\\\\\\\""+scandir+"\\\\\\\",\\\\\\\""+mode+"\\\\\\\"\\)";
+  return "Setup\\(\\\\\\\""+mode+"\\\\\\\",\\\\\\\""+scandir+"\\\\\\\"\\)";
 }
 void Plotter::SetupEntries(TString mode_){
   if(Verbosity>VERBOSITY::WARNING) std::cout<<"[Plotter::SetupEntries] mode = '"<<mode_<<"'"<<endl;

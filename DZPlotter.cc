@@ -7,14 +7,13 @@
 
 class DZPlotter:public SKFlatPlotter{
 public:
-  DZPlotter(TString mode_="data mi",TString suffix="");
+  DZPlotter(TString mode_="data mi",TString Analyzer_="DZAnalyzer");
   using Plotter::GetHist;
   virtual TH1* GetHist(const Sample& sample,Plot plot,TString additional_option="");
   virtual void GetHistActionForAdditionalClass(TObject*& obj,Plot plot);
   virtual Plot MakePlot(TString plotkey,TString option="");
 };
-DZPlotter::DZPlotter(TString mode_,TString suffix) : SKFlatPlotter("DZAnalyzer"+suffix,mode_){
-}
+DZPlotter::DZPlotter(TString mode_,TString Analyzer_):SKFlatPlotter(mode_,Analyzer_){}
 Plot DZPlotter::MakePlot(TString plotkey,TString option){
   Plot plot=Plotter::MakePlot(plotkey,option);
   if(plot.histname.Contains("ee2016a/")) plot.lumi="4.00";
