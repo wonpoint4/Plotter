@@ -186,6 +186,7 @@ void Plotter::SetupEntries(TString mode_){
   for(auto entry_key:entry_keys) AddEntry(entry_key);
 }
 void Plotter::Reset(){
+  samples.clear();
   entries.clear();
   systematics.clear();
   plots.clear();
@@ -323,7 +324,10 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,const Plot& pp,TString addi
   //p.Print();
   p.SetOption(additional_option);
   TH1* hist=NULL;
-  if(!sample.PassFilter(p.histname)) return hist;
+  if(!sample.PassFilter(p.histname)){
+    _depth--;
+    return hist;
+  }
   if(sample.IsStack()){
     for(auto [reg,newstr]:sample.replace) TPRegexp(reg).Substitute(p.histname,newstr);
     for(int i=sample.subs.size()-1;i>=0;i--){
