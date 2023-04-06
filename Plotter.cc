@@ -232,7 +232,10 @@ void Plotter::AddEntry(TString key){
 }
 void Plotter::AddEntry(const Sample& sample){
   if(sample.IsFile()){
-    Sample s(sample.title,"SAMPLE",GetAutoColor());
+    TString title=sample.title;
+    title=title(title.Last('/')+1,title.Length());
+    title.ReplaceAll(".root","");
+    Sample s(title,"SAMPLE",GetAutoColor());
     s.weight=sample.weight;
     s.replace=sample.replace;
     s+=sample;
@@ -611,6 +614,16 @@ vector<TH1*> Plotter::GetHistSys(const Sample& sample,const Plot& p){
 	}else{
 	  TH1* histsys=NULL;
 	  if(systematic.type==Systematic::Type::ENVELOPE){
+	    if(p.option.Contains("shapesys")){
+	      TString integraloption="";
+	      if(p.option.Contains("widthweight")) integraloption="width";
+	      TH1* hist0=GetTH1(hists.at(0));
+	      double val=hist0->Integral(integraloption);
+	      for(auto& var:variations){
+		if(var) var->Scale(val/var->Integral(integraloption));
+	      }
+	      delete hist0;
+	    }
 	    histsys=GetEnvelope(hists.at(0),variations);
 	  }else if(systematic.type==Systematic::Type::GAUSSIAN){
 	    histsys=GetRMSError(hists.at(0),variations);
@@ -875,7 +888,11 @@ void Plotter::DrawCompare(Plot p){
   }
   axisparent->GetXaxis()->SetTitle(p.xtitle);
   axisparent->GetYaxis()->SetTitle(p.ytitle); 
-  axisparent->SetTitle(p.title);
+  TString toptitle=p.title;
+  if(p.sysname!="") toptitle+="_"+p.sysname;
+  if(p.replace_old!=""||p.replace_new!="") TPRegexp(p.replace_old).Substitute(toptitle,p.replace_new);
+  axisparent->SetTitle(toptitle);
+
   gPad->SetFillStyle(0);
   gPad->RedrawAxis();
   gPad->Update();

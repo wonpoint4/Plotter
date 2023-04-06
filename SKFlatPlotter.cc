@@ -72,12 +72,12 @@ void SKFlatPlotter::SetupSamples(){
   samples["amcM_stack"]=Sample("DY M-binned","STACK",kBlue)+TRegexp("/"+Analyzer+SkimTree+"_.*DYJets_M-[0-9]*to[0-9Inf]*$");
   for(auto& sub:samples["amcM_stack"].subs) sub.title=sub.title(TRegexp("M-[0-9]*to[0-9Inf]*"));  
 
-  samples["qcdss_ee"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][eE]&&!0bjet&&!nbjet qcdss_ee",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.043;
-  samples["qcdss_ee_0bjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][eE]&&0bjet qcdss_ee_0bjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.044;
-  samples["qcdss_ee_nbjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][eE]&&nbjet qcdss_ee_nbjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.007;
-  samples["qcdss_mm"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[mM][mM]&&!0bjet&&!nbjet qcdss_mm",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*2.252;
-  samples["qcdss_mm_0bjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[mM][mM]&&0bjet qcdss_mm_0bjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*2.284;
-  samples["qcdss_mm_nbjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[mM][mM]&&nbjet qcdss_mm_nbjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.192;
+  samples["qcdss_ee"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][eEl]&&!0bjet&&!nbjet qcdss_ee",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.043;
+  samples["qcdss_ee_0bjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][eEl]&&0bjet qcdss_ee_0bjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.044;
+  samples["qcdss_ee_nbjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][eEl]&&nbjet qcdss_ee_nbjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.007;
+  samples["qcdss_mm"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[mM][mMu]&&!0bjet&&!nbjet qcdss_mm",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*2.252;
+  samples["qcdss_mm_0bjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[mM][mMu]&&0bjet qcdss_mm_0bjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*2.284;
+  samples["qcdss_mm_nbjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[mM][mMu]&&nbjet qcdss_mm_nbjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.192;
   samples["qcdss_em"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][mM]&&!0bjet&&!nbjet qcdss_em",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.000;
   samples["qcdss_em_0bjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][mM]&&0bjet qcdss_em_0bjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.000;
   samples["qcdss_em_nbjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][mM]&&nbjet qcdss_em_nbjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.000;
@@ -120,6 +120,7 @@ void SKFlatPlotter::SetupSystematics(){
   if(Verbosity>VERBOSITY::WARNING) std::cout<<"[SetupSystematics]"<<endl;
   AddSystematic("PUweight","PUweight",Systematic::Type::ENVELOPE,"_PUweight_up _PUweight_down","sim");
   AddSystematic("prefireweight","prefiring unc.",Systematic::Type::ENVELOPE,"_prefireweight_up _prefireweight_down","sim");
+  AddSystematic("noz0weight","noz0weight",Systematic::Type::ENVELOPE,"_noz0weight","sim");
   AddSystematic("CFSF","charge-flip",Systematic::Type::ENVELOPE,"_CFSF_up _CFSF_down","sim");
 
   AddSystematic("btagh","b tagging (heavy)",Systematic::Type::ENVELOPE,"_btagSF_hup _btagSF_hdown","sim");
@@ -143,20 +144,57 @@ void SKFlatPlotter::SetupSystematics(){
   AddSystematic("electronIDSF_sys4","electronIDSF_sys4",Systematic::Type::ENVELOPE,"_electronIDSF_s4_m0","sim");
   AddSystematic("electronIDSF_sys5","electronIDSF_sys5",Systematic::Type::ENVELOPE,"_electronIDSF_s5_m0","sim");
   AddSystematic("electronIDSF_sys6","electronIDSF_sys6",Systematic::Type::ENVELOPE,"_electronIDSF_s6_m0","sim");
-  AddSystematic("electronIDSF_sys7","electronIDSF_sys7",Systematic::Type::ENVELOPE,"_electronIDSF_s7_m0","sim");
-  AddSystematic("electronIDSF","electronIDSF_sys",Systematic::Type::MULTI,"electronIDSF_sys1 electronIDSF_sys2 electronIDSF_sys3 electronIDSF_sys4 electronIDSF_sys5 electronIDSF_sys6 electronIDSF_sys7","sim");
+  AddSystematic("electronIDSF_sys7","electronIDSF_sys7",Systematic::Type::ENVELOPE,"_electronIDSF_s7_m0 _electronIDSF_s7_m1","sim");
+  AddSystematic("electronIDSF_sys8","electronIDSF_sys8",Systematic::Type::ENVELOPE,"_electronIDSF_s8_m0 _electronIDSF_s8_m1","sim"); 
+  AddSystematic("electronIDSF_sys9","electronIDSF_sys9",Systematic::Type::ENVELOPE,"_electronIDSF_s9_m0","sim"); 
+  AddSystematic("electronIDSF_sys10","electronIDSF_sys10",Systematic::Type::ENVELOPE,"_electronIDSF_s10_m0","sim");
+  AddSystematic("electronIDSF_sys11","electronIDSF_sys11",Systematic::Type::ENVELOPE,"_electronIDSF_s11_m0","sim");
+  AddSystematic("electronIDSF","electronIDSF_sys",Systematic::Type::MULTI,FormRange("electronIDSF_sys%d",Range(1,12)),"sim");
+  AddSystematic("muonTrackingSF_sys1","muonTrackingSF_sys1",Systematic::Type::ENVELOPE,"_muonTrackingSF_s1_m0 _muonTrackingSF_s1_m1","sim");
+  AddSystematic("muonTrackingSF_sys2","muonTrackingSF_sys2",Systematic::Type::ENVELOPE,"_muonTrackingSF_s2_m0 _muonTrackingSF_s2_m1","sim");
+  AddSystematic("muonTrackingSF_sys3","muonTrackingSF_sys3",Systematic::Type::ENVELOPE,"_muonTrackingSF_s3_m0","sim");
+  AddSystematic("muonTrackingSF_sys4","muonTrackingSF_sys4",Systematic::Type::ENVELOPE,"_muonTrackingSF_s4_m0 _muonTrackingSF_s4_m1","sim");
+  AddSystematic("muonTrackingSF_sys5","muonTrackingSF_sys5",Systematic::Type::ENVELOPE,"_muonTrackingSF_s5_m0","sim");
+  AddSystematic("muonTrackingSF_sys6","muonTrackingSF_sys6",Systematic::Type::ENVELOPE,"_muonTrackingSF_s6_m0","sim");
+  AddSystematic("muonTrackingSF_sys7","muonTrackingSF_sys7",Systematic::Type::ENVELOPE,"_muonTrackingSF_s7_m0","sim");
+  AddSystematic("muonTrackingSF_sys8","muonTrackingSF_sys8",Systematic::Type::ENVELOPE,"_muonTrackingSF_s8_m0","sim");
+  AddSystematic("muonTrackingSF_sys9","muonTrackingSF_sys9",Systematic::Type::ENVELOPE,"_muonTrackingSF_s9_m0 _muonTrackingSF_s9_m1","sim");
+  AddSystematic("muonTrackingSF_sys10","muonTrackingSF_sys10",Systematic::Type::ENVELOPE,"_muonTrackingSF_s10_m0 _muonTrackingSF_s10_m1","sim");
+  AddSystematic("muonTrackingSF","muonTrackingSF_sys",Systematic::Type::MULTI,FormRange("muonTrackingSF_sys%d",Range(1,11)),"sim");
+  AddSystematic("muonRECOSF_sys1","muonRECOSF_sys1",Systematic::Type::ENVELOPE,"_muonRECOSF_s1_m0 _muonRECOSF_s1_m1","sim");
+  AddSystematic("muonRECOSF_sys2","muonRECOSF_sys2",Systematic::Type::ENVELOPE,"_muonRECOSF_s2_m0 _muonRECOSF_s2_m1","sim");
+  AddSystematic("muonRECOSF_sys3","muonRECOSF_sys3",Systematic::Type::ENVELOPE,"_muonRECOSF_s3_m0","sim");
+  AddSystematic("muonRECOSF_sys4","muonRECOSF_sys4",Systematic::Type::ENVELOPE,"_muonRECOSF_s4_m0 _muonRECOSF_s4_m1","sim");
+  AddSystematic("muonRECOSF_sys5","muonRECOSF_sys5",Systematic::Type::ENVELOPE,"_muonRECOSF_s5_m0","sim");
+  AddSystematic("muonRECOSF_sys6","muonRECOSF_sys6",Systematic::Type::ENVELOPE,"_muonRECOSF_s6_m0","sim");
+  AddSystematic("muonRECOSF_sys7","muonRECOSF_sys7",Systematic::Type::ENVELOPE,"_muonRECOSF_s7_m0","sim");
+  AddSystematic("muonRECOSF_sys8","muonRECOSF_sys8",Systematic::Type::ENVELOPE,"_muonRECOSF_s8_m0","sim");
+  AddSystematic("muonRECOSF_sys9","muonRECOSF_sys9",Systematic::Type::ENVELOPE,"_muonRECOSF_s9_m0 _muonRECOSF_s9_m1","sim");
+  AddSystematic("muonRECOSF_sys10","muonRECOSF_sys10",Systematic::Type::ENVELOPE,"_muonRECOSF_s10_m0 _muonRECOSF_s10_m1","sim");
+  AddSystematic("muonRECOSF","muonRECOSF_sys",Systematic::Type::MULTI,FormRange("muonRECOSF_sys%d",Range(1,11)),"sim");
   AddSystematic("muonIDSF_sys1","muonIDSF_sys1",Systematic::Type::ENVELOPE,"_muonIDSF_s1_m0 _muonIDSF_s1_m1","sim");
   AddSystematic("muonIDSF_sys2","muonIDSF_sys2",Systematic::Type::ENVELOPE,"_muonIDSF_s2_m0 _muonIDSF_s2_m1","sim");
   AddSystematic("muonIDSF_sys3","muonIDSF_sys3",Systematic::Type::ENVELOPE,"_muonIDSF_s3_m0","sim");
   AddSystematic("muonIDSF_sys4","muonIDSF_sys4",Systematic::Type::ENVELOPE,"_muonIDSF_s4_m0 _muonIDSF_s4_m1","sim");
-  AddSystematic("muonIDSF","muonIDSF_sys",Systematic::Type::MULTI,"muonIDSF_sys1 muonIDSF_sys2 muonIDSF_sys3 muonIDSF_sys4","sim");
+  AddSystematic("muonIDSF_sys5","muonIDSF_sys5",Systematic::Type::ENVELOPE,"_muonIDSF_s5_m0","sim");
+  AddSystematic("muonIDSF_sys6","muonIDSF_sys6",Systematic::Type::ENVELOPE,"_muonIDSF_s6_m0","sim");
+  AddSystematic("muonIDSF_sys7","muonIDSF_sys7",Systematic::Type::ENVELOPE,"_muonIDSF_s7_m0","sim");
+  AddSystematic("muonIDSF_sys8","muonIDSF_sys8",Systematic::Type::ENVELOPE,"_muonIDSF_s8_m0","sim");
+  AddSystematic("muonIDSF_sys9","muonIDSF_sys9",Systematic::Type::ENVELOPE,"_muonIDSF_s9_m0 _muonIDSF_s9_m1","sim");
+  AddSystematic("muonIDSF_sys10","muonIDSF_sys10",Systematic::Type::ENVELOPE,"_muonIDSF_s10_m0 _muonIDSF_s10_m1","sim");
+  AddSystematic("muonIDSF","muonIDSF_sys",Systematic::Type::MULTI,FormRange("muonIDSF_sys%d",Range(1,11)),"sim");
   AddSystematic("triggerSF_sys1","triggerSF_sys1",Systematic::Type::ENVELOPE,"_triggerSF_s1_m0 _triggerSF_s1_m1","sim");
   AddSystematic("triggerSF_sys2","triggerSF_sys2",Systematic::Type::ENVELOPE,"_triggerSF_s2_m0 _triggerSF_s2_m1","sim");
   AddSystematic("triggerSF_sys3","triggerSF_sys3",Systematic::Type::ENVELOPE,"_triggerSF_s3_m0","sim");
-  AddSystematic("triggerSF_sys4","triggerSF_sys4",Systematic::Type::ENVELOPE,"_triggerSF_s4_m0","sim");
+  AddSystematic("triggerSF_sys4","triggerSF_sys4",Systematic::Type::ENVELOPE,"_triggerSF_s4_m0 _triggerSF_s4_m1","sim");
   AddSystematic("triggerSF_sys5","triggerSF_sys5",Systematic::Type::ENVELOPE,"_triggerSF_s5_m0","sim");
   AddSystematic("triggerSF_sys6","triggerSF_sys6",Systematic::Type::ENVELOPE,"_triggerSF_s6_m0","sim");
-  AddSystematic("triggerSF","triggerSF_sys",Systematic::Type::MULTI,"triggerSF_sys1 triggerSF_sys2 triggerSF_sys3 triggerSF_sys4 triggerSF_sys5 triggerSF_sys6","sim");
+  AddSystematic("triggerSF_sys7","triggerSF_sys7",Systematic::Type::ENVELOPE,"_triggerSF_s7_m0 _triggerSF_s7_m1","sim");
+  AddSystematic("triggerSF_sys8","triggerSF_sys8",Systematic::Type::ENVELOPE,"_triggerSF_s8_m0 _triggerSF_s8_m1","sim"); 
+  AddSystematic("triggerSF_sys9","triggerSF_sys9",Systematic::Type::ENVELOPE,"_triggerSF_s9_m0 _triggerSF_s9_m1","sim"); 
+  AddSystematic("triggerSF_sys10","triggerSF_sys10",Systematic::Type::ENVELOPE,"_triggerSF_s10_m0","sim");
+  AddSystematic("triggerSF_sys11","triggerSF_sys11",Systematic::Type::ENVELOPE,"_triggerSF_s11_m0","sim");
+  AddSystematic("triggerSF","triggerSF_sys",Systematic::Type::MULTI,FormRange("triggerSF_sys%d",Range(1,12)),"sim");
 
   AddSystematic("noRECOSF","noRECOSF",Systematic::Type::ENVELOPE,"_noRECOSF","sim");
   AddSystematic("noIDSF","noIDSF",Systematic::Type::ENVELOPE,"_noIDSF","sim");
@@ -164,7 +202,8 @@ void SKFlatPlotter::SetupSystematics(){
   AddSystematic("notriggerSF","notriggerSF",Systematic::Type::ENVELOPE,"_notriggerSF","sim");
 
   AddSystematic("noefficiencySF","noefficiencySF",Systematic::Type::ENVELOPE,"_noefficiencySF","sim");
-  AddSystematic("efficiencySF","eff. SF unc.",Systematic::Type::MULTI,"efficiencySF_stat electronRECOSF electronIDSF muonIDSF triggerSF");
+  AddSystematic("efficiencySF","eff. SF unc.",Systematic::Type::MULTI,"efficiencySF_stat electronRECOSF electronIDSF muonTrackingSF muonRECOSF muonIDSF triggerSF");
+  AddSystematic("effAN","systematic unc.",Systematic::Type::MULTI,"efficiencySF noz0weight");
 
   AddSystematic("qcdss_norm_ee","SS method norm.",Systematic::Type::ENVELOPE,"scale:1.032","qcdss_ee");
   AddSystematic("qcdss_norm_ee_0bjet","SS method norm.",Systematic::Type::ENVELOPE,"scale:1.031","qcdss_ee_0bjet");
@@ -188,7 +227,7 @@ void SKFlatPlotter::SetupSystematics(){
   AddSystematic("ttpdf","PDF",Systematic::Type::HESSIAN,FormRange("_pdf%d",Range(100)),"ttll");
   AddSystematic("notopptweight","notopptweight",Systematic::Type::ENVELOPE,"_notopptweight","tt");
 
-  AddSystematic("sys","syst. unc.",Systematic::Type::MULTI,"PUweight prefireweight btag CFSF efficiencySF qcdss JEC");
+  AddSystematic("sys","syst. unc.",Systematic::Type::MULTI,"PUweight prefireweight noz0weight btag CFSF efficiencySF qcdss JEC");
   AddSystematic("dytheory","theory (DY)",Systematic::Type::MULTI,"dyalphaS dyscale dypdf nozptweight");
   AddSystematic("tttheory","theory (t#bar{t})",Systematic::Type::MULTI,"ttalphaS ttscale ttpdf notopptweight");
   AddSystematic("totalsys","syst. unc.",Systematic::Type::MULTI,"sys dytheory tttheory");
