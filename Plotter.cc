@@ -106,6 +106,7 @@ public:
   bool IsEntry(const Sample& sample);
   static TLegend* DrawLegend(const Plot& p);
   static TLegend* DrawLegendSys(const Plot& p);
+  static void DrawPreliminary(TPad* c=NULL,TString era="",TString lumi="",TString option="");
   static void DrawTexts(const Plot& p);
   
   //Plot
@@ -1251,7 +1252,6 @@ void Plotter::DrawDoubleRatio(Plot& p){
     exit(1);
   }
 }
-
 TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
   PInfo("[Plotter::DrawPlot] "+p.name+" "+p.histname+" "+p.option+" "+additional_option);_depth++;
   if(entries.size()==0){
@@ -1278,56 +1278,22 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
   else if(p.type==Plot::Type::CompareAndSig) DrawCompareAndSig(p);
   else if(p.type==Plot::Type::DoubleRatio) DrawDoubleRatio(p);
   if(p.option.Contains("preliminary")){
-    c->cd(1);
-    TH1* axisparent=GetAxisParent();
-    if(axisparent) axisparent->SetTitle("");
-    c->cd();
-    axisparent=GetAxisParent();
-    if(axisparent) axisparent->SetTitle("");
-    TLatex latex;
-    latex.SetTextSize(0.035);
-    latex.SetNDC();
-    latex.SetTextAlign(11);
-    latex.DrawLatex(0.16,0.91,"CMS #bf{#it{Preliminary}}");
-    if(p.blind_xmin||p.blind_xmax) latex.DrawLatex(0.5,0.95,"#bf{#it{Blinded}}");
-    if(!p.option.Contains("nolumi")){
-      latex.SetTextAlign(31);
-      if(p.lumi!=""){
-	latex.DrawLatex(0.9,0.91,p.lumi+" fb^{-1} (13 TeV)");
-      }else if(p.histname.Contains("2016a/")||p.era=="2016preVFP"){
-	latex.DrawLatex(0.9,0.91,"19.5 fb^{-1} (13 TeV)");
-      }else if(p.histname.Contains("2016b/")||p.era=="2016postVFP"){
-	latex.DrawLatex(0.9,0.91,"16.8 fb^{-1} (13 TeV)");
-      }else if(p.histname.Contains("2016[ab]/")||p.era=="2016"){
-	latex.DrawLatex(0.9,0.91,"36.3 fb^{-1} (13 TeV)");
-      }else if(p.histname.Contains("2017/")||p.era=="2017"){
-	latex.DrawLatex(0.9,0.91,"41.5 fb^{-1} (13 TeV)");
-      }else if(p.histname.Contains("2018/")||p.era=="2018"){
-	latex.DrawLatex(0.9,0.91,"59.8 fb^{-1} (13 TeV)");
-      }else if(p.histname.Contains("201[6-8]/")||p.histname.Contains("201[678ab]+/")||p.histname.Contains("201[6-8][ab]?/")||p.histname.Contains("201[678][ab]?/")||p.era=="Run2"){
-	latex.DrawLatex(0.9,0.91,"138 fb^{-1} (13 TeV)");      
-      }
+    TString era;
+    if(p.era!="") era=p.era;
+    else if(p.histname.Contains("2016a/")) era="2016preVFP";
+    else if(p.histname.Contains("2016b/")) era="2016postVFP";
+    else if(p.histname.Contains("2016[ab]/")) era="2016";
+    else if(p.histname.Contains("2017/")) era="2017";
+    else if(p.histname.Contains("2018/")) era="2018";
+    else if(p.histname.Contains("201[6-8]/")||p.histname.Contains("201[678ab]+/")||p.histname.Contains("201[6-8][ab]?/")||p.histname.Contains("201[678][ab]?/")) era="Run2";
+    DrawPreliminary(c,era,p.lumi,p.option);
+    if(p.blind_xmin||p.blind_xmax){
+      TLatex latex;
+      latex.SetTextSize(0.035);
+      latex.SetNDC();
+      latex.SetTextAlign(21);
+      latex.DrawLatex(0.5,1.05-c->GetTopMargin(),"#bf{#it{Blinded}}");
     }
-    if(!p.option.Contains("noera")){
-      latex.SetTextAlign(31);
-      if(p.histname.Contains("2016a/")||p.era=="2016preVFP"){
-	latex.DrawLatex(0.9,0.95,"Run 2016preVFP");
-      }else if(p.histname.Contains("2016b/")||p.era=="2016postVFP"){
-	latex.DrawLatex(0.9,0.95,"Run 2016postVFP");
-      }else if(p.histname.Contains("2016[ab]/")||p.era=="2016"){
-	latex.DrawLatex(0.9,0.95,"Run 2016");
-      }else if(p.histname.Contains("2017/")||p.era=="2017"){
-	latex.DrawLatex(0.9,0.95,"Run 2017");
-      }else if(p.histname.Contains("2018/")||p.era=="2018"){
-	latex.DrawLatex(0.9,0.95,"Run 2018");
-      }else if(p.histname.Contains("201[6-8]/")||p.histname.Contains("201[678ab]+/")||p.histname.Contains("201[6-8][ab]?/")||p.histname.Contains("201[678][ab]?/")||p.era=="Run2"){
-	latex.DrawLatex(0.9,0.95,"Run II");
-      }
-    }
-    latex.SetTextSize(0.035);
-    latex.SetTextColor(2);
-    latex.SetTextAlign(11);
-    latex.DrawLatex(0.38,0.91,"#it{Working in progress}");
   }
   c->Update();
   c->Modified();
@@ -1734,6 +1700,62 @@ TLegend* Plotter::DrawLegendSys(const Plot& p){
   pad->cd();
   legend->Draw();
   return legend;
+}
+void Plotter::DrawPreliminary(TPad *c,TString era,TString lumi,TString option){
+  if(!c) return;
+  c->cd(1);
+  TH1* axisparent=GetAxisParent();
+  if(axisparent) axisparent->SetTitle("");
+  c->cd();
+  axisparent=GetAxisParent();
+  if(axisparent) axisparent->SetTitle("");
+  TLatex latex;
+  latex.SetTextSize(0.035);
+  latex.SetNDC();
+  latex.SetTextAlign(11);
+  double leftmargin=c->GetLeftMargin();
+  double rightmargin=c->GetRightMargin();
+  double topmargin=c->GetTopMargin();
+  latex.DrawLatex(0.01+leftmargin,1.01-topmargin,"CMS #bf{#it{Preliminary}}");
+  if(!option.Contains("nolumi")){
+    latex.SetTextAlign(31);
+    if(lumi!=""){
+      latex.DrawLatex(1-rightmargin,1.01-topmargin,lumi+" fb^{-1} (13 TeV)");
+    }else if(era=="2016preVFP"){
+      latex.DrawLatex(1-rightmargin,1.01-topmargin,"19.5 fb^{-1} (13 TeV)");
+    }else if(era=="2016postVFP"){
+      latex.DrawLatex(1-rightmargin,1.01-topmargin,"16.8 fb^{-1} (13 TeV)");
+    }else if(era=="2016"){
+      latex.DrawLatex(1-rightmargin,1.01-topmargin,"36.3 fb^{-1} (13 TeV)");
+    }else if(era=="2017"){
+      latex.DrawLatex(1-rightmargin,1.01-topmargin,"41.5 fb^{-1} (13 TeV)");
+    }else if(era=="2018"){
+      latex.DrawLatex(1-rightmargin,1.01-topmargin,"59.8 fb^{-1} (13 TeV)");
+    }else if(era=="Run2"){
+      latex.DrawLatex(1-rightmargin,1.01-topmargin,"138 fb^{-1} (13 TeV)");      
+    }
+  }
+  if(!option.Contains("noera")&&era!=""){
+    latex.SetTextAlign(31);
+    if(era=="2016preVFP"){
+      latex.DrawLatex(1-rightmargin,1.05-topmargin,"Run 2016preVFP");
+    }else if(era=="2016postVFP"){
+      latex.DrawLatex(1-rightmargin,1.05-topmargin,"Run 2016postVFP");
+    }else if(era=="2016"){
+      latex.DrawLatex(1-rightmargin,1.05-topmargin,"Run 2016");
+    }else if(era=="2017"){
+      latex.DrawLatex(1-rightmargin,1.05-topmargin,"Run 2017");
+    }else if(era=="2018"){
+      latex.DrawLatex(1-rightmargin,1.05-topmargin,"Run 2018");
+    }else if(era=="Run2"){
+      latex.DrawLatex(1-rightmargin,1.05-topmargin,"Run II");
+    }
+  }
+  latex.SetTextColor(2);
+  latex.SetTextAlign(21);
+  latex.DrawLatex(0.5*(leftmargin-rightmargin)+0.5,1.01-topmargin,"#it{Working in progress}");
+  c->Update();
+  return;
 }
 void Plotter::DrawTexts(const Plot& p){
   TLatex latex;
