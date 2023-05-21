@@ -32,6 +32,7 @@ public:
   virtual int Setup(TString mode_,TString scandir);
   virtual TString GetSetupStringForCondor();
   virtual void SetupEntries(TString mode);
+  static void SetupStyle();
   void Reset();
   const Sample& GetEntry(TString entrytitle) const;
   void AddEntry(TString key);
@@ -53,6 +54,8 @@ public:
   virtual TH1* GetHistFromSample(const Sample& sample,const Plot& p,TString additional_option="");
   virtual TH1* GetHistFromFile(TString filename,TString histname);
   virtual void GetHistActionForAdditionalClass(TObject*& obj,Plot p);
+  vector<TH1*> GetHistSys(TString samplekey,TString plotkey,TString additional_option="");
+  vector<TH1*> GetHistSys(int ientry,TString plotkey,TString additional_option="");
   vector<TH1*> GetHistSys(const Sample& sample,const Plot& plot);
   vector<vector<TH1*>> GetHists(Plot& plot);
 
@@ -61,7 +64,7 @@ public:
   TH1* GetEnvelope(TH1* central,TH1* variation1,TH1* variation2=NULL,TH1* variation3=NULL,TH1* variation4=NULL,TH1* variation5=NULL,TH1* variation6=NULL,TH1* variation7=NULL,TH1* variation8=NULL,TH1* variation9=NULL);
   TH1* GetHessianError(TH1* central,const vector<TH1*>& variations);
   TH1* GetRMSError(TH1* central,const vector<TH1*>& variations);
-  int AddError(TH1* hist,TH1* sys);
+  int AddError(TH1* hist,TH1* sys) const;
   void AddSystematic(TString key,TString title,Systematic::Type type,vector<TString> includes,TString tag="");
   void AddSystematic(TString key,TString title,Systematic::Type type,TString includes,TString tag="");
 
@@ -128,14 +131,7 @@ public:
 };
 
 Plotter::Plotter(){
-  TH1::SetDefaultSumw2(kTRUE);
-  gStyle->SetCanvasDefH(600);
-  gStyle->SetCanvasDefW(700);
-  gStyle->SetPadLeftMargin(0.15);
-  gStyle->SetPadBottomMargin(0.12);
-  gStyle->SetPadColor(0);
-  gStyle->SetFrameFillStyle(0);
-  TGaxis::SetExponentOffset(-0.06,0.02);
+  SetupStyle();
   pdir=new TDirectory("plotdir","plotdir");
 }
 Plotter::~Plotter(){
@@ -175,7 +171,17 @@ int Plotter::Setup(TString mode_,TString scandir){
   ScanFiles(scandir);
   SetupEntries(mode_);
   return true;
-}  
+}
+void Plotter::SetupStyle(){
+  TH1::SetDefaultSumw2(kTRUE);
+  gStyle->SetCanvasDefH(600);
+  gStyle->SetCanvasDefW(700);
+  gStyle->SetPadLeftMargin(0.15);
+  gStyle->SetPadBottomMargin(0.12);
+  gStyle->SetPadColor(0);
+  gStyle->SetFrameFillStyle(0);
+  TGaxis::SetExponentOffset(-0.06,0.02);
+}
 TString Plotter::GetSetupStringForCondor(){
   return "Setup\\(\\\\\\\""+mode+"\\\\\\\",\\\\\\\""+scandir+"\\\\\\\"\\)";
 }
@@ -479,12 +485,14 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,const Plot& pp,TString addi
 	    else PError("[Plotter::GetHistFromSample] wrong projection or classname");
 	    delete hist3d;
 	  }
+	}else if(strstr(this_hist->ClassName(),"TProfile")!=NULL){ 
 	}else{
 	  TObject* obj=(TObject*)this_hist;
 	  GetHistActionForAdditionalClass(obj,p);
 	  this_hist=(TH1*)obj;
 	}
 	this_hist->SetName(sample.title);
+	this_hist->Scale(file.weight);
 	if(!hist){
 	  hist=(TH1*)this_hist->Clone();
 	  hist->SetDirectory(pdir);
@@ -550,6 +558,16 @@ TH1* Plotter::GetHistFromFile(TString filename,TString histname){
 void Plotter::GetHistActionForAdditionalClass(TObject*& obj,Plot p){
   PError((TString)"[Plotter::GetHistActionForAdditionalClass(TObject*& obj,Plot p)] Unsupported class "+obj->ClassName());
 }
+vector<TH1*> Plotter::GetHistSys(TString samplekey,TString plotkey,TString additional_option){
+  return GetHistSys(samples[samplekey],MakePlot(plotkey,additional_option));
+}
+vector<TH1*> Plotter::GetHistSys(int ientry,TString plotkey,TString additional_option){
+  if(entries.size()<=ientry){
+    PError("[Plotter::GetHist] entries.size()<=ientry");
+    return vector<TH1*>();
+  }
+  return GetHistSys(entries[ientry],MakePlot(plotkey,additional_option));
+} 
 vector<TH1*> Plotter::GetHistSys(const Sample& sample,const Plot& p){
   PInfo("[Plotter::GetHistSys] "+sample.title+" "+p.name+" "+p.histname+" "+p.sysname);_depth++;
 
@@ -752,7 +770,7 @@ TH1* Plotter::GetRMSError(TH1* central,const vector<TH1*>& variations){
   for(int i=1;i<syshist->GetNbinsX()+1;i++) syshist->SetBinError(i,syshist->GetBinError(i)/sqrt(variations.size()));
   return syshist;
 }  
-int Plotter::AddError(TH1* hist,TH1* sys){
+int Plotter::AddError(TH1* hist,TH1* sys) const {
   PAll("[Plotter::AddError]");
   if(!hist){
     PError("[Plotter::AddError] null hist");
@@ -949,6 +967,9 @@ void Plotter::DrawRatio(Plot p){
       axisparent->GetYaxis()->SetNdivisions(506);
     }else if(p.option.Contains("widey")){
       axisparent->GetYaxis()->SetRangeUser(0.501,1.499);
+      axisparent->GetYaxis()->SetNdivisions(506);
+    }else if(p.option.Contains("finey")){
+      axisparent->GetYaxis()->SetRangeUser(0.901,1.099);
       axisparent->GetYaxis()->SetNdivisions(506);
     }else{
       axisparent->GetYaxis()->SetRangeUser(0.801,1.199);
@@ -1519,7 +1540,7 @@ void Plotter::RebinXminXmax(TH1* hist,Plot p){
       }
       if(p.xmin!=0||p.xmax!=0)
 	hist->GetXaxis()->SetRangeUser(p.xmin,p.xmax);
-    }else if(strstr(hist->ClassName(),"TH1")){
+    }else if(strstr(hist->ClassName(),"TH1")||strstr(hist->ClassName(),"TProfile")){
       if(p.rebin!=""){
 	if(p.rebin.IsDec()){
 	  double this_xmin=hist->GetBinLowEdge(hist->GetXaxis()->GetFirst());
@@ -1642,7 +1663,7 @@ TLegend* Plotter::DrawLegend(const Plot& p){
     if(1.0*w/c->GetWw()>maxwidth) maxwidth=1.0*w/c->GetWw();
     if(1.0*h/c->GetWh()>maxheight) maxheight=1.0*h/c->GetWh();
   }
-
+  maxheight=0.05;
   if(maxwidth<0.1) maxwidth=0.1;
   if(maxwidth>0.5) maxwidth=0.5;
   int entry_size=hists.size();
