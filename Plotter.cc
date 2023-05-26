@@ -9,6 +9,7 @@
 #include <TGraph.h>
 #include"Global.h"
 #include"Sample.cc"
+#include"Hists.cc"
 #include"Plot.cc"
 #include"Utils.h"
 #include"Systematic.cc"
@@ -54,23 +55,25 @@ public:
   virtual TH1* GetHistFromSample(const Sample& sample,const Plot& p,TString additional_option="");
   virtual TH1* GetHistFromFile(TString filename,TString histname);
   virtual void GetHistActionForAdditionalClass(TObject*& obj,Plot p);
-  vector<TH1*> GetHistSys(TString samplekey,TString plotkey,TString additional_option="");
-  vector<TH1*> GetHistSys(int ientry,TString plotkey,TString additional_option="");
-  vector<TH1*> GetHistSys(const Sample& sample,const Plot& plot);
-  vector<vector<TH1*>> GetHists(Plot& plot);
+  Hists GetHistSys(TString samplekey,TString plotkey,TString additional_option="");
+  Hists GetHistSys(int ientry,TString plotkey,TString additional_option="");
+  Hists GetHistSys(const Sample& sample,const Plot& plot);
+  vector<Hists> GetHists(Plot& plot);
 
   //Systematic
   TH1* GetEnvelope(TH1* central,const vector<TH1*>& variations);
   TH1* GetEnvelope(TH1* central,TH1* variation1,TH1* variation2=NULL,TH1* variation3=NULL,TH1* variation4=NULL,TH1* variation5=NULL,TH1* variation6=NULL,TH1* variation7=NULL,TH1* variation8=NULL,TH1* variation9=NULL);
   TH1* GetHessianError(TH1* central,const vector<TH1*>& variations);
   TH1* GetRMSError(TH1* central,const vector<TH1*>& variations);
+  TMatrixD GetCov(TH1* central,const vector<TH1*>& variations,Systematic::Type type);
+  static double Trace(TMatrixD mat);
   int AddError(TH1* hist,TH1* sys) const;
   void AddSystematic(TString key,TString title,Systematic::Type type,vector<TString> includes,TString tag="");
   void AddSystematic(TString key,TString title,Systematic::Type type,TString includes,TString tag="");
 
   //Canvas
   void DrawCompare(Plot p);
-  vector<vector<TH1*>> GetRatioHists(Plot p);
+  vector<Hists> GetRatioHists(Plot p);
   void DrawRatio(Plot p);
   void DrawDiff(Plot p);
   void DrawSig(Plot p);
@@ -97,13 +100,13 @@ public:
   static void SetLegendEntryLabel(TLegend* legend,int i,TString label);
   TH1* GetTH1(TH1* hstack,bool deleteorigin=false) const;
   void DrawHistograms(Plot p);
-  static vector<TH1*> VectorTH1(const vector<vector<TH1*>>& hists);
+  static vector<TH1*> VectorTH1(const vector<Hists>& hists);
   pair<double,double> GetMinMax(const vector<TH1*>& hists,TString option="") const;
-  pair<double,double> GetMinMax(const vector<vector<TH1*>>& hists,TString option="") const;
+  pair<double,double> GetMinMax(const vector<Hists>& hists,TString option="") const;
   void RebinXminXmax(TH1* hist,Plot p);
   double Normalize(TH1* hists,double val=1.,TString option="");
   vector<double> Normalize(vector<TH1*> hists,double val=1.,TString option="");
-  vector<vector<double>> Normalize(vector<vector<TH1*>> hists,double val=1.,TString option="");
+  vector<vector<double>> Normalize(vector<Hists> hists,double val=1.,TString option="");
   void WidthWeight(TH1* hist);
   void WidthWeight(vector<TH1*> hists);
   bool IsEntry(const Sample& sample);
@@ -121,6 +124,7 @@ public:
   //etc
   TString ClassName() const;
   double GetChi2(TH1* h1,TH1* h2) const;
+  double GetChi2(const TH1D* h1,const TH1D* h2,TMatrixD cov) const;
   int GetAutoColor() const;
   TString ParseForCondorRun(TString str) const;
 
@@ -558,24 +562,25 @@ TH1* Plotter::GetHistFromFile(TString filename,TString histname){
 void Plotter::GetHistActionForAdditionalClass(TObject*& obj,Plot p){
   PError((TString)"[Plotter::GetHistActionForAdditionalClass(TObject*& obj,Plot p)] Unsupported class "+obj->ClassName());
 }
-vector<TH1*> Plotter::GetHistSys(TString samplekey,TString plotkey,TString additional_option){
+Hists Plotter::GetHistSys(TString samplekey,TString plotkey,TString additional_option){
   return GetHistSys(samples[samplekey],MakePlot(plotkey,additional_option));
 }
-vector<TH1*> Plotter::GetHistSys(int ientry,TString plotkey,TString additional_option){
+Hists Plotter::GetHistSys(int ientry,TString plotkey,TString additional_option){
   if(entries.size()<=ientry){
     PError("[Plotter::GetHist] entries.size()<=ientry");
-    return vector<TH1*>();
+    return Hists();
   }
   return GetHistSys(entries[ientry],MakePlot(plotkey,additional_option));
 } 
-vector<TH1*> Plotter::GetHistSys(const Sample& sample,const Plot& p){
+Hists Plotter::GetHistSys(const Sample& sample,const Plot& p){
   PInfo("[Plotter::GetHistSys] "+sample.title+" "+p.name+" "+p.histname+" "+p.sysname);_depth++;
 
-  vector<TH1*> hists;
+  Hists hists;
   hists.push_back(GetHist(sample,p));
 
   if(p.sysname!=""&&hists.at(0)){
     if(systematics.find(p.sysname)!=systematics.end()){
+      TH1* hist0=GetTH1(hists.at(0));
       const Systematic& systematic=systematics[p.sysname];
       if(systematic.type==Systematic::Type::MULTI){
 	vector<TH1*> syss;
@@ -583,12 +588,23 @@ vector<TH1*> Plotter::GetHistSys(const Sample& sample,const Plot& p){
 	  if(systematics.find(this_key)==systematics.end()){
 	    PError("[Plotter::GetHistSys] no systematic with key "+this_key);
 	  }else{
-	    vector<TH1*> this_histsys=GetHistSys(sample,p+("sysname:"+this_key)-"sysdetail"+"notaddsys");
+	    Hists this_histsys=GetHistSys(sample,p+("sysname:"+this_key)-"sysdetail"+"notaddsys");
 	    if(this_histsys.size()==2){
 	      //this_histsys.at(1)->SetName(this_key);
 	      //this_histsys.at(1)->SetTitle(systematics[this_key].title);
 	      this_histsys.at(1)->SetName(systematics[this_key].title);
 	      syss.push_back(this_histsys.at(1));
+	      if(p.option.Contains("chi2")){
+		if(hists.cov.GetNcols()==0){
+		  hists.cov.ResizeTo(this_histsys.cov);
+		}
+		hists.cov+=this_histsys.cov;
+		if(p.option.Contains("chi2detail")){
+		  TString title=systematics[this_key].title;
+		  hists.subcovs[title].ResizeTo(this_histsys.cov);
+		  hists.subcovs[title]=this_histsys.cov;
+		}
+	      }
 	    }else if(this_histsys.size()>2) PError("[Plotter::GetHistSys] this_histsys.size() > 2");
 	  }
 	}
@@ -596,7 +612,7 @@ vector<TH1*> Plotter::GetHistSys(const Sample& sample,const Plot& p){
 	  if(p.option.Contains("sysdetail")){
 	    for(int i=0;i<(int)syss.size();i++){
 	      if(!p.option.Contains("notaddsys")){
-		if(i==0) AddError(syss.at(i),hists.at(0));
+		if(i==0) AddError(syss.at(i),hist0);
 		else AddError(syss.at(i),syss.at(i-1));
 	      }
 	      hists.push_back(syss.at(i));
@@ -609,7 +625,7 @@ vector<TH1*> Plotter::GetHistSys(const Sample& sample,const Plot& p){
 	    }
 	    totalsys->SetName(systematic.title);
 	    //totalsys->SetTitle(systematic.title);
-	    if(!p.option.Contains("notaddsys")) AddError(totalsys,hists.at(0));
+	    if(!p.option.Contains("notaddsys")) AddError(totalsys,hist0);
 	    hists.push_back(totalsys);
 	  }
 	}
@@ -622,6 +638,23 @@ vector<TH1*> Plotter::GetHistSys(const Sample& sample,const Plot& p){
 	  variations.push_back(this_hist);
 	}
 	PDebug("[Plotter::GetHistSys] '"+p.sysname+"': "+variations.size()+" variations");
+	if(p.option.Contains("shapesys")){
+	  TString integraloption="";
+	  if(p.option.Contains("widthweight")) integraloption="width";
+	  double val=hist0->Integral(integraloption);
+	  for(auto& var:variations){
+	    if(var) var->Scale(val/var->Integral(integraloption));
+	  }
+	}
+	if(p.option.Contains("chi2")){
+	  TMatrixD cov(hist0->GetXaxis()->GetFirst(),hist0->GetXaxis()->GetLast(),hist0->GetXaxis()->GetFirst(),hist0->GetXaxis()->GetLast());
+	  if(hists.cov.GetNcols()==0){
+	    hists.cov.ResizeTo(cov);
+	    hists.cov=cov;
+	  }
+	  cov=GetCov(hist0,variations,systematic.type);
+	  hists.cov+=cov;
+	}
 	if(p.option.Contains("sysdetail")){
 	  for(auto h:variations){
 	    if(h){
@@ -633,35 +666,26 @@ vector<TH1*> Plotter::GetHistSys(const Sample& sample,const Plot& p){
 	}else{
 	  TH1* histsys=NULL;
 	  if(systematic.type==Systematic::Type::ENVELOPE){
-	    if(p.option.Contains("shapesys")){
-	      TString integraloption="";
-	      if(p.option.Contains("widthweight")) integraloption="width";
-	      TH1* hist0=GetTH1(hists.at(0));
-	      double val=hist0->Integral(integraloption);
-	      for(auto& var:variations){
-		if(var) var->Scale(val/var->Integral(integraloption));
-	      }
-	      delete hist0;
-	    }
-	    histsys=GetEnvelope(hists.at(0),variations);
+	    histsys=GetEnvelope(hist0,variations);
 	  }else if(systematic.type==Systematic::Type::GAUSSIAN){
-	    histsys=GetRMSError(hists.at(0),variations);
+	    histsys=GetRMSError(hist0,variations);
 	  }else if(systematic.type==Systematic::Type::HESSIAN){
-	    histsys=GetHessianError(hists.at(0),variations);
+	    histsys=GetHessianError(hist0,variations);
 	  }else{
 	    PError((TString)"[Plotter::GetHistSys] Wrong Systematic::Type "+Form("%d",systematic.type));
-	  }
-	  for(unsigned int j=0;j<variations.size();j++){
-	    delete variations.at(j);
 	  }
 	  if(histsys){
 	    sample.ApplyStyle(histsys,true);
 	    histsys->SetName(systematic.title);
-	    if(!p.option.Contains("notaddsys")) AddError(histsys,hists.at(0));
+	    if(!p.option.Contains("notaddsys")) AddError(histsys,hist0);
 	    hists.push_back(histsys);
+	  }
+	  for(unsigned int j=0;j<variations.size();j++){
+	    delete variations.at(j);
 	  }
 	}
       }
+      delete hist0;
     }
     //sample.ApplyStyle(total,true);
   }
@@ -670,8 +694,8 @@ vector<TH1*> Plotter::GetHistSys(const Sample& sample,const Plot& p){
   _depth--;
   return hists;
 }
-vector<vector<TH1*>> Plotter::GetHists(Plot& p){
-  vector<vector<TH1*>> hists;
+vector<Hists> Plotter::GetHists(Plot& p){
+  vector<Hists> hists;
   for(const auto& entry:entries) hists.push_back(GetHistSys(entry,p));
   if(p.option.Contains("norm")&&hists.size()>1){
     TH1* h=GetTH1(hists.at(0).at(0));
@@ -769,7 +793,71 @@ TH1* Plotter::GetRMSError(TH1* central,const vector<TH1*>& variations){
   }
   for(int i=1;i<syshist->GetNbinsX()+1;i++) syshist->SetBinError(i,syshist->GetBinError(i)/sqrt(variations.size()));
   return syshist;
-}  
+}
+TMatrixD Plotter::GetCov(TH1* central,const vector<TH1*>& variations,Systematic::Type type){
+  int ifirst=central->GetXaxis()->GetFirst();
+  int ilast=central->GetXaxis()->GetLast();
+  TMatrixD cov(ifirst,ilast,ifirst,ilast);
+  if(!central->InheritsFrom("TH1D")){
+    PError((TString)"[Plotter::GetCov] not implemented");
+  } 
+  TH1D* hist0=(TH1D*)central;
+  if(type==Systematic::Type::ENVELOPE){
+    TMatrixD maxcov(ifirst,ilast,ifirst,ilast);
+    double trace=0;
+    for(const auto& var:variations){
+      const TH1D* hist1=(TH1D*)var;
+      TMatrixD val0(ifirst,ilast,0,0,hist0->GetArray()+ifirst);
+      TMatrixD val(ifirst,ilast,0,0,hist1->GetArray()+ifirst);
+      val-=val0;
+      TMatrixD valT=val;
+      valT.T();
+      TMatrixD this_cov=val*valT;
+      double this_trace=Trace(this_cov);
+      if(this_trace>trace){
+	maxcov=this_cov;
+	trace=this_trace;
+      }
+    }
+    cov+=maxcov;
+  }else if(type==Systematic::Type::HESSIAN){
+    for(const auto& var:variations){
+      const TH1D* hist1=(TH1D*)var;
+      TMatrixD val0(ifirst,ilast,0,0,hist0->GetArray()+ifirst);
+      TMatrixD val(ifirst,ilast,0,0,hist1->GetArray()+ifirst);
+      val-=val0;
+      TMatrixD valT=val;
+      valT.T();
+      TMatrixD this_cov=val*valT;
+      cov+=this_cov;
+    }
+  }else if(type==Systematic::Type::GAUSSIAN){
+    for(const auto& var:variations){
+      const TH1D* hist1=(TH1D*)var;
+      TMatrixD val0(ifirst,ilast,0,0,hist0->GetArray()+ifirst);
+      TMatrixD val(ifirst,ilast,0,0,hist1->GetArray()+ifirst);
+      val-=val0;
+      TMatrixD valT=val;
+      valT.T();
+      TMatrixD this_cov=val*valT;
+      cov+=this_cov;
+    }
+    cov*=1./variations.size();
+  }else{
+    PError((TString)"[Plotter::GetCov] Wrong Systematic::Type "+Form("%d",type));
+  }
+  return cov;
+}
+double Plotter::Trace(TMatrixD mat){
+  double trace=0;
+  if(mat.GetNrows()!=mat.GetNcols()){
+    PError("Nrow!=Ncol");
+  }
+  for(int i=mat.GetRowLwb(),n=mat.GetRowUpb()+1;i<n;i++){
+    trace+=mat[i][i];
+  }
+  return trace;
+}
 int Plotter::AddError(TH1* hist,TH1* sys) const {
   PAll("[Plotter::AddError]");
   if(!hist){
@@ -923,20 +1011,20 @@ void Plotter::DrawCompare(Plot p){
   }
   _depth--;
 }
-vector<vector<TH1*>> Plotter::GetRatioHists(Plot p){
+vector<Hists> Plotter::GetRatioHists(Plot p){
   TH1* base=NULL;
   TString baseopt=p.option("base:[0-9]*");
   if(baseopt!="") base=GetTH1(p.hists[((TString)baseopt(5,100)).Atoi()][0]);
   else if(p.hists.size()==2) base=GetTH1(p.hists[1][0]);
   else base=GetTH1(p.hists[0][0]);
     
-  vector<vector<TH1*>> hists_new;
+  vector<Hists> hists_new;
   if(base){
     for(int i=0;i<base->GetNbinsX()+2;i++){
       base->SetBinError(i,0);
     }
     for(const vector<TH1*>& this_hists:p.hists){
-      vector<TH1*> this_hists_new;
+      Hists this_hists_new;
       for(const auto& hist:this_hists){
 	TH1* hist_new=NULL;
 	if(hist){
@@ -945,7 +1033,7 @@ vector<vector<TH1*>> Plotter::GetRatioHists(Plot p){
 	}
 	this_hists_new.push_back(hist_new);
       }
-      hists_new.push_back(this_hists_new);
+      hists_new.push_back(move(this_hists_new));
     }  
     delete base;
   }
@@ -991,9 +1079,9 @@ void Plotter::DrawDiff(Plot p){
     base->SetBinError(i,0);
   }
 
-  vector<vector<TH1*>> hists_new;
+  vector<Hists> hists_new;
   for(const vector<TH1*>& this_hists:p.hists){
-    vector<TH1*> this_hists_new;
+    Hists this_hists_new;
     for(const auto& hist:this_hists){
       TH1* hist_new=NULL;
       if(hist){
@@ -1002,7 +1090,7 @@ void Plotter::DrawDiff(Plot p){
       }
       this_hists_new.push_back(hist_new);
     }
-    hists_new.push_back(this_hists_new);
+    hists_new.push_back(move(this_hists_new));
   }  
   delete base;
 
@@ -1057,7 +1145,7 @@ void Plotter::DrawSig(Plot p){
   sigma2->Draw("e2");
   sigma1->Draw("same e2");  
 
-  vector<vector<TH1*>> hists_new;
+  vector<Hists> hists_new;
   for(const vector<TH1*>& this_hists:p.hists){
     TH1* hist=NULL;
     for(int i=this_hists.size()-1;i>=0;i--){
@@ -1080,7 +1168,9 @@ void Plotter::DrawSig(Plot p){
 	break;
       }
     }
-    hists_new.push_back({hist});
+    Hists temp;
+    temp.push_back(hist);
+    hists_new.push_back(move(temp));
   }
   p.hists=hists_new;
   DrawCompare(p);
@@ -1219,7 +1309,7 @@ void Plotter::DrawCompareAndDiff(Plot p){
 void Plotter::DrawDoubleRatio(Plot& p){
   if(!gPad) gROOT->MakeDefCanvas();
 
-  vector<vector<vector<TH1*>>> vec_hists;
+  vector<vector<Hists>> vec_hists;
   for(auto& sub:p.subplots){
     vec_hists.push_back(GetRatioHists(p));
   }
@@ -1238,17 +1328,17 @@ void Plotter::DrawDoubleRatio(Plot& p){
 	}
       }
     }
-    vector<vector<TH1*>> hists_new;
+    vector<Hists> hists_new;
     for(int i=0;i<vec_hists[baseindex].size();i++){
       TH1* base=(TH1*)vec_hists[baseindex][i][0]->Clone();
       for(int j=0;j<base->GetNbinsX()+2;j++) base->SetBinError(j,0);
       for(int j=0;j<vec_hists.size();j++){
-	vector<TH1*> this_hists_new;
+	Hists this_hists_new;
 	for(int k=0;k<vec_hists[j][i].size();k++){
 	  if(vec_hists[j][i][k]) vec_hists[j][i][k]->Divide(base);
 	  this_hists_new.push_back(vec_hists[j][i][k]);
 	}
-	hists_new.push_back(this_hists_new);
+	hists_new.push_back(move(this_hists_new));
       }
       delete base;
     }
@@ -1316,6 +1406,91 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
       latex.DrawLatex(0.5,1.05-c->GetTopMargin(),"#bf{#it{Blinded}}");
     }
   }
+  if(p.option.Contains("chi2")){
+    TH1D* hist0=(TH1D*)GetTH1(p.hists[0][0]);
+    TH1D* hist1=(TH1D*)GetTH1(p.hists[1][0]);
+    int ifirst=hist0->GetXaxis()->GetFirst();
+    int ilast=hist0->GetXaxis()->GetLast();
+    TMatrixD cov(ifirst,ilast,ifirst,ilast);
+    if(p.hists[1].cov.GetNrows()!=0) cov+=p.hists[1].cov;
+    if(p.hists[0].cov.GetNrows()!=0) cov+=p.hists[0].cov;
+
+    TMatrixD cov_hist0_stat(ifirst,ilast,ifirst,ilast);
+    TMatrixD cov_hist1_stat(ifirst,ilast,ifirst,ilast);
+    for(int i=ifirst,n=ilast+1;i<n;i++){
+      cov_hist0_stat[i][i]=pow(hist0->GetBinError(i),2);
+      cov_hist1_stat[i][i]=pow(hist1->GetBinError(i),2);
+    }
+    cov+=cov_hist0_stat+cov_hist1_stat;
+
+    double chi2=GetChi2(hist0,hist1,cov);
+    //cout<<chi2<<endl;
+    //cout<<GetChi2(hist0,hist1)<<endl;
+    c->cd(1);
+    TLatex latex;
+    latex.SetTextSize(0.035/TMath::Min(gPad->GetHNDC(),gPad->GetWNDC()));
+    latex.SetNDC();
+    int ndf=ilast-ifirst+1;
+    if(p.option.Contains("norm")) ndf--;
+    latex.DrawLatex(gPad->GetLeftMargin()+0.01,1-gPad->GetTopMargin()-1.1*latex.GetTextSize(),Form("#chi^{2}/n_{dof} = %g / %d",chi2,ndf));
+    if(p.option.Contains("pvalue")){
+      latex.DrawLatex(gPad->GetLeftMargin()+0.01,1-gPad->GetTopMargin()-2.4*latex.GetTextSize(),Form("p = %g",TMath::Prob(chi2,ndf)));
+    }
+    if(p.option.Contains("chi2detail")){
+      int ncov=p.hists[1].subcovs.size()+2;
+      TString toptitle=p.title;
+      if(p.sysname!="") toptitle+="_"+p.sysname;
+      if(p.replace_old!=""||p.replace_new!="") TPRegexp(p.replace_old).Substitute(toptitle,p.replace_new);
+      TH1* nominal=new TH1D("nominal",toptitle,ncov,0,ncov);
+      nominal->SetDirectory(pdir);
+      nominal->SetStats(0);
+      nominal->GetYaxis()->SetTitle("#chi^{2}");
+      nominal->GetXaxis()->SetLabelSize(nominal->GetXaxis()->GetLabelSize()*1.5);
+      TH1* up=new TH1D("up","2#times",ncov,0,ncov);
+      up->SetDirectory(pdir);
+      up->SetLineColor(2);
+      TH1* down=new TH1D("down","0#times",ncov,0,ncov);
+      down->SetDirectory(pdir);
+      down->SetLineColor(4);
+      int icov=0;
+      nominal->GetXaxis()->SetBinLabel(++icov,"data stat.");
+      nominal->SetBinContent(icov,chi2);
+      up->SetBinContent(icov,GetChi2(hist0,hist1,cov+3.*cov_hist0_stat));
+      down->SetBinContent(icov,GetChi2(hist0,hist1,cov-3./4.*cov_hist0_stat));
+      nominal->GetXaxis()->SetBinLabel(++icov,"pred. stat.");
+      nominal->SetBinContent(icov,chi2);
+      up->SetBinContent(icov,GetChi2(hist0,hist1,cov+3.*cov_hist1_stat));
+      down->SetBinContent(icov,GetChi2(hist0,hist1,cov-3./4.*cov_hist1_stat));
+      for(const auto& [key,dummy]:p.hists[1].subcovs){
+	TMatrixD this_cov(ifirst,ilast,ifirst,ilast);
+	if(p.hists[0].subcovs.find(key)!=p.hists[0].subcovs.end()&&p.hists[0].subcovs[key].GetNcols()) this_cov+=p.hists[0].subcovs[key];
+	if(p.hists[1].subcovs.find(key)!=p.hists[1].subcovs.end()&&p.hists[1].subcovs[key].GetNcols()) this_cov+=p.hists[1].subcovs[key];
+	nominal->GetXaxis()->SetBinLabel(++icov,key);
+	nominal->SetBinContent(icov,chi2);
+	up->SetBinContent(icov,GetChi2(hist0,hist1,cov+3.*this_cov));
+	//down->SetBinContent(icov,GetChi2(hist0,hist1,cov-3./4.*this_cov));
+	down->SetBinContent(icov,GetChi2(hist0,hist1,cov-this_cov));
+      }
+      nominal->GetXaxis()->LabelsOption("v");
+
+      TCanvas* cchi2=new TCanvas("chi2canvas");
+      cchi2->SetBottomMargin(0.3);
+      nominal->Draw("hist");
+      pair<double,double> minmax=GetMinMax({nominal,up,down});
+      nominal->GetYaxis()->SetRangeUser(minmax.first*0.8,minmax.second*1.2);
+      up->Draw("same hist");
+      down->Draw("same hist");
+      TLegend *leg=new TLegend(0.89,0.89,0.7,0.7);
+      leg->AddEntry(nominal,"nominal");
+      leg->AddEntry(up);
+      leg->AddEntry(down);
+      leg->SetBorderSize(0);
+      leg->SetFillStyle(0);
+      leg->Draw();
+      c->cd();
+    }
+    delete hist0,hist1;
+  }
   c->Update();
   c->Modified();
   _depth--;
@@ -1351,6 +1526,9 @@ void Plotter::SavePlot(TString plotkey,TString option,bool delete_canvas){
     }
     defaultname=path(0,path.Last('.'));
     SaveCanvas(c,path,false);
+    if(p.option.Contains("chi2detail")&&gROOT->GetListOfCanvases()->FindObject("chi2canvas")){
+      SaveCanvas((TCanvas*)gROOT->GetListOfCanvases()->FindObject("chi2canvas"),path(0,path.Last('.'))+"_chi2"+path(path.Last('.'),path.Length()));
+    }
   }
   if(delete_canvas){
     delete c;
@@ -1362,6 +1540,7 @@ void Plotter::SavePlotCondor(TString plotkey,TString option){
   option=ParseForCondorRun(option);
   TString classname=ClassName();
   system("condor_run -a jobbatchname="+classname+" bash -c \\\"cd $PWD\\;export ROOT_HIST=0\\;echo -e \\'\\#include\\\\\\\""+classname+".cc\\\\\\\"\\\\n"+classname+" plotter\\;\\\\nplotter."+GetSetupStringForCondor()+"\\;\\\\nplotter.plotdir=\\\\\\\""+plotdir+"\\\\\\\"\\;\\\\nplotter.SavePlot\\(\\\\\\\""+plotkey+"\\\\\\\",\\\\\\\""+option+"\\\\\\\"\\)\\\\n.q\\'\\|root -l -b\\\" 2>&1 |grep -v MakeDefCanvas &");
+  system("sleep 0.1");
 }
 void Plotter::SaveCanvas(TCanvas *c,TString path,bool delete_canvas){
   if(c){
@@ -1482,8 +1661,8 @@ TH1* Plotter::GetTH1(TH1* hstack,bool deleteorigin) const{
   }
   return hist;
 }
-vector<TH1*> Plotter::VectorTH1(const vector<vector<TH1*>>& hists){
-  PAll("[Plotter::VectorTH1(const vector<vector<TH1*>>& hists)]");
+vector<TH1*> Plotter::VectorTH1(const vector<Hists>& hists){
+  PAll("[Plotter::VectorTH1(const vector<Hists>& hists)]");
   vector<TH1*> hists_out;
   for(const vector<TH1*>& this_hists:hists){
     for(const auto& hist:this_hists){
@@ -1513,7 +1692,7 @@ pair<double,double> Plotter::GetMinMax(const vector<TH1*>& hists,TString option)
   }
   return make_pair(minimum,maximum);
 }
-pair<double,double> Plotter::GetMinMax(const vector<vector<TH1*>>& hists,TString option) const{
+pair<double,double> Plotter::GetMinMax(const vector<Hists>& hists,TString option) const{
   return GetMinMax(VectorTH1(hists),option);
 }
 void Plotter::RebinXminXmax(TH1* hist,Plot p){
@@ -1601,7 +1780,7 @@ vector<double> Plotter::Normalize(vector<TH1*> hists,double val,TString option){
   for(auto& hist:hists) scales.push_back(Normalize(hist,val,option));
   return scales;
 }
-vector<vector<double>> Plotter::Normalize(vector<vector<TH1*>> histss,double val,TString option){
+vector<vector<double>> Plotter::Normalize(vector<Hists> histss,double val,TString option){
   vector<vector<double>> scales;
   for(auto& hists:histss)
     scales.push_back(Normalize(hists,val,option));
@@ -1906,6 +2085,20 @@ double Plotter::GetChi2(TH1* h1,TH1* h2) const {
     chi2+=pow(x1-x2,2)/(pow(ex1,2)+pow(ex2,2));
   }
   chi2/=h1->GetXaxis()->GetLast()-h1->GetXaxis()->GetFirst()+1;
+  return chi2;
+}
+double Plotter::GetChi2(const TH1D* hist0,const TH1D* hist1,TMatrixD cov) const {
+  int ifirst=hist0->GetXaxis()->GetFirst();
+  int ilast=hist0->GetXaxis()->GetLast();
+  TMatrixD val0(ifirst,ilast,0,0,hist0->GetArray()+ifirst);
+  TMatrixD val(ifirst,ilast,0,0,hist1->GetArray()+ifirst);
+  val-=val0;
+  TMatrixD valT=val;
+  valT.T();
+  TMatrixD covI=cov;
+  covI.Invert();
+  TMatrixD chi2mat=valT*covI*val;
+  double chi2=Trace(chi2mat);
   return chi2;
 }
 TString Plotter::ParseForCondorRun(TString str) const {

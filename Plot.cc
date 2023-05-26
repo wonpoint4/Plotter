@@ -3,6 +3,7 @@
 #include <sstream>
 #include "Global.h"
 #include "Utils.h"
+#include "Hists.cc"
 class Plot{
 public:
   enum Type{UNDEF,Compare,Ratio,Diff,Sig,CompareAndRatio,CompareAndDiff,CompareAndSig,DoubleRatio,DoubleDiffAFB,Multi};
@@ -29,7 +30,7 @@ public:
   vector<Plot> subplots;
   bool root=false;
   TPad* pad=NULL;
-  vector<vector<TH1*>> hists;
+  vector<Hists> hists;
 
   Plot(vector<TString> words);
   Plot(TString line=""):Plot(SplitOptions(line)){};

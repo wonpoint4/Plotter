@@ -69,6 +69,9 @@ You can make your own plotter class inherited from `Plotter`. See 'EfficiencyPlo
 You can pass a option to a specific pad using `PADINDEX:OPTION` syntax. ex) `1:logy`  
 * absy - projection to absolute y
 * blind[:FLOAT,FLOAT] - remove data points for blind analyses. Needs two floating numbers to define range.
+* chi2 - calculate chi2 and add text on the plot [WIP: only works for 2 entries]
+* chi2detail - make chi2 report plot in new canvas;
+* pvalue - add p-value on the plot (should be used with chi2 option)
 * logx - log scale x-axis
 * logy - log scale y-axis
 * lumi:FLOAT - sepcify integrated luminosity
@@ -89,6 +92,7 @@ You can pass a option to a specific pad using `PADINDEX:OPTION` syntax. ex) `1:l
 * save:PATH - For *DrawPlot*, specify the path or file format (pdf or png)
 * scale:FLOAT[:tag] - scale histogram
 * suffix:STRING[:tag] - Add suffix to histogram name. Same with replace:$->STRING[:tag].
+* shapesys - variations are normalized to nominal histogram so that we can inspect only the shape difference
 * sysname:STRING - Draw with systematic uncertainties defined by AddSystematic.
 * sysdetail - Decompose systematic uncertainty.
 * sysleg - Draw legend for systematic uncertainties.
@@ -121,6 +125,7 @@ You can pass a option to a specific pad using `PADINDEX:OPTION` syntax. ex) `1:l
 * widey - For ratio plot, set yaxis range from 0.5 to 1.5
 * widewidey - For ratio plot, set yaxis range from 0.0 to 2.0
 * widthweight - For variable bin size, divide bin contents by bin size to get proper shape
+* finey - For ratio plot, set yaxis range from 0.9 to 1.1
   
 ## Verbosity
 You can set verbosity using `Verbosity` variable (QUIET, ERROR, WARNING, INFO, DEBUG, ALL)
