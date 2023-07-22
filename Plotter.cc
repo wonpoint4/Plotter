@@ -447,7 +447,26 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,const Plot& pp,TString addi
 	      PWarning(Form("[Plotter::GetHistFromSample] Ymax=%f is not exact edge... use %f",p.Ymax,hist2d->GetYaxis()->GetBinUpEdge(iymax)));
 	  }
 	  if(!p.option.Contains("noproject")){
-	    if(p.project=="") this_hist=(TH1*)hist2d->ProjectionY("_py",ixmin,ixmax);
+	    if(p.project==""){
+	      if(ixmin==0&&ixmax==-1){
+		ixmin=1; ixmax=hist2d->GetNbinsX();
+	      }
+	      if(iymin==0&&iymax==-1){
+		iymin=1; iymax=hist2d->GetNbinsY();
+	      }
+	      int nbin=(ixmax-ixmin+1)*(iymax-iymin+1);
+	      this_hist=new TH1D(hist2d->GetName(),hist2d->GetTitle(),nbin,0,nbin);
+	      int ibin=0;
+	      for(int iy=iymin;iy<=iymax;iy++){
+		for(int ix=ixmin;ix<=ixmax;ix++){
+		  double val=hist2d->GetBinContent(ix,iy);
+		  double err=hist2d->GetBinError(ix,iy);
+		  this_hist->SetBinContent(++ibin,val);
+		  this_hist->SetBinError(ibin,err);
+		}
+	      }
+	      if(p.xtitle=="") p.xtitle="bin index";
+	    }
 	    else if(p.project=="x") this_hist=(TH1*)hist2d->ProjectionX("_px",iymin,iymax);
 	    else if(p.project=="y") this_hist=(TH1*)hist2d->ProjectionY("_py",ixmin,ixmax);
 	    else PError("[Plotter::GetHistFromSample] wrong projection or classname");
@@ -482,10 +501,111 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,const Plot& pp,TString addi
 	      PWarning(Form("[Plotter::GetHistFromSample] Zmax=%f is not exact edge... use %f",p.Zmax,hist3d->GetZaxis()->GetBinUpEdge(izmax)));
 	  }
 	  if(!p.option.Contains("noproject")){
-	    if(p.project=="") this_hist=(TH1*)hist3d->ProjectionZ("_pz",ixmin,ixmax,iymin,iymax);
+	    if(p.project==""){
+	      if(ixmin==0&&ixmax==-1){
+		ixmin=1; ixmax=hist3d->GetNbinsX();
+	      }
+	      if(iymin==0&&iymax==-1){
+		iymin=1; iymax=hist3d->GetNbinsY();
+	      }
+	      if(izmin==0&&izmax==-1){
+		izmin=1; izmax=hist3d->GetNbinsZ();
+	      }
+	      int nbin=(ixmax-ixmin+1)*(iymax-iymin+1)*(izmax-izmin+1);
+	      this_hist=new TH1D(hist3d->GetName(),hist3d->GetTitle(),nbin,0,nbin);
+	      int ibin=0;
+	      for(int iz=izmin;iz<=izmax;iz++){
+		for(int iy=iymin;iy<=iymax;iy++){
+		  for(int ix=ixmin;ix<=ixmax;ix++){
+		    double val=hist3d->GetBinContent(ix,iy,iz);
+		    double err=hist3d->GetBinError(ix,iy,iz);
+		    this_hist->SetBinContent(++ibin,val);
+		    this_hist->SetBinError(ibin,err);
+		  }
+		}
+	      }
+	      if(p.xtitle=="") p.xtitle="bin index";
+	    }
 	    else if(p.project=="x") this_hist=(TH1*)hist3d->ProjectionX("_px",iymin,iymax,izmin,izmax);
 	    else if(p.project=="y") this_hist=(TH1*)hist3d->ProjectionY("_py",ixmin,ixmax,izmin,izmax);
 	    else if(p.project=="z") this_hist=(TH1*)hist3d->ProjectionZ("_pz",ixmin,ixmax,iymin,iymax);
+	    else if(p.project=="xy"){
+	      if(ixmin==0&&ixmax==-1){
+		ixmin=1; ixmax=hist3d->GetNbinsX();
+	      }
+	      if(iymin==0&&iymax==-1){
+		iymin=1; iymax=hist3d->GetNbinsY();
+	      }
+	      if(izmin==0&&izmax==-1){
+		izmin=0; izmax=hist3d->GetNbinsZ()+1;
+	      }
+	      hist3d->GetZaxis()->SetRange(izmin,izmax);
+	      TH2* hist2d=(TH2*)hist3d->Project3D("yx o");
+	      int nbin=(ixmax-ixmin+1)*(iymax-iymin+1);
+	      this_hist=new TH1D(hist3d->GetName(),hist3d->GetTitle(),nbin,0,nbin);
+	      int ibin=0;
+	      for(int iy=iymin;iy<=iymax;iy++){
+		for(int ix=ixmin;ix<=ixmax;ix++){
+		  double val=hist2d->GetBinContent(ix,iy);
+		  double err=hist2d->GetBinError(ix,iy);
+		  this_hist->SetBinContent(++ibin,val);
+		  this_hist->SetBinError(ibin,err);
+		}
+	      }
+	      if(p.xtitle=="") p.xtitle="bin index";
+	      delete hist2d;
+	    }else if(p.project=="yz"){
+	      if(ixmin==0&&ixmax==-1){
+		ixmin=0; ixmax=hist3d->GetNbinsX()+1;
+	      }
+	      if(iymin==0&&iymax==-1){
+		iymin=1; iymax=hist3d->GetNbinsY();
+	      }
+	      if(izmin==0&&izmax==-1){
+		izmin=1; izmax=hist3d->GetNbinsZ();
+	      }
+	      hist3d->GetXaxis()->SetRange(ixmin,ixmax);
+	      TH2* hist2d=(TH2*)hist3d->Project3D("zy o");
+	      int nbin=(iymax-iymin+1)*(izmax-izmin+1);
+	      this_hist=new TH1D(hist3d->GetName(),hist3d->GetTitle(),nbin,0,nbin);
+	      int ibin=0;
+	      for(int iz=izmin;iz<=izmax;iz++){
+		for(int iy=iymin;iy<=iymax;iy++){
+		  double val=hist2d->GetBinContent(iy,iz);
+		  double err=hist2d->GetBinError(iy,iz);
+		  this_hist->SetBinContent(++ibin,val);
+		  this_hist->SetBinError(ibin,err);
+		}
+	      }
+	      if(p.xtitle=="") p.xtitle="bin index";
+	      delete hist2d;
+	    }else if(p.project=="zx"){
+	      if(ixmin==0&&ixmax==-1){
+		ixmin=1; ixmax=hist3d->GetNbinsX();
+	      }
+	      if(iymin==0&&iymax==-1){
+		iymin=0; iymax=hist3d->GetNbinsY()+1;
+	      }
+	      if(izmin==0&&izmax==-1){
+		izmin=1; izmax=hist3d->GetNbinsZ();
+	      }
+	      hist3d->GetYaxis()->SetRange(iymin,iymax);
+	      TH2* hist2d=(TH2*)hist3d->Project3D("xz o");
+	      int nbin=(izmax-izmin+1)*(ixmax-ixmin+1);
+	      this_hist=new TH1D(hist3d->GetName(),hist3d->GetTitle(),nbin,0,nbin);
+	      int ibin=0;
+	      for(int ix=ixmin;ix<=ixmax;ix++){
+		for(int iz=izmin;iz<=izmax;iz++){
+		  double val=hist2d->GetBinContent(iz,ix);
+		  double err=hist2d->GetBinError(iz,ix);
+		  this_hist->SetBinContent(++ibin,val);
+		  this_hist->SetBinError(ibin,err);
+		}
+	      }
+	      if(p.xtitle=="") p.xtitle="bin index";
+	      delete hist2d;
+	    }
+
 	    else PError("[Plotter::GetHistFromSample] wrong projection or classname");
 	    delete hist3d;
 	  }
@@ -653,6 +773,31 @@ Hists Plotter::GetHistSys(const Sample& sample,const Plot& p){
 	    hists.cov=cov;
 	  }
 	  cov=GetCov(hist0,variations,systematic.type);
+	  if(p.option.Contains("decotest")&&p.sysname=="dyscale"&&p.histname.Contains("costym")){
+	    if(p.project.Contains("x")||p.project==""){
+	      for(int irow=cov.GetRowLwb(),nrow=cov.GetRowUpb()+1;irow<nrow;irow++){
+		for(int icol=cov.GetColLwb(),ncol=cov.GetColUpb()+1;icol<ncol;icol++){
+		  if((irow-1)/10==(icol-1)/10) continue;
+		  cov[icol][irow]=0;
+		}
+	      }	     
+	    }else{
+	      for(int irow=cov.GetRowLwb(),nrow=cov.GetRowUpb()+1;irow<nrow;irow++){
+		for(int icol=cov.GetColLwb(),ncol=cov.GetColUpb()+1;icol<ncol;icol++){
+		  if(irow==icol) continue;
+		  cov[icol][irow]=0;
+		}
+	      }
+	    }
+	  }
+	  if(p.option.Contains("decoeffstat")&&p.sysname=="efficiencySF_stat"){
+	    for(int irow=cov.GetRowLwb(),nrow=cov.GetRowUpb()+1;irow<nrow;irow++){
+	      for(int icol=cov.GetColLwb(),ncol=cov.GetColUpb()+1;icol<ncol;icol++){
+		if(irow==icol) continue;
+		cov[icol][irow]=0;
+	      }
+	    }
+	  }
 	  hists.cov+=cov;
 	}
 	if(p.option.Contains("sysdetail")){
@@ -1411,9 +1556,9 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
     TH1D* hist1=(TH1D*)GetTH1(p.hists[1][0]);
     int ifirst=hist0->GetXaxis()->GetFirst();
     int ilast=hist0->GetXaxis()->GetLast();
-    TMatrixD cov(ifirst,ilast,ifirst,ilast);
-    if(p.hists[1].cov.GetNrows()!=0) cov+=p.hists[1].cov;
-    if(p.hists[0].cov.GetNrows()!=0) cov+=p.hists[0].cov;
+    TMatrixD cov_syst(ifirst,ilast,ifirst,ilast);
+    if(p.hists[1].cov.GetNrows()!=0) cov_syst+=p.hists[1].cov;
+    if(p.hists[0].cov.GetNrows()!=0) cov_syst+=p.hists[0].cov;
 
     TMatrixD cov_hist0_stat(ifirst,ilast,ifirst,ilast);
     TMatrixD cov_hist1_stat(ifirst,ilast,ifirst,ilast);
@@ -1421,7 +1566,9 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
       cov_hist0_stat[i][i]=pow(hist0->GetBinError(i),2);
       cov_hist1_stat[i][i]=pow(hist1->GetBinError(i),2);
     }
-    cov+=cov_hist0_stat+cov_hist1_stat;
+
+    TMatrixD cov(ifirst,ilast,ifirst,ilast);
+    cov=cov_syst+cov_hist0_stat+cov_hist1_stat;
 
     double chi2=GetChi2(hist0,hist1,cov);
     //cout<<chi2<<endl;
@@ -1437,7 +1584,7 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
       latex.DrawLatex(gPad->GetLeftMargin()+0.01,1-gPad->GetTopMargin()-2.4*latex.GetTextSize(),Form("p = %g",TMath::Prob(chi2,ndf)));
     }
     if(p.option.Contains("chi2detail")){
-      int ncov=p.hists[1].subcovs.size()+2;
+      int ncov=p.hists[1].subcovs.size()+3;
       TString toptitle=p.title;
       if(p.sysname!="") toptitle+="_"+p.sysname;
       if(p.replace_old!=""||p.replace_new!="") TPRegexp(p.replace_old).Substitute(toptitle,p.replace_new);
@@ -1456,11 +1603,17 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
       nominal->GetXaxis()->SetBinLabel(++icov,"data stat.");
       nominal->SetBinContent(icov,chi2);
       up->SetBinContent(icov,GetChi2(hist0,hist1,cov+3.*cov_hist0_stat));
-      down->SetBinContent(icov,GetChi2(hist0,hist1,cov-3./4.*cov_hist0_stat));
+      down->SetBinContent(icov,GetChi2(hist0,hist1,cov-cov_hist0_stat));
       nominal->GetXaxis()->SetBinLabel(++icov,"pred. stat.");
       nominal->SetBinContent(icov,chi2);
       up->SetBinContent(icov,GetChi2(hist0,hist1,cov+3.*cov_hist1_stat));
-      down->SetBinContent(icov,GetChi2(hist0,hist1,cov-3./4.*cov_hist1_stat));
+      down->SetBinContent(icov,GetChi2(hist0,hist1,cov-cov_hist1_stat));
+      if(systematics[p.sysname].type!=Systematic::Type::MULTI){
+	nominal->GetXaxis()->SetBinLabel(++icov,"total syst.");
+	nominal->SetBinContent(icov,chi2);
+	up->SetBinContent(icov,GetChi2(hist0,hist1,cov+3.*cov_syst));
+	down->SetBinContent(icov,GetChi2(hist0,hist1,cov-cov_syst));
+      }
       for(const auto& [key,dummy]:p.hists[1].subcovs){
 	TMatrixD this_cov(ifirst,ilast,ifirst,ilast);
 	if(p.hists[0].subcovs.find(key)!=p.hists[0].subcovs.end()&&p.hists[0].subcovs[key].GetNcols()) this_cov+=p.hists[0].subcovs[key];
@@ -1473,7 +1626,7 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
       }
       nominal->GetXaxis()->LabelsOption("v");
 
-      TCanvas* cchi2=new TCanvas("chi2canvas");
+      TCanvas* cchi2=new TCanvas(c->GetName()+TString("_chi2"));
       cchi2->SetBottomMargin(0.3);
       nominal->Draw("hist");
       pair<double,double> minmax=GetMinMax({nominal,up,down});
@@ -1526,8 +1679,8 @@ void Plotter::SavePlot(TString plotkey,TString option,bool delete_canvas){
     }
     defaultname=path(0,path.Last('.'));
     SaveCanvas(c,path,false);
-    if(p.option.Contains("chi2detail")&&gROOT->GetListOfCanvases()->FindObject("chi2canvas")){
-      SaveCanvas((TCanvas*)gROOT->GetListOfCanvases()->FindObject("chi2canvas"),path(0,path.Last('.'))+"_chi2"+path(path.Last('.'),path.Length()));
+    if(p.option.Contains("chi2detail")&&c&&gROOT->GetListOfCanvases()->FindObject(c->GetName()+TString("_chi2"))){
+      SaveCanvas((TCanvas*)gROOT->GetListOfCanvases()->FindObject(c->GetName()+TString("_chi2")),path(0,path.Last('.'))+"_chi2"+path(path.Last('.'),path.Length()));
     }
   }
   if(delete_canvas){
@@ -1539,8 +1692,8 @@ void Plotter::SavePlotCondor(TString plotkey,TString option){
   plotkey=ParseForCondorRun(plotkey);
   option=ParseForCondorRun(option);
   TString classname=ClassName();
-  system("condor_run -a jobbatchname="+classname+" bash -c \\\"cd $PWD\\;export ROOT_HIST=0\\;echo -e \\'\\#include\\\\\\\""+classname+".cc\\\\\\\"\\\\n"+classname+" plotter\\;\\\\nplotter."+GetSetupStringForCondor()+"\\;\\\\nplotter.plotdir=\\\\\\\""+plotdir+"\\\\\\\"\\;\\\\nplotter.SavePlot\\(\\\\\\\""+plotkey+"\\\\\\\",\\\\\\\""+option+"\\\\\\\"\\)\\\\n.q\\'\\|root -l -b\\\" 2>&1 |grep -v MakeDefCanvas &");
-  system("sleep 0.1");
+  system("condor_run -a jobprio=1 -a jobbatchname="+classname+" bash -c \\\"cd $PWD\\;export ROOT_HIST=0\\;echo -e \\'\\#include\\\\\\\""+classname+".cc\\\\\\\"\\\\n"+classname+" plotter\\;\\\\nplotter."+GetSetupStringForCondor()+"\\;\\\\nplotter.plotdir=\\\\\\\""+plotdir+"\\\\\\\"\\;\\\\nplotter.SavePlot\\(\\\\\\\""+plotkey+"\\\\\\\",\\\\\\\""+option+"\\\\\\\"\\)\\\\n.q\\'\\|root -l -b\\\" 2>&1 |grep -v MakeDefCanvas &");
+  system("sleep 0.02");
 }
 void Plotter::SaveCanvas(TCanvas *c,TString path,bool delete_canvas){
   if(c){
@@ -1564,9 +1717,9 @@ void Plotter::SavePlotAll(){
 ////////////////////////////// Table ////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 void Plotter::PrintTable(int ientry,TString plotkey,TString option){
-  vector<TH1*> hists=GetHistSys(entries[ientry],MakePlot(plotkey,option));
+  Hists hists=GetHistSys(entries[ientry],MakePlot(plotkey,option));
   if(hists.size()==0||!hists[0]) return;
-  TH1* hist=hists[0];
+  TH1* hist=GetTH1(hists[0]);
   cout<<"bin\t";
   for(int j=0;j<hists.size();j++){
     if(j==0) cout<<hists[j]->GetName()<<" stat ";
