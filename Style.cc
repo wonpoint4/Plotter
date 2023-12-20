@@ -43,6 +43,7 @@ void Style::Apply(TH1* hist) const {
       if(linestyle>=0) hist->SetLineStyle(linestyle);
       if(linewidth>=0) hist->SetLineWidth(linewidth);
       if(fillcolor>=0) hist->SetFillColor(fillcolor);
+      //if(fillcolor>=0) hist->SetFillColorAlpha(fillcolor,0.1);
       if(fillstyle>=0) hist->SetFillStyle(fillstyle);
       if(markercolor>=0) hist->SetMarkerColor(markercolor);
       if(markerstyle>=0) hist->SetMarkerStyle(markerstyle);

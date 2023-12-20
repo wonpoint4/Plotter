@@ -12,6 +12,7 @@ public:
   AFBPlotter(TString mode_="data ^mi+tau_mi+vv+wjets+tt+st+qcdss+aa",TString analyzer_="AFBAnalyzer");
   ~AFBPlotter();
   virtual void SetupEntries(TString mode_);
+  virtual void SetupSamples();
   virtual void SetupTH4D();
 
   virtual pair<double,double> GetRange(TString histname,TString axisname);
@@ -235,9 +236,9 @@ TH1* AFBPlotter::GetHist(const Sample& sample,Plot plot,TString additional_optio
     TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBT","costhetaT")+" Umin:0 Umax:1");
     TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBT","costhetaT")+" Umin:-1 Umax:0");
     hist=GetHistAFB(hist_forward,hist_backward);
-  }else if(plot.histname.Contains("AFB")){
-    TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFB","costhetaCS")+" Umin:0 Umax:1");
-    TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFB","costhetaCS")+" Umin:-1 Umax:0");
+  }else if(plot.option.Contains("AFB")){
+    TH1* hist_forward=GetHist(sample,plot-"AFB"," Umin:0 Umax:1");
+    TH1* hist_backward=GetHist(sample,plot-"AFB"," Umin:-1 Umax:0");
     hist=GetHistAFB(hist_forward,hist_backward);
   }
   if(hist){
@@ -254,6 +255,38 @@ void AFBPlotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot){
   if(strstr(obj->ClassName(),"TH4D")!=NULL){
     if(plot.option.Contains("noproject")) return;
     TH4D* hist4d=(TH4D*)obj;
+    if(plot.rebinX!=""||plot.rebinY!=""||plot.rebinZ!=""||plot.rebinU!=""||plot.option.Contains("absY")){
+      vector<double> binsX= plot.rebinX!="" ? VectorDouble(plot.rebinX) : GetAxisVector(hist4d->GetXaxis());
+      vector<double> binsY= plot.rebinY!="" ? VectorDouble(plot.rebinY) : GetAxisVector(hist4d->GetYaxis());
+      if(plot.option.Contains("absY")){
+	binsY.assign(binsY.end()-binsY.size()/2-1,binsY.end());
+	binsY[0]=0.;
+      }
+      vector<double> binsZ= plot.rebinZ!="" ? VectorDouble(plot.rebinZ) : GetAxisVector(hist4d->GetZaxis());
+      vector<double> binsU= plot.rebinU!="" ? VectorDouble(plot.rebinU) : GetAxisVector(hist4d->GetUaxis());
+      TH4D* hist4d_rebin=new TH4D(hist4d->GetName(),hist4d->GetTitle(),binsX.size()-1,&binsX[0],binsY.size()-1,&binsY[0],binsZ.size()-1,&binsZ[0],binsU.size()-1,&binsU[0]);
+      for(int ix=0;ix<hist4d->GetXaxis()->GetNbins()+2;ix++){
+	for(int iy=0;iy<hist4d->GetYaxis()->GetNbins()+2;iy++){
+	  for(int iz=0;iz<hist4d->GetZaxis()->GetNbins()+2;iz++){
+	    for(int iu=0;iu<hist4d->GetUaxis()->GetNbins()+2;iu++){
+	      double x=hist4d->GetXaxis()->GetBinCenter(ix);
+	      double y=hist4d->GetYaxis()->GetBinCenter(iy);
+	      if(plot.option.Contains("absY")) y=fabs(y);
+	      double z=hist4d->GetZaxis()->GetBinCenter(iz);
+	      double u=hist4d->GetUaxis()->GetBinCenter(iu);
+	      int ibin=hist4d_rebin->FindBin(x,y,z,u);
+	      hist4d_rebin->SetBinContent(ibin,hist4d_rebin->GetBinContent(ibin)+hist4d->GetBinContent(ix,iy,iz,iu));
+	      hist4d_rebin->SetBinError(ibin,sqrt(pow(hist4d_rebin->GetBinError(ibin),2)+pow(hist4d->GetBinError(ix,iy,iz,iu),2)));
+	    }
+	  }
+	}
+      }	
+      delete hist4d;
+      hist4d=hist4d_rebin;
+    }
+    if(plot.option.Contains("absY")){
+      
+    }
     int ixmin=0,iymin=0,izmin=0,iumin=0;
     int ixmax=-1,iymax=-1,izmax=-1,iumax=-1;
     if(plot.Xmin||plot.Xmax){
@@ -288,7 +321,37 @@ void AFBPlotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot){
       if(fabs(plot.Umax-hist4d->GetUaxis()->GetBinUpEdge(iumax))>0.00001)
 	PWarning(Form("[Plotter::GetHistFromSample] Umax=%f is not exact edge... use %f",plot.Umax,hist4d->GetUaxis()->GetBinUpEdge(iumax)));
     }
-    if(plot.project=="") obj=(TObject*)hist4d->ProjectionU("_pu",ixmin,ixmax,iymin,iymax,izmin,izmax);
+    if(plot.project==""){
+      if(ixmin==0&&ixmax==-1){
+	ixmin=1; ixmax=hist4d->GetNbinsX();
+      }
+      if(iymin==0&&iymax==-1){
+	iymin=1; iymax=hist4d->GetNbinsY();
+      }
+      if(izmin==0&&izmax==-1){
+	izmin=1; izmax=hist4d->GetNbinsZ();
+      }
+      if(iumin==0&&iumax==-1){
+	iumin=1; iumax=hist4d->GetNbinsU();
+      }
+      int nbin=(ixmax-ixmin+1)*(iymax-iymin+1)*(izmax-izmin+1)*(iumax-iumin+1);
+      TH1* this_hist=new TH1D(hist4d->GetName(),hist4d->GetTitle(),nbin,0,nbin);
+      int ibin=0;
+      for(int iu=iumin;iu<=iumax;iu++){
+	for(int iz=izmin;iz<=izmax;iz++){
+	  for(int iy=iymin;iy<=iymax;iy++){
+	    for(int ix=ixmin;ix<=ixmax;ix++){
+	      double val=hist4d->GetBinContent(ix,iy,iz,iu);
+	      double err=hist4d->GetBinError(ix,iy,iz,iu);
+	      this_hist->SetBinContent(++ibin,val);
+	      this_hist->SetBinError(ibin,err);
+	    }
+	  }
+	}
+      }
+      if(plot.xtitle=="") plot.xtitle="bin index";
+      obj=this_hist;
+    }
     else if(plot.project=="x") obj=(TObject*)hist4d->ProjectionX("_px",iymin,iymax,izmin,izmax,iumin,iumax);
     else if(plot.project=="y") obj=(TObject*)hist4d->ProjectionY("_py",ixmin,ixmax,izmin,izmax,iumin,iumax);
     else if(plot.project=="z") obj=(TObject*)hist4d->ProjectionZ("_pz",ixmin,ixmax,iymin,iymax,iumin,iumax);
@@ -328,9 +391,15 @@ Plot AFBPlotter::MakePlot(TString plotkey,TString option){
   if(plot.histname.Contains(TRegexp("(u)$"))){plot.histname=Replace(plot.histname,"(u)$","");plot.SetOption("project:u");}
   if(plot.histname.Contains(TRegexp("(x,z)$"))){plot.histname=Replace(plot.histname,"(x,z)$","");plot.SetOption("project:xz");}
 
-  if(plot.histname.Contains("dimass")){plot.histname=Replace(plot.histname,"dimass","costhetaCS");plot.SetOption("project:x");}
-  if(plot.histname.Contains("dirap")){plot.histname=Replace(plot.histname,"dirap","costhetaCS");plot.SetOption("project:y");}
-  if(plot.histname.Contains("dipt")){plot.histname=Replace(plot.histname,"dipt","costhetaCS");plot.SetOption("project:z");}
+  if(plot.histname.Contains("dimass")&&!plot.histname.Contains(TRegexp("dimass[CR]"))){
+    plot.histname=Replace(plot.histname,"dimass","dimassCS");
+    if(plot.project=="") plot.SetOption("project:x");}
+  if(plot.histname.Contains("dirap")&&!plot.histname.Contains(TRegexp("dirap[CR]"))){
+    plot.histname=Replace(plot.histname,"dirap","dirapCS");
+    if(plot.project=="") plot.SetOption("project:y");}
+  if(plot.histname.Contains("dipt")&&!plot.histname.Contains(TRegexp("dipt[CR]"))){
+    plot.histname=Replace(plot.histname,"dipt","diptCS");
+    if(plot.project=="") plot.SetOption("project:z");}
 
   if(plot.xmin==0&&plot.xmax==0){
     if(plot.project(0)=='x'){plot.xmin=plot.Xmin;plot.xmax=plot.Xmax;}
@@ -510,6 +579,11 @@ void AFBPlotter::SetupEntries(TString mode_){
   if(mode=="doublediff"){
     entries[0].title="[data_{#mu#mu}-sim_{#mu#mu}]-[data_{ee}-sim_{ee}]";
   }
+}
+void AFBPlotter::SetupSamples(){
+  SKFlatPlotter::SetupSamples();
+  samples["unfold"]=Sample("data (#mu#mu)","SAMPLE data",kBlack,20)+TRegexp(".*unfold");
+  samples["mi_unfold"]=Sample("mi unfolded","SAMPLE sim",kBlue)+TRegexp(".*/mi_unfold");
 }
 void AFBPlotter::SetupTH4D(){
   if(TClass::GetClass("TH4D")==NULL){

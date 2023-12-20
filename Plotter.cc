@@ -49,6 +49,7 @@ public:
   void PrintSystematics();
 
   //Hist
+  vector<double> GetAxisVector(const TAxis* axis) const;
   virtual TH1* GetHist(TString samplekey,TString plotkey,TString additional_option="");
   virtual TH1* GetHist(int ientry,TString plotkey,TString additional_option="");
   virtual TH1* GetHist(const Sample& sample,Plot p,TString additional_option="");
@@ -61,10 +62,13 @@ public:
   vector<Hists> GetHists(Plot& plot);
 
   //Systematic
+  set<TString> GetSystematicVariations(TString sysname);
+  map<TString,TString> GetSystematicSuffixes(TString sysname);
   TH1* GetEnvelope(TH1* central,const vector<TH1*>& variations);
   TH1* GetEnvelope(TH1* central,TH1* variation1,TH1* variation2=NULL,TH1* variation3=NULL,TH1* variation4=NULL,TH1* variation5=NULL,TH1* variation6=NULL,TH1* variation7=NULL,TH1* variation8=NULL,TH1* variation9=NULL);
   TH1* GetHessianError(TH1* central,const vector<TH1*>& variations);
   TH1* GetRMSError(TH1* central,const vector<TH1*>& variations);
+  TH1* GetCorrelatedError(TH1* central,const vector<TH1*>& variations);
   TMatrixD GetCov(TH1* central,const vector<TH1*>& variations,Systematic::Type type);
   static double Trace(TMatrixD mat);
   int AddError(TH1* hist,TH1* sys) const;
@@ -125,6 +129,7 @@ public:
   TString ClassName() const;
   double GetChi2(TH1* h1,TH1* h2) const;
   double GetChi2(const TH1D* h1,const TH1D* h2,TMatrixD cov) const;
+  double GetChi2(const TH1D* h1,const TH1D* h2,TMatrixD cov,int mask) const;
   int GetAutoColor() const;
   TString ParseForCondorRun(TString str) const;
 
@@ -311,6 +316,19 @@ void Plotter::PrintSystematics(){
 /////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// Hist /////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
+vector<double> Plotter::GetAxisVector(const TAxis* axis) const {
+  vector<double> bins;
+  if(!axis) return bins;
+  const double* array=axis->GetXbins()->GetArray();
+  if(array){
+    bins.assign(array,array+axis->GetNbins()+1);
+  }else{
+    for(int i=1;i<axis->GetNbins()+2;i++){
+      bins.push_back(axis->GetBinLowEdge(i));
+    }
+  }
+  return bins;
+}
 TH1* Plotter::GetHist(TString samplekey,TString plotkey,TString additional_option){
   return GetHist(samples[samplekey],MakePlot(plotkey,additional_option));
 }
@@ -370,6 +388,7 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,const Plot& pp,TString addi
     }
     if(hist) hist->Scale(sample.weight);
   }else if(p.option.Contains("absy")){
+    PError("[Plotter::GetHistFromSample] FIXME absy has a bug. Yaxis should be reversed for minus_hist");
     if(p.project.Contains("y")) PError("[Plotter::GetHistFromSample] Not supported (absy + project:y)");
     else if(p.Ymin==0&&p.Ymax==0) PError("[Plotter::GetHistFromSample] absy needs Ymin and Ymax");
     else if(p.Ymin<0||p.Ymax<0) PError("[Plotter::GetHistFromSample] absy needs positive Ymin and Ymax");
@@ -627,8 +646,9 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,const Plot& pp,TString addi
       }
     }
     if(!hist&&sample.HasTag(p.replace_tag)&&(p.replace_old!=""||p.replace_new!="")){
-      PWarning("[Plotter::GetHistFromSample] no "+histname+" "+sample.title+", use "+p.histname);
       hist=GetHistFromSample(sample,pp+additional_option-"replace");
+      if(hist)
+	PWarning("[Plotter::GetHistFromSample] no "+histname+" "+sample.title+", use "+p.histname);
     }
   }
   if(hist){
@@ -816,6 +836,8 @@ Hists Plotter::GetHistSys(const Sample& sample,const Plot& p){
 	    histsys=GetRMSError(hist0,variations);
 	  }else if(systematic.type==Systematic::Type::HESSIAN){
 	    histsys=GetHessianError(hist0,variations);
+	  }else if(systematic.type==Systematic::Type::CORRELATED){
+	    histsys=GetCorrelatedError(hist0,variations);
 	  }else{
 	    PError((TString)"[Plotter::GetHistSys] Wrong Systematic::Type "+Form("%d",systematic.type));
 	  }
@@ -883,6 +905,44 @@ vector<Hists> Plotter::GetHists(Plot& p){
 /////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// Uncertainty //////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
+set<TString> Plotter::GetSystematicVariations(TString sysname){
+  set<TString> rt;
+  auto it=systematics.find(sysname);
+  if(it==systematics.end()){
+    PError("No systematic "+sysname);
+    return rt;
+  }
+  const Systematic& sys=it->second;
+  if(sys.type==Systematic::Type::MULTI){
+    for(const auto& key:sys.keys){
+      set<TString> this_rt=GetSystematicVariations(key);
+      rt.insert(this_rt.begin(),this_rt.end());
+    }
+  }else{
+    set<TString> this_rt(sys.variations.begin(),sys.variations.end());
+    rt.insert(this_rt.begin(),this_rt.end());
+  }    
+  return rt;
+}
+map<TString,TString> Plotter::GetSystematicSuffixes(TString sysname){
+  set<TString> variations=GetSystematicVariations(sysname);
+  map<TString,TString> rt;
+  for(const auto& variation:variations){
+    TString suffix;
+    Plot p;
+    p.SetOption(variation);
+    if(p.replace_old=="$"){
+      suffix="_"+p.replace_tag+p.replace_new;
+    }else if(p.scales.size()){
+      suffix="_"+p.scales[0].second+"_scale";
+    }else{
+      PError("[Plotter::GetSystematicSuffixes] Unknown variation "+variation);
+      exit(1);
+    }
+    rt[suffix]=variation;
+  }
+  return rt;
+}
 TH1* Plotter::GetEnvelope(TH1* central,const vector<TH1*>& variations){
   PAll("[Plotter::GetEnvelope]");
   if(strstr(central->ClassName(),"THStack")) central=GetTH1(central);
@@ -939,6 +999,22 @@ TH1* Plotter::GetRMSError(TH1* central,const vector<TH1*>& variations){
   for(int i=1;i<syshist->GetNbinsX()+1;i++) syshist->SetBinError(i,syshist->GetBinError(i)/sqrt(variations.size()));
   return syshist;
 }
+TH1* Plotter::GetCorrelatedError(TH1* central,const vector<TH1*>& variations){
+  PAll("[Plotter::GetCorrelatedError]");
+  if(strstr(central->ClassName(),"THStack")) central=GetTH1(central);
+  TH1* syshist=(TH1*)central->Clone("sys");
+  syshist->SetDirectory(pdir);
+  for(int i=0;i<syshist->GetNbinsX()+2;i++) syshist->SetBinError(i,0);
+  for(int j=0;j<syshist->GetNbinsX()+2;j++){
+    double total_diff=0;
+    for(int i=0;i<(int)variations.size();i++){
+      double diff=variations.at(i)->GetBinContent(j)-syshist->GetBinContent(j);
+      total_diff+=diff;
+    }
+    syshist->SetBinError(j,total_diff);
+  }
+  return syshist;
+}  
 TMatrixD Plotter::GetCov(TH1* central,const vector<TH1*>& variations,Systematic::Type type){
   int ifirst=central->GetXaxis()->GetFirst();
   int ilast=central->GetXaxis()->GetLast();
@@ -988,6 +1064,17 @@ TMatrixD Plotter::GetCov(TH1* central,const vector<TH1*>& variations,Systematic:
       cov+=this_cov;
     }
     cov*=1./variations.size();
+  }else if(type==Systematic::Type::CORRELATED){
+    TMatrixD diff(ifirst,ilast,0,0);
+    TMatrixD val0(ifirst,ilast,0,0,hist0->GetArray()+ifirst);
+    for(const auto& var:variations){
+      const TH1D* hist1=(TH1D*)var;
+      TMatrixD val(ifirst,ilast,0,0,hist1->GetArray()+ifirst);
+      diff+=val-val0;
+    }
+    TMatrixD diffT=diff;
+    diffT.T();
+    cov=diff*diffT;
   }else{
     PError((TString)"[Plotter::GetCov] Wrong Systematic::Type "+Form("%d",type));
   }
@@ -1553,12 +1640,19 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
   }
   if(p.option.Contains("chi2")){
     TH1D* hist0=(TH1D*)GetTH1(p.hists[0][0]);
-    TH1D* hist1=(TH1D*)GetTH1(p.hists[1][0]);
     int ifirst=hist0->GetXaxis()->GetFirst();
     int ilast=hist0->GetXaxis()->GetLast();
     TMatrixD cov_syst(ifirst,ilast,ifirst,ilast);
-    if(p.hists[1].cov.GetNrows()!=0) cov_syst+=p.hists[1].cov;
     if(p.hists[0].cov.GetNrows()!=0) cov_syst+=p.hists[0].cov;
+
+    TH1D* hist1=NULL;
+    if(p.hists.size()>1){
+      hist1=(TH1D*)GetTH1(p.hists[1][0]);
+      if(p.hists[1].cov.GetNrows()!=0) cov_syst+=p.hists[1].cov;
+    }else{
+      hist1=(TH1D*)hist0->Clone();
+      hist1->Reset();
+    }
 
     TMatrixD cov_hist0_stat(ifirst,ilast,ifirst,ilast);
     TMatrixD cov_hist1_stat(ifirst,ilast,ifirst,ilast);
@@ -1584,63 +1678,80 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
       latex.DrawLatex(gPad->GetLeftMargin()+0.01,1-gPad->GetTopMargin()-2.4*latex.GetTextSize(),Form("p = %g",TMath::Prob(chi2,ndf)));
     }
     if(p.option.Contains("chi2detail")){
-      int ncov=p.hists[1].subcovs.size()+3;
-      TString toptitle=p.title;
-      if(p.sysname!="") toptitle+="_"+p.sysname;
-      if(p.replace_old!=""||p.replace_new!="") TPRegexp(p.replace_old).Substitute(toptitle,p.replace_new);
-      TH1* nominal=new TH1D("nominal",toptitle,ncov,0,ncov);
-      nominal->SetDirectory(pdir);
-      nominal->SetStats(0);
-      nominal->GetYaxis()->SetTitle("#chi^{2}");
-      nominal->GetXaxis()->SetLabelSize(nominal->GetXaxis()->GetLabelSize()*1.5);
-      TH1* up=new TH1D("up","2#times",ncov,0,ncov);
-      up->SetDirectory(pdir);
-      up->SetLineColor(2);
-      TH1* down=new TH1D("down","0#times",ncov,0,ncov);
-      down->SetDirectory(pdir);
-      down->SetLineColor(4);
-      int icov=0;
-      nominal->GetXaxis()->SetBinLabel(++icov,"data stat.");
-      nominal->SetBinContent(icov,chi2);
-      up->SetBinContent(icov,GetChi2(hist0,hist1,cov+3.*cov_hist0_stat));
-      down->SetBinContent(icov,GetChi2(hist0,hist1,cov-cov_hist0_stat));
-      nominal->GetXaxis()->SetBinLabel(++icov,"pred. stat.");
-      nominal->SetBinContent(icov,chi2);
-      up->SetBinContent(icov,GetChi2(hist0,hist1,cov+3.*cov_hist1_stat));
-      down->SetBinContent(icov,GetChi2(hist0,hist1,cov-cov_hist1_stat));
-      if(systematics[p.sysname].type!=Systematic::Type::MULTI){
-	nominal->GetXaxis()->SetBinLabel(++icov,"total syst.");
+      {
+	int ncov=p.hists[1].subcovs.size()+3;
+	if(systematics[p.sysname].type==Systematic::Type::MULTI) ncov--;
+	TString toptitle=p.title;
+	if(p.sysname!="") toptitle+="_"+p.sysname;
+	if(p.replace_old!=""||p.replace_new!="") TPRegexp(p.replace_old).Substitute(toptitle,p.replace_new);
+	TH1* nominal=new TH1D("nominal",toptitle,ncov,0,ncov);
+	nominal->SetDirectory(pdir);
+	nominal->SetStats(0);
+	nominal->GetYaxis()->SetTitle("#chi^{2}");
+	nominal->GetXaxis()->SetLabelSize(nominal->GetXaxis()->GetLabelSize()*1.5);
+	TH1* up=new TH1D("up","2#times",ncov,0,ncov);
+	up->SetDirectory(pdir);
+	up->SetLineColor(2);
+	TH1* down=new TH1D("down","0#times",ncov,0,ncov);
+	down->SetDirectory(pdir);
+	down->SetLineColor(4);
+	int icov=0;
+	nominal->GetXaxis()->SetBinLabel(++icov,"data stat.");
 	nominal->SetBinContent(icov,chi2);
-	up->SetBinContent(icov,GetChi2(hist0,hist1,cov+3.*cov_syst));
-	down->SetBinContent(icov,GetChi2(hist0,hist1,cov-cov_syst));
-      }
-      for(const auto& [key,dummy]:p.hists[1].subcovs){
-	TMatrixD this_cov(ifirst,ilast,ifirst,ilast);
-	if(p.hists[0].subcovs.find(key)!=p.hists[0].subcovs.end()&&p.hists[0].subcovs[key].GetNcols()) this_cov+=p.hists[0].subcovs[key];
-	if(p.hists[1].subcovs.find(key)!=p.hists[1].subcovs.end()&&p.hists[1].subcovs[key].GetNcols()) this_cov+=p.hists[1].subcovs[key];
-	nominal->GetXaxis()->SetBinLabel(++icov,key);
+	up->SetBinContent(icov,GetChi2(hist0,hist1,cov+3.*cov_hist0_stat));
+	down->SetBinContent(icov,GetChi2(hist0,hist1,cov-cov_hist0_stat));
+	nominal->GetXaxis()->SetBinLabel(++icov,"pred. stat.");
 	nominal->SetBinContent(icov,chi2);
-	up->SetBinContent(icov,GetChi2(hist0,hist1,cov+3.*this_cov));
-	//down->SetBinContent(icov,GetChi2(hist0,hist1,cov-3./4.*this_cov));
-	down->SetBinContent(icov,GetChi2(hist0,hist1,cov-this_cov));
-      }
-      nominal->GetXaxis()->LabelsOption("v");
+	up->SetBinContent(icov,GetChi2(hist0,hist1,cov+3.*cov_hist1_stat));
+	down->SetBinContent(icov,GetChi2(hist0,hist1,cov-cov_hist1_stat));
+	if(systematics[p.sysname].type!=Systematic::Type::MULTI){
+	  nominal->GetXaxis()->SetBinLabel(++icov,"total syst.");
+	  nominal->SetBinContent(icov,chi2);
+	  up->SetBinContent(icov,GetChi2(hist0,hist1,cov+3.*cov_syst));
+	  down->SetBinContent(icov,GetChi2(hist0,hist1,cov-cov_syst));
+	}
+	for(const auto& [key,dummy]:p.hists[1].subcovs){
+	  TMatrixD this_cov(ifirst,ilast,ifirst,ilast);
+	  if(p.hists[0].subcovs.find(key)!=p.hists[0].subcovs.end()&&p.hists[0].subcovs[key].GetNcols()) this_cov+=p.hists[0].subcovs[key];
+	  if(p.hists[1].subcovs.find(key)!=p.hists[1].subcovs.end()&&p.hists[1].subcovs[key].GetNcols()) this_cov+=p.hists[1].subcovs[key];
+	  nominal->GetXaxis()->SetBinLabel(++icov,key);
+	  nominal->SetBinContent(icov,chi2);
+	  up->SetBinContent(icov,GetChi2(hist0,hist1,cov+3.*this_cov));
+	  //down->SetBinContent(icov,GetChi2(hist0,hist1,cov-3./4.*this_cov));
+	  down->SetBinContent(icov,GetChi2(hist0,hist1,cov-this_cov));
+	}
+	nominal->GetXaxis()->LabelsOption("v");
 
-      TCanvas* cchi2=new TCanvas(c->GetName()+TString("_chi2"));
-      cchi2->SetBottomMargin(0.3);
-      nominal->Draw("hist");
-      pair<double,double> minmax=GetMinMax({nominal,up,down});
-      nominal->GetYaxis()->SetRangeUser(minmax.first*0.8,minmax.second*1.2);
-      up->Draw("same hist");
-      down->Draw("same hist");
-      TLegend *leg=new TLegend(0.89,0.89,0.7,0.7);
-      leg->AddEntry(nominal,"nominal");
-      leg->AddEntry(up);
-      leg->AddEntry(down);
-      leg->SetBorderSize(0);
-      leg->SetFillStyle(0);
-      leg->Draw();
-      c->cd();
+	TCanvas* cchi2=new TCanvas(c->GetName()+TString("_chi2"));
+	cchi2->SetBottomMargin(0.3);
+	nominal->Draw("hist");
+	pair<double,double> minmax=GetMinMax({nominal,up,down});
+	nominal->GetYaxis()->SetRangeUser(minmax.first*0.8,minmax.second*1.2);
+	up->Draw("same hist");
+	down->Draw("same hist");
+	TLegend *leg=new TLegend(0.89,0.89,0.7,0.7);
+	leg->AddEntry(nominal,"nominal");
+	leg->AddEntry(up);
+	leg->AddEntry(down);
+	leg->SetBorderSize(0);
+	leg->SetFillStyle(0);
+	leg->Draw();
+	c->cd();
+      }
+      {
+	TCanvas* cchi2impact=new TCanvas(c->GetName()+TString("_chi2impact"));
+	TH1* hchi2=(TH1*)hist0->Clone("hchi2");
+	hchi2->SetStats(0);
+	hchi2->Reset();
+	hchi2->SetDirectory(pdir);
+	for(int i=hchi2->GetXaxis()->GetFirst();i<hchi2->GetXaxis()->GetLast()+1;i++){
+	  hchi2->SetBinContent(i,GetChi2(hist0,hist1,cov,i));
+	}
+	hchi2->GetYaxis()->SetRangeUser(ndf*0.5,ndf*3);
+	hchi2->Draw("hist");
+	cchi2impact->SetGridx();
+	c->cd();	
+      }
     }
     delete hist0,hist1;
   }
@@ -1679,8 +1790,15 @@ void Plotter::SavePlot(TString plotkey,TString option,bool delete_canvas){
     }
     defaultname=path(0,path.Last('.'));
     SaveCanvas(c,path,false);
-    if(p.option.Contains("chi2detail")&&c&&gROOT->GetListOfCanvases()->FindObject(c->GetName()+TString("_chi2"))){
-      SaveCanvas((TCanvas*)gROOT->GetListOfCanvases()->FindObject(c->GetName()+TString("_chi2")),path(0,path.Last('.'))+"_chi2"+path(path.Last('.'),path.Length()));
+    TCanvas *ctemp=(TCanvas*)gROOT->GetListOfCanvases()->FindObject(c->GetName()+TString("_chi2"));
+    if(p.option.Contains("chi2detail")&&c&&ctemp){
+      SaveCanvas(ctemp,path(0,path.Last('.'))+"_chi2"+path(path.Last('.'),path.Length()),false);
+      if(delete_canvas) delete ctemp;
+    }
+    ctemp=(TCanvas*)gROOT->GetListOfCanvases()->FindObject(c->GetName()+TString("_chi2impact"));
+    if(p.option.Contains("chi2detail")&&c&&ctemp){
+      SaveCanvas(ctemp,path(0,path.Last('.'))+"_chi2impact"+path(path.Last('.'),path.Length()),false);
+      if(delete_canvas) delete ctemp;
     }
   }
   if(delete_canvas){
@@ -1903,6 +2021,9 @@ void Plotter::RebinXminXmax(TH1* hist,Plot p){
 	  if(start<end) hist->GetXaxis()->SetRange(start,end);
 	}
       }else hist->GetXaxis()->SetRangeUser(p.xmin,p.xmax);
+      if(p.xdivision!=0){
+	hist->GetXaxis()->SetNdivisions(p.xdivision,false);
+      }
     }else{
       PError((TString)"[Plotter::RebinXminXmax] Unsupported class "+hist->ClassName());
     }
@@ -2246,6 +2367,28 @@ double Plotter::GetChi2(const TH1D* hist0,const TH1D* hist1,TMatrixD cov) const 
   TMatrixD val0(ifirst,ilast,0,0,hist0->GetArray()+ifirst);
   TMatrixD val(ifirst,ilast,0,0,hist1->GetArray()+ifirst);
   val-=val0;
+  TMatrixD valT=val;
+  valT.T();
+  TMatrixD covI=cov;
+  covI.Invert();
+  TMatrixD chi2mat=valT*covI*val;
+  double chi2=Trace(chi2mat);
+  return chi2;
+}
+double Plotter::GetChi2(const TH1D* hist0,const TH1D* hist1,TMatrixD cov,int mask) const {
+  int ifirst=hist0->GetXaxis()->GetFirst();
+  int ilast=hist0->GetXaxis()->GetLast();
+  TMatrixD val0(ifirst,ilast,0,0,hist0->GetArray()+ifirst);
+  TMatrixD val(ifirst,ilast,0,0,hist1->GetArray()+ifirst);
+  val-=val0;
+  if(mask>=ifirst&&mask<=ilast){
+    for(int i=ifirst;i<ilast+1;i++){
+      cov[i][mask]=0;
+      cov[mask][i]=0;
+    }
+    val[mask][0]=0.;
+    cov[mask][mask]=1.;
+  }
   TMatrixD valT=val;
   valT.T();
   TMatrixD covI=cov;
