@@ -3,6 +3,7 @@
 #include <TPRegexp.h>
 #include <TObjString.h>
 #include <TSystem.h>
+#include <TFormula.h>
 #include"Global.h"
 #include"Utils.h"
 #include"Style.cc"
@@ -169,7 +170,7 @@ void Sample::ApplyStyle(TH1* hist,int index) const {
   PAll("[Sample::ApplyStyle(TH1* hist,int index=0)]");
   int i=index;
   if(i<0) i=0;
-  if(i>=styles.size()) i=styles.size()-1;
+  if(i>=(int)styles.size()) i=styles.size()-1;
   styles[i].Apply(hist);
 
   if(hist&&index==0){

@@ -126,7 +126,7 @@ You can pass a option to a specific pad using `PADINDEX:OPTION` syntax. ex) `1:l
 * widewidey - For ratio plot, set yaxis range from 0.0 to 2.0
 * widthweight - For variable bin size, divide bin contents by bin size to get proper shape
 * finey - For ratio plot, set yaxis range from 0.9 to 1.1
-  
+* movesys - Collect systematic uncertainty to one entity in ratio pane. Useful when there is correlation of systematic uncertainty between entities  
 ## Verbosity
 You can set verbosity using `Verbosity` variable (QUIET, ERROR, WARNING, INFO, DEBUG, ALL)
 ```c++

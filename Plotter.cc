@@ -7,6 +7,7 @@
 #include <TROOT.h>
 #include <TLatex.h>
 #include <TGraph.h>
+#include <TMath.h>
 #include"Global.h"
 #include"Sample.cc"
 #include"Hists.cc"
@@ -56,20 +57,26 @@ public:
   virtual TH1* GetHistFromSample(const Sample& sample,const Plot& p,TString additional_option="");
   virtual TH1* GetHistFromFile(TString filename,TString histname);
   virtual void GetHistActionForAdditionalClass(TObject*& obj,Plot p);
-  Hists GetHistSys(TString samplekey,TString plotkey,TString additional_option="");
-  Hists GetHistSys(int ientry,TString plotkey,TString additional_option="");
-  Hists GetHistSys(const Sample& sample,const Plot& plot);
+  Hists GetHistVariations(TString samplekey,TString plotkey,TString additional_option="");
+  Hists GetHistVariations(int ientry,TString plotkey,TString additional_option="");
+  Hists GetHistVariations(const Sample& sample,const Plot& plot);
   vector<Hists> GetHists(Plot& plot);
 
   //Systematic
+  static TString GetTagFromVariation(TString variation);
   set<TString> GetSystematicVariations(TString sysname);
   map<TString,TString> GetSystematicSuffixes(TString sysname);
-  TH1* GetEnvelope(TH1* central,const vector<TH1*>& variations);
+  TH1* GetEnvelope(TH1* central,const vector<const TH1*>& variations);
   TH1* GetEnvelope(TH1* central,TH1* variation1,TH1* variation2=NULL,TH1* variation3=NULL,TH1* variation4=NULL,TH1* variation5=NULL,TH1* variation6=NULL,TH1* variation7=NULL,TH1* variation8=NULL,TH1* variation9=NULL);
-  TH1* GetHessianError(TH1* central,const vector<TH1*>& variations);
-  TH1* GetRMSError(TH1* central,const vector<TH1*>& variations);
-  TH1* GetCorrelatedError(TH1* central,const vector<TH1*>& variations);
-  TMatrixD GetCov(TH1* central,const vector<TH1*>& variations,Systematic::Type type);
+  TH1* GetHessianError(TH1* central,const vector<const TH1*>& variations);
+  TH1* GetRMSError(TH1* central,const vector<const TH1*>& variations);
+  TH1* GetCorrelatedError(TH1* central,const vector<const TH1*>& variations);
+  TH1* GetHistSys(TH1* hist0,const vector<const TH1*>& variations,Systematic::Type type);
+  TH1* GetHistSys(Hists& hists,TString sysname);
+  void EvalHistSyss(Plot& p);
+  TMatrixD GetCov(Hists& hists,TString sysname);
+  TMatrixD GetCov(Hists& hists0,Hists& hists1,TString sysname);
+  TMatrixD GetCov(TH1* central,const vector<const TH1*>& variations,Systematic::Type type);
   static double Trace(TMatrixD mat);
   int AddError(TH1* hist,TH1* sys) const;
   void AddSystematic(TString key,TString title,Systematic::Type type,vector<TString> includes,TString tag="");
@@ -102,7 +109,7 @@ public:
   static TH1* GetAxisParent(TVirtualPad* pad=NULL);
   static TLegend* GetLegend(TVirtualPad* pad=NULL);
   static void SetLegendEntryLabel(TLegend* legend,int i,TString label);
-  TH1* GetTH1(TH1* hstack,bool deleteorigin=false) const;
+  TH1* GetTH1(const TH1* hstack,bool deleteorigin=false) const;
   void DrawHistograms(Plot p);
   static vector<TH1*> VectorTH1(const vector<Hists>& hists);
   pair<double,double> GetMinMax(const vector<TH1*>& hists,TString option="") const;
@@ -333,7 +340,7 @@ TH1* Plotter::GetHist(TString samplekey,TString plotkey,TString additional_optio
   return GetHist(samples[samplekey],MakePlot(plotkey,additional_option));
 }
 TH1* Plotter::GetHist(int ientry,TString plotkey,TString additional_option){
-  if(entries.size()<=ientry){
+  if((int)entries.size()<=ientry){
     PError("[Plotter::GetHist] entries.size()<=ientry");
     return NULL;
   }
@@ -702,33 +709,60 @@ TH1* Plotter::GetHistFromFile(TString filename,TString histname){
 void Plotter::GetHistActionForAdditionalClass(TObject*& obj,Plot p){
   PError((TString)"[Plotter::GetHistActionForAdditionalClass(TObject*& obj,Plot p)] Unsupported class "+obj->ClassName());
 }
-Hists Plotter::GetHistSys(TString samplekey,TString plotkey,TString additional_option){
-  return GetHistSys(samples[samplekey],MakePlot(plotkey,additional_option));
+Hists Plotter::GetHistVariations(TString samplekey,TString plotkey,TString additional_option){
+  return GetHistVariations(samples[samplekey],MakePlot(plotkey,additional_option));
 }
-Hists Plotter::GetHistSys(int ientry,TString plotkey,TString additional_option){
-  if(entries.size()<=ientry){
-    PError("[Plotter::GetHist] entries.size()<=ientry");
+Hists Plotter::GetHistVariations(int ientry,TString plotkey,TString additional_option){
+  if((int)entries.size()<=ientry){
+    PError("[Plotter::GetHistVariations] entries.size()<=ientry");
     return Hists();
   }
-  return GetHistSys(entries[ientry],MakePlot(plotkey,additional_option));
+  return GetHistVariations(entries[ientry],MakePlot(plotkey,additional_option));
 } 
-Hists Plotter::GetHistSys(const Sample& sample,const Plot& p){
-  PInfo("[Plotter::GetHistSys] "+sample.title+" "+p.name+" "+p.histname+" "+p.sysname);_depth++;
+Hists Plotter::GetHistVariations(const Sample& sample,const Plot& p){
+  PInfo("[Plotter::GetHistVariations] "+sample.title+" "+p.name+" "+p.histname+" "+p.sysname);_depth++;
 
   Hists hists;
   hists.push_back(GetHist(sample,p));
+  hists.entity=&sample;
 
   if(p.sysname!=""&&hists.at(0)){
     if(systematics.find(p.sysname)!=systematics.end()){
-      TH1* hist0=GetTH1(hists.at(0));
-      const Systematic& systematic=systematics[p.sysname];
+      map<TString,TString> variations=GetSystematicSuffixes(p.sysname);
+      for(auto& [suffix,variation]:variations){
+	TH1* this_hist=NULL;
+	if(sample.HasTag(GetTagFromVariation(variation))){
+	  this_hist=GetHist(sample,p,variation);
+	  this_hist=GetTH1(this_hist,true);
+	}
+	hists.variations[suffix]=this_hist;
+      }
+      if(p.option.Contains("shapesys")){
+	TString integraloption="";
+	if(p.option.Contains("widthweight")) integraloption="width";
+	TH1* hist0=GetTH1(hists.at(0));
+	double val=hist0->Integral(integraloption);
+	for(auto& [suffix,h]:hists.variations){
+	  if(h) h->Scale(val/h->Integral(integraloption));
+	}
+	delete hist0;
+      }
+    }
+  }
+  if(hists.at(0)){
+    sample.ApplyStyle(hists.at(0));
+  }
+  _depth--;
+  return hists;
+}
+/*
       if(systematic.type==Systematic::Type::MULTI){
 	vector<TH1*> syss;
 	for(const auto& this_key:systematic.keys){
 	  if(systematics.find(this_key)==systematics.end()){
-	    PError("[Plotter::GetHistSys] no systematic with key "+this_key);
+	    PError("[Plotter::GetHistVariations] no systematic with key "+this_key);
 	  }else{
-	    Hists this_histsys=GetHistSys(sample,p+("sysname:"+this_key)-"sysdetail"+"notaddsys");
+	    Hists this_histsys=GetHistVariations(sample,p+("sysname:"+this_key)-"sysdetail"+"notaddsys");
 	    if(this_histsys.size()==2){
 	      //this_histsys.at(1)->SetName(this_key);
 	      //this_histsys.at(1)->SetTitle(systematics[this_key].title);
@@ -745,7 +779,7 @@ Hists Plotter::GetHistSys(const Sample& sample,const Plot& p){
 		  hists.subcovs[title]=this_histsys.cov;
 		}
 	      }
-	    }else if(this_histsys.size()>2) PError("[Plotter::GetHistSys] this_histsys.size() > 2");
+	    }else if(this_histsys.size()>2) PError("[Plotter::GetHistVariations] this_histsys.size() > 2");
 	  }
 	}
 	if(syss.size()>0){
@@ -770,14 +804,14 @@ Hists Plotter::GetHistSys(const Sample& sample,const Plot& p){
 	  }
 	}
       }else if(sample.HasTag(systematic.tag)){
-	PDebug("[Plotter::GetHistSys] sysname='"+p.sysname+"' systype='"+systematic.GetTypeString()+"'");
+	PDebug("[Plotter::GetHistVariations] sysname='"+p.sysname+"' systype='"+systematic.GetTypeString()+"'");
 	vector<TH1*> variations;
 	for(const auto& option_variation:systematic.variations){
 	  TH1* this_hist=GetHist(sample,p,option_variation);
 	  this_hist=GetTH1(this_hist,true);
 	  variations.push_back(this_hist);
 	}
-	PDebug("[Plotter::GetHistSys] '"+p.sysname+"': "+variations.size()+" variations");
+	PDebug("[Plotter::GetHistVariations] '"+p.sysname+"': "+variations.size()+" variations");
 	if(p.option.Contains("shapesys")){
 	  TString integraloption="";
 	  if(p.option.Contains("widthweight")) integraloption="width";
@@ -839,7 +873,7 @@ Hists Plotter::GetHistSys(const Sample& sample,const Plot& p){
 	  }else if(systematic.type==Systematic::Type::CORRELATED){
 	    histsys=GetCorrelatedError(hist0,variations);
 	  }else{
-	    PError((TString)"[Plotter::GetHistSys] Wrong Systematic::Type "+Form("%d",systematic.type));
+	    PError((TString)"[Plotter::GetHistVariations] Wrong Systematic::Type "+Form("%d",systematic.type));
 	  }
 	  if(histsys){
 	    sample.ApplyStyle(histsys,true);
@@ -854,16 +888,11 @@ Hists Plotter::GetHistSys(const Sample& sample,const Plot& p){
       }
       delete hist0;
     }
-    //sample.ApplyStyle(total,true);
-  }
-  for(int i=0,n=hists.size();i<n;i++)
-    sample.ApplyStyle(hists.at(i),i);
-  _depth--;
-  return hists;
-}
+*/
+
 vector<Hists> Plotter::GetHists(Plot& p){
   vector<Hists> hists;
-  for(const auto& entry:entries) hists.push_back(GetHistSys(entry,p));
+  for(const auto& entry:entries) hists.push_back(GetHistVariations(entry,p));
   if(p.option.Contains("norm")&&hists.size()>1){
     TH1* h=GetTH1(hists.at(0).at(0));
     if(h){
@@ -905,6 +934,13 @@ vector<Hists> Plotter::GetHists(Plot& p){
 /////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// Uncertainty //////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
+TString Plotter::GetTagFromVariation(TString variation){
+  vector<TString> words=Split(variation,",");
+  if(words.size()==3){
+    return words[2];
+  }
+  return "";
+}
 set<TString> Plotter::GetSystematicVariations(TString sysname){
   set<TString> rt;
   auto it=systematics.find(sysname);
@@ -943,14 +979,14 @@ map<TString,TString> Plotter::GetSystematicSuffixes(TString sysname){
   }
   return rt;
 }
-TH1* Plotter::GetEnvelope(TH1* central,const vector<TH1*>& variations){
+TH1* Plotter::GetEnvelope(TH1* central,const vector<const TH1*>& variations){
   PAll("[Plotter::GetEnvelope]");
   if(strstr(central->ClassName(),"THStack")) central=GetTH1(central);
   TH1* syshist=(TH1*)central->Clone("sys");
   syshist->SetDirectory(pdir);
-  for(int i=1;i<syshist->GetNbinsX()+1;i++) syshist->SetBinError(i,0);
+  for(int i=0;i<syshist->GetNbinsX()+2;i++) syshist->SetBinError(i,0);
   for(int i=0;i<(int)variations.size();i++){
-    for(int j=0;j<syshist->GetNbinsX()+1;j++){
+    for(int j=0;j<syshist->GetNbinsX()+2;j++){
       double diff=fabs(syshist->GetBinContent(j)-variations.at(i)->GetBinContent(j));
       if(diff>syshist->GetBinError(j)) syshist->SetBinError(j,diff);
     }
@@ -958,7 +994,7 @@ TH1* Plotter::GetEnvelope(TH1* central,const vector<TH1*>& variations){
   return syshist;
 }
 TH1* Plotter::GetEnvelope(TH1* central,TH1* variation1,TH1* variation2,TH1* variation3,TH1* variation4,TH1* variation5,TH1* variation6,TH1* variation7,TH1* variation8,TH1* variation9){
-  vector<TH1*> variations;
+  vector<const TH1*> variations;
   if(variation1) variations.push_back(variation1);
   if(variation2) variations.push_back(variation2);
   if(variation3) variations.push_back(variation3);
@@ -970,28 +1006,28 @@ TH1* Plotter::GetEnvelope(TH1* central,TH1* variation1,TH1* variation2,TH1* vari
   if(variation9) variations.push_back(variation9);
   return GetEnvelope(central,variations);
 }    
-TH1* Plotter::GetHessianError(TH1* central,const vector<TH1*>& variations){
+TH1* Plotter::GetHessianError(TH1* central,const vector<const TH1*>& variations){
   PAll("[Plotter::GetHessianError]");
   if(strstr(central->ClassName(),"THStack")) central=GetTH1(central);
   TH1* syshist=(TH1*)central->Clone("sys");
   syshist->SetDirectory(pdir);
-  for(int i=1;i<syshist->GetNbinsX()+1;i++) syshist->SetBinError(i,0);
+  for(int i=0;i<syshist->GetNbinsX()+2;i++) syshist->SetBinError(i,0);
   for(int i=0;i<(int)variations.size();i++){
-    for(int j=0;j<syshist->GetNbinsX()+1;j++){
+    for(int j=0;j<syshist->GetNbinsX()+2;j++){
       double diff=fabs(syshist->GetBinContent(j)-variations.at(i)->GetBinContent(j));
       syshist->SetBinError(j,sqrt(pow(syshist->GetBinError(j),2)+pow(diff,2)));
     }
   }
   return syshist;
 }  
-TH1* Plotter::GetRMSError(TH1* central,const vector<TH1*>& variations){
+TH1* Plotter::GetRMSError(TH1* central,const vector<const TH1*>& variations){
   PAll("[Plotter::GetRMSError]");
   if(strstr(central->ClassName(),"THStack")) central=GetTH1(central);
   TH1* syshist=(TH1*)central->Clone("sys");
   syshist->SetDirectory(pdir);
-    for(int i=1;i<syshist->GetNbinsX()+1;i++) syshist->SetBinError(i,0);
+  for(int i=0;i<syshist->GetNbinsX()+2;i++) syshist->SetBinError(i,0);
   for(int i=0;i<(int)variations.size();i++){
-    for(int j=0;j<syshist->GetNbinsX()+1;j++){
+    for(int j=0;j<syshist->GetNbinsX()+2;j++){
       double diff=fabs(syshist->GetBinContent(j)-variations.at(i)->GetBinContent(j));
       syshist->SetBinError(j,sqrt(pow(syshist->GetBinError(j),2)+pow(diff,2)));
     }
@@ -999,7 +1035,7 @@ TH1* Plotter::GetRMSError(TH1* central,const vector<TH1*>& variations){
   for(int i=1;i<syshist->GetNbinsX()+1;i++) syshist->SetBinError(i,syshist->GetBinError(i)/sqrt(variations.size()));
   return syshist;
 }
-TH1* Plotter::GetCorrelatedError(TH1* central,const vector<TH1*>& variations){
+TH1* Plotter::GetCorrelatedError(TH1* central,const vector<const TH1*>& variations){
   PAll("[Plotter::GetCorrelatedError]");
   if(strstr(central->ClassName(),"THStack")) central=GetTH1(central);
   TH1* syshist=(TH1*)central->Clone("sys");
@@ -1014,8 +1050,125 @@ TH1* Plotter::GetCorrelatedError(TH1* central,const vector<TH1*>& variations){
     syshist->SetBinError(j,total_diff);
   }
   return syshist;
-}  
-TMatrixD Plotter::GetCov(TH1* central,const vector<TH1*>& variations,Systematic::Type type){
+}
+TH1* Plotter::GetHistSys(TH1* hist0,const vector<const TH1*>& variations,Systematic::Type type){
+  TH1* histsys=NULL;
+  if(type==Systematic::Type::ENVELOPE){
+    histsys=GetEnvelope(hist0,variations);
+  }else if(type==Systematic::Type::GAUSSIAN){
+    histsys=GetRMSError(hist0,variations);
+  }else if(type==Systematic::Type::HESSIAN){
+    histsys=GetHessianError(hist0,variations);
+  }else if(type==Systematic::Type::CORRELATED){
+    histsys=GetCorrelatedError(hist0,variations);
+  }else{
+    PError((TString)"[Plotter::GetHistSys] Wrong Systematic::Type "+Form("%d",type));
+  }
+  return histsys;
+}
+TH1* Plotter::GetHistSys(Hists& hists,TString sysname){
+  TH1* histsys=NULL;
+  if(sysname=="") return histsys;
+  if(systematics.find(sysname)==systematics.end()){
+    PError("[Plotter::GetHistSys] no systematic "+sysname);
+    return histsys;
+  }
+  Systematic& systematic=systematics[sysname];
+  if(systematic.type==Systematic::MULTI){
+    for(const auto& this_key:systematic.keys){
+      if(systematics.find(this_key)==systematics.end()){
+	PError("[Plotter::GetHistSys] no systematic with key "+this_key);
+      }else{
+	TH1* this_histsys=GetHistSys(hists,this_key);
+	if(histsys){
+	  AddError(histsys,this_histsys);
+	  this_histsys->SetDirectory(0);
+	  delete this_histsys;
+	}else{
+	  histsys=this_histsys;
+	}
+      }
+    }
+  }else{
+    vector<const TH1*> variations;
+    for(auto& [suffix,variation]:GetSystematicSuffixes(sysname)){
+      variations.push_back(hists[suffix]);
+    }
+    histsys=GetHistSys(hists.at(0),variations,systematic.type);
+  }
+  if(histsys){
+    histsys->SetName(systematic.title);
+  }
+  return histsys;
+}
+void Plotter::EvalHistSyss(Plot& p){
+  if(p.sysname=="") return;
+  if(systematics.find(p.sysname)==systematics.end()){
+    PError("[Plotter::GetHistSys] no systematic "+p.sysname);
+  }
+  Systematic& systematic=systematics[p.sysname];
+  for(Hists& hists:p.hists){
+    hists.resize(1);
+    if(p.option.Contains("sysdetail")){
+      if(systematic.type==Systematic::Type::MULTI){
+	for(const auto& this_key:systematic.keys){
+	  hists.push_back(GetHistSys(hists,this_key));
+	}
+      }else{
+	for(auto& [suffix,variation]:GetSystematicSuffixes(p.sysname)){
+	  hists.push_back((TH1*)hists[suffix]->Clone());
+	}
+      }
+    }else{
+      hists.push_back(GetHistSys(hists,p.sysname));
+    }
+    
+    if(!p.option.Contains("notaddsys")
+       &&!(p.option.Contains("sysdetail")&&systematic.type!=Systematic::Type::MULTI)){
+      for(int i=1,n=hists.size();i<n;i++){
+	AddError(hists.at(i),hists.at(i-1));
+      }
+    }
+  }
+}
+TMatrixD Plotter::GetCov(Hists& hists0,Hists& hists1,TString sysname){
+  Hists hists_diff;
+  hists_diff.push_back(GetTH1(hists1.at(0)));
+  hists_diff.at(0)->Add(hists0.at(0),-1);
+  for(auto& [suffix,variation]:hists0.variations){
+    hists_diff.variations[suffix]=GetTH1(hists1[suffix]);
+    hists_diff.variations[suffix]->Add(hists0[suffix],-1);
+  }
+  return GetCov(hists_diff,sysname);
+}
+TMatrixD Plotter::GetCov(Hists& hists, TString sysname){
+  int ifirst=hists.at(0)->GetXaxis()->GetFirst();
+  int ilast=hists.at(0)->GetXaxis()->GetLast();
+  TMatrixD cov(ifirst,ilast,ifirst,ilast);
+  if(sysname=="") return cov;
+  if(systematics.find(sysname)==systematics.end()){
+    PError("[Plotter::GetCov] no systematic "+sysname);
+    return cov;
+  }
+  Systematic& systematic=systematics[sysname];
+  if(systematic.type==Systematic::MULTI){
+    for(const auto& this_key:systematic.keys){
+      if(systematics.find(this_key)==systematics.end()){
+	PError("[Plotter::GetCov] no systematic with key "+this_key);
+      }else{
+	cov+=GetCov(hists,this_key);
+      }
+    }
+  }else{
+    vector<const TH1*> variations;
+    for(auto& [suffix,variation]:GetSystematicSuffixes(sysname)){
+      variations.push_back(hists[suffix]);
+    }
+    cov=GetCov(hists.at(0),variations,systematic.type);
+  }
+  return cov;
+}
+TMatrixD Plotter::GetCov(TH1* central,const vector<const TH1*>& variations,Systematic::Type type){
   int ifirst=central->GetXaxis()->GetFirst();
   int ilast=central->GetXaxis()->GetLast();
   TMatrixD cov(ifirst,ilast,ifirst,ilast);
@@ -1111,6 +1264,7 @@ int Plotter::AddError(TH1* hist,TH1* sys) const {
       PError("[Plotter::AddError] systematic hist is wrong");
       std::cout.precision(20);
       std::cout<<i<<" "<<hist->GetBinContent(i)<<" "<<sys->GetBinContent(i)<<" "<<fabs(hist->GetBinContent(i)-sys->GetBinContent(i))<<endl;
+      std::cout<<hist->GetName()<<" "<<hist->GetTitle()<<" "<<sys->GetName()<<" "<<sys->GetTitle()<<endl;
       return -1;
     }
   }
@@ -1128,6 +1282,15 @@ int Plotter::AddError(TH1* hist,TH1* sys) const {
 /////////////////////////////////////////////////////////////////////////////
 void Plotter::DrawHistograms(Plot p){
   if(!p.hists.size()) return;
+
+  for(Hists& hists:p.hists){
+    if(hists.entity){
+      for(int i=0,n=hists.size();i<n;i++){
+	hists.entity->ApplyStyle(hists.at(i),i);
+      }
+    }
+  }
+
   for(const vector<TH1*>& hists:p.hists){
     if(hists.size()&&hists.at(0)){
       if(hists.at(0)->InheritsFrom("THStack")){
@@ -1180,6 +1343,7 @@ void Plotter::DrawCompare(Plot p){
   PInfo("[Plotter::DrawCompare] "+p.option);_depth++;
   if(!gPad) gROOT->MakeDefCanvas();
 
+  EvalHistSyss(p);
   DrawHistograms(p);
   TH1* axisparent=GetAxisParent();
   axisparent->SetTickLength(0.015,"Y");
@@ -1246,27 +1410,36 @@ void Plotter::DrawCompare(Plot p){
 vector<Hists> Plotter::GetRatioHists(Plot p){
   TH1* base=NULL;
   TString baseopt=p.option("base:[0-9]*");
-  if(baseopt!="") base=GetTH1(p.hists[((TString)baseopt(5,100)).Atoi()][0]);
-  else if(p.hists.size()==2) base=GetTH1(p.hists[1][0]);
-  else base=GetTH1(p.hists[0][0]);
+  int ibase=0;
+  if(baseopt!=""){
+    ibase=((TString)baseopt(5,100)).Atoi();
+  }else if(p.hists.size()==2){
+    ibase=1;
+  }else{
+    ibase=0;
+  }
+  base=GetTH1(p.hists[ibase][0]);
     
   vector<Hists> hists_new;
   if(base){
     for(int i=0;i<base->GetNbinsX()+2;i++){
       base->SetBinError(i,0);
     }
-    for(const vector<TH1*>& this_hists:p.hists){
-      Hists this_hists_new;
-      for(const auto& hist:this_hists){
-	TH1* hist_new=NULL;
-	if(hist){
-	  hist_new=GetTH1(hist);
-	  hist_new->Divide(base);
-	}
-	this_hists_new.push_back(hist_new);
-      }
+    for(const Hists this_hists:p.hists){
+      Hists this_hists_new=this_hists.Clone();
+      this_hists_new.Divide(base);
       hists_new.push_back(move(this_hists_new));
     }  
+    if(p.option.Contains("movesys")){
+      if(entries.size()!=2){
+	PError(Form("[Plotter::GetRatioHists] movesys fail entries.size()=%zu!=2",entries.size()));
+      }
+      Hists hists_temp=p.hists[1-ibase].Clone();
+      hists_temp.Divide(p.hists[ibase]);
+      hists_temp.Divide(hists_new[1-ibase].at(0));
+      hists_new[1-ibase].variations.clear();
+      hists_new[ibase].variations=hists_temp.variations;
+    }
     delete base;
   }
   return hists_new;
@@ -1550,23 +1723,23 @@ void Plotter::DrawDoubleRatio(Plot& p){
     baseindex=1;
     TString baseopt=p.option("base:[0-9]*");
     if(baseopt!="") baseindex=((TString)baseopt(5,100)).Atoi();
-    for(int i=0;i<vec_hists[baseindex].size();i++){
+    for(int i=0,n=vec_hists[baseindex].size();i<n;i++){
       TH1* hist=vec_hists[baseindex][i][0];
       bool flag=false;
       for(int j=1;j<hist->GetNbinsX()+1;j++) if(hist->GetBinContent(j)!=1.) flag=true;
       if(!flag){
-	for(int j=0;j<vec_hists.size();j++){
+	for(int j=0,nj=vec_hists.size();j<nj;j++){
 	  vec_hists[j].erase(vec_hists[j].begin()+i);
 	}
       }
     }
     vector<Hists> hists_new;
-    for(int i=0;i<vec_hists[baseindex].size();i++){
+    for(int i=0,ni=vec_hists[baseindex].size();i<ni;i++){
       TH1* base=(TH1*)vec_hists[baseindex][i][0]->Clone();
       for(int j=0;j<base->GetNbinsX()+2;j++) base->SetBinError(j,0);
-      for(int j=0;j<vec_hists.size();j++){
+      for(int j=0,nj=vec_hists.size();j<nj;j++){
 	Hists this_hists_new;
-	for(int k=0;k<vec_hists[j][i].size();k++){
+	for(int k=0,nk=vec_hists[j][i].size();k<nk;k++){
 	  if(vec_hists[j][i][k]) vec_hists[j][i][k]->Divide(base);
 	  this_hists_new.push_back(vec_hists[j][i][k]);
 	}
@@ -1643,8 +1816,10 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
     int ifirst=hist0->GetXaxis()->GetFirst();
     int ilast=hist0->GetXaxis()->GetLast();
     TMatrixD cov_syst(ifirst,ilast,ifirst,ilast);
-    if(p.hists[0].cov.GetNrows()!=0) cov_syst+=p.hists[0].cov;
-
+    if(p.sysname!=""){
+      if(p.hists.size()==1) cov_syst+=GetCov(p.hists[0],p.sysname);
+      if(p.hists.size()==2) cov_syst+=GetCov(p.hists[0],p.hists[1],p.sysname);
+    }
     TH1D* hist1=NULL;
     if(p.hists.size()>1){
       hist1=(TH1D*)GetTH1(p.hists[1][0]);
@@ -1753,7 +1928,8 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
 	c->cd();	
       }
     }
-    delete hist0,hist1;
+    if(hist0) delete hist0;
+    if(hist1) delete hist1;
   }
   c->Update();
   c->Modified();
@@ -1835,18 +2011,18 @@ void Plotter::SavePlotAll(){
 ////////////////////////////// Table ////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 void Plotter::PrintTable(int ientry,TString plotkey,TString option){
-  Hists hists=GetHistSys(entries[ientry],MakePlot(plotkey,option));
+  Hists hists=GetHistVariations(entries[ientry],MakePlot(plotkey,option));
   if(hists.size()==0||!hists[0]) return;
   TH1* hist=GetTH1(hists[0]);
   cout<<"bin\t";
-  for(int j=0;j<hists.size();j++){
+  for(int j=0,nj=hists.size();j<nj;j++){
     if(j==0) cout<<hists[j]->GetName()<<" stat ";
     else cout<<hists[j]->GetName()<<" ";
   }
   cout<<endl;
   for(int i=hist->GetXaxis()->GetFirst();i<hist->GetXaxis()->GetLast()+1;i++){
     cout<<hist->GetXaxis()->GetBinLowEdge(i)<<"<=x<"<<hist->GetXaxis()->GetBinLowEdge(i+1)<<" ";
-    for(int j=0;j<hists.size();j++){
+    for(int j=0,nj=hists.size();j<nj;j++){
       double scale=1.;
       if(option.Contains("percent")) scale=fabs(100./hists[j]->GetBinContent(i));
       else if(option.Contains("relerr")) scale=fabs(1/hists[j]->GetBinContent(i));
@@ -1905,7 +2081,7 @@ void Plotter::SetLegendEntryLabel(TLegend* legend,int i,TString label){
   TLegendEntry* entry=(TLegendEntry*)list->At(i);
   entry->SetLabel(label);
 }
-TH1* Plotter::GetTH1(TH1* hstack,bool deleteorigin) const{
+TH1* Plotter::GetTH1(const TH1* hstack,bool deleteorigin) const{
   PAll("[Plotter::GetTH1(TH1* hstack)]");
   TH1* hist=NULL;
   if(hstack){
@@ -2055,10 +2231,17 @@ vector<double> Plotter::Normalize(vector<TH1*> hists,double val,TString option){
   return scales;
 }
 vector<vector<double>> Plotter::Normalize(vector<Hists> histss,double val,TString option){
-  vector<vector<double>> scales;
-  for(auto& hists:histss)
-    scales.push_back(Normalize(hists,val,option));
-  return scales;
+  vector<vector<double>> scaless;
+  for(auto& hists:histss){
+    vector<double> scales=Normalize(hists,val,option);
+    scaless.push_back(scales);
+    for(auto& [suffix,hist]:hists.variations){
+      if(hist){
+	hist->Scale(scales.at(0));
+      }
+    }
+  }
+  return scaless;
 }
 void Plotter::WidthWeight(TH1* hist){
   PAll("[Plotter::WidthWeight(TH1* hist)]");
