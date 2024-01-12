@@ -13,8 +13,8 @@ TH1* AFBSystPlotter::GetHist(const Sample& sample,Plot plot,TString additional_o
   TH1* hist=NULL;
   plot.SetOption(additional_option);
   if(plot.option.Contains("AFB")){
-    TH1* hist_forward=GetHist(sample,plot-"AFB"," Ymin:0 Ymax:1"); 
-    TH1* hist_backward=GetHist(sample,plot-"AFB"," Ymin:-1 Ymax:0");
+    TH1* hist_forward=GetHist(sample,plot-"AFB"," Ymin:0 Ymax:1 project:x"); 
+    TH1* hist_backward=GetHist(sample,plot-"AFB"," Ymin:-1 Ymax:0 project:x");
     hist=GetHistAFB(hist_forward,hist_backward);
   }
   if(hist){
