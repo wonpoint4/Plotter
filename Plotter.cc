@@ -61,6 +61,7 @@ public:
   Hists GetHistVariations(int ientry,TString plotkey,TString additional_option="");
   Hists GetHistVariations(const Sample& sample,const Plot& plot);
   vector<Hists> GetHists(Plot& plot);
+  void Blind(Plot& p);
 
   //Systematic
   static TString GetTagFromVariation(TString variation);
@@ -909,27 +910,35 @@ vector<Hists> Plotter::GetHists(Plot& p){
       }
     }
   }
+  return hists;
+}
+void Plotter::Blind(Plot& p){
   if(p.blind_xmin||p.blind_xmax){
     for(int i=0,n=entries.size();i<n;i++){
       if(entries[i].HasTag("data",false)){
-	for(auto& h:hists.at(i)){
+	for(auto& h:p.hists.at(i)){
 	  if(!h) continue;
 	  int binmin=0,binmax=h->GetNcells();
 	  if(p.blind_xmin!=p.blind_xmax){
 	    binmin=h->FindBin(p.blind_xmin);
 	    binmax=h->FindBin(p.blind_xmax);
 	  }
-	  for(int ibin=binmin;ibin<binmax;ibin++){
-	    h->SetBinContent(ibin,0);
-	    //h->SetBinError(ibin,0);
+	  if(i==0&&entries.size()==2&&p.hists.at(1).at(0)){
+	    for(int ibin=binmin;ibin<binmax;ibin++){
+	      h->SetBinContent(ibin,p.hists.at(1).at(0)->GetBinContent(ibin));
+	      //h->SetBinError(ibin,0);
+	    }	    
+	  }else{
+	    for(int ibin=binmin;ibin<binmax;ibin++){
+	      h->SetBinContent(ibin,0);
+	      //h->SetBinError(ibin,0);
+	    }
 	  }
 	}
       }
     }
   }
-  return hists;
-}  
-
+}
 
 /////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// Uncertainty //////////////////////////////////
@@ -1344,6 +1353,7 @@ void Plotter::DrawCompare(Plot p){
   if(!gPad) gROOT->MakeDefCanvas();
 
   EvalHistSyss(p);
+  Blind(p);
   DrawHistograms(p);
   TH1* axisparent=GetAxisParent();
   axisparent->SetTickLength(0.015,"Y");
@@ -1854,8 +1864,10 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
     }
     if(p.option.Contains("chi2detail")){
       {
-	int ncov=p.hists[1].subcovs.size()+3;
-	if(systematics[p.sysname].type==Systematic::Type::MULTI) ncov--;
+	int ncov=3;
+	if(systematics[p.sysname].type==Systematic::Type::MULTI){
+	  ncov=2+systematics[p.sysname].keys.size();
+	}
 	TString toptitle=p.title;
 	if(p.sysname!="") toptitle+="_"+p.sysname;
 	if(p.replace_old!=""||p.replace_new!="") TPRegexp(p.replace_old).Substitute(toptitle,p.replace_new);
@@ -1884,16 +1896,15 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
 	  nominal->SetBinContent(icov,chi2);
 	  up->SetBinContent(icov,GetChi2(hist0,hist1,cov+3.*cov_syst));
 	  down->SetBinContent(icov,GetChi2(hist0,hist1,cov-cov_syst));
-	}
-	for(const auto& [key,dummy]:p.hists[1].subcovs){
-	  TMatrixD this_cov(ifirst,ilast,ifirst,ilast);
-	  if(p.hists[0].subcovs.find(key)!=p.hists[0].subcovs.end()&&p.hists[0].subcovs[key].GetNcols()) this_cov+=p.hists[0].subcovs[key];
-	  if(p.hists[1].subcovs.find(key)!=p.hists[1].subcovs.end()&&p.hists[1].subcovs[key].GetNcols()) this_cov+=p.hists[1].subcovs[key];
-	  nominal->GetXaxis()->SetBinLabel(++icov,key);
-	  nominal->SetBinContent(icov,chi2);
-	  up->SetBinContent(icov,GetChi2(hist0,hist1,cov+3.*this_cov));
-	  //down->SetBinContent(icov,GetChi2(hist0,hist1,cov-3./4.*this_cov));
-	  down->SetBinContent(icov,GetChi2(hist0,hist1,cov-this_cov));
+	}else{
+	  for(const auto& key:systematics[p.sysname].keys){
+	    TMatrixD this_cov=GetCov(p.hists[0],p.hists[1],key);
+	    nominal->GetXaxis()->SetBinLabel(++icov,key);
+	    nominal->SetBinContent(icov,chi2);
+	    up->SetBinContent(icov,GetChi2(hist0,hist1,cov+3.*this_cov));
+	    //down->SetBinContent(icov,GetChi2(hist0,hist1,cov-3./4.*this_cov));
+	    down->SetBinContent(icov,GetChi2(hist0,hist1,cov-this_cov));
+	  }
 	}
 	nominal->GetXaxis()->LabelsOption("v");
 
@@ -1925,6 +1936,9 @@ TCanvas* Plotter::DrawPlot(Plot p,TString additional_option){
 	hchi2->GetYaxis()->SetRangeUser(ndf*0.5,ndf*3);
 	hchi2->Draw("hist");
 	cchi2impact->SetGridx();
+	if(p.option.Contains("logx")){
+	  cchi2impact->SetLogx();
+	}
 	c->cd();	
       }
     }
