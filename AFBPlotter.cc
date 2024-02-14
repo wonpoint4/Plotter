@@ -255,15 +255,27 @@ void AFBPlotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot){
   if(strstr(obj->ClassName(),"TH4D")!=NULL){
     if(plot.option.Contains("noproject")) return;
     TH4D* hist4d=(TH4D*)obj;
-    if(plot.rebinX!=""||plot.rebinY!=""||plot.rebinZ!=""||plot.rebinU!=""||plot.option.Contains("absY")){
+    if(plot.rebinX!=""||plot.rebinY!=""||plot.rebinZ!=""||plot.rebinU!=""||plot.option.Contains("absX")||plot.option.Contains("absY")||plot.option.Contains("absZ")||plot.option.Contains("absU")){
       vector<double> binsX= plot.rebinX!="" ? VectorDouble(plot.rebinX) : GetAxisVector(hist4d->GetXaxis());
       vector<double> binsY= plot.rebinY!="" ? VectorDouble(plot.rebinY) : GetAxisVector(hist4d->GetYaxis());
+      vector<double> binsZ= plot.rebinZ!="" ? VectorDouble(plot.rebinZ) : GetAxisVector(hist4d->GetZaxis());
+      vector<double> binsU= plot.rebinU!="" ? VectorDouble(plot.rebinU) : GetAxisVector(hist4d->GetUaxis());
+      if(plot.option.Contains("absX")){
+	binsX.assign(binsX.end()-binsX.size()/2-1,binsX.end());
+	binsX[0]=0.;
+      }
       if(plot.option.Contains("absY")){
 	binsY.assign(binsY.end()-binsY.size()/2-1,binsY.end());
 	binsY[0]=0.;
       }
-      vector<double> binsZ= plot.rebinZ!="" ? VectorDouble(plot.rebinZ) : GetAxisVector(hist4d->GetZaxis());
-      vector<double> binsU= plot.rebinU!="" ? VectorDouble(plot.rebinU) : GetAxisVector(hist4d->GetUaxis());
+      if(plot.option.Contains("absZ")){
+	binsZ.assign(binsZ.end()-binsZ.size()/2-1,binsZ.end());
+	binsZ[0]=0.;
+      }
+      if(plot.option.Contains("absU")){
+	binsU.assign(binsU.end()-binsU.size()/2-1,binsU.end());
+	binsU[0]=0.;
+      }
       TH4D* hist4d_rebin=new TH4D(hist4d->GetName(),hist4d->GetTitle(),binsX.size()-1,&binsX[0],binsY.size()-1,&binsY[0],binsZ.size()-1,&binsZ[0],binsU.size()-1,&binsU[0]);
       for(int ix=0;ix<hist4d->GetXaxis()->GetNbins()+2;ix++){
 	for(int iy=0;iy<hist4d->GetYaxis()->GetNbins()+2;iy++){
@@ -271,9 +283,12 @@ void AFBPlotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot){
 	    for(int iu=0;iu<hist4d->GetUaxis()->GetNbins()+2;iu++){
 	      double x=hist4d->GetXaxis()->GetBinCenter(ix);
 	      double y=hist4d->GetYaxis()->GetBinCenter(iy);
-	      if(plot.option.Contains("absY")) y=fabs(y);
 	      double z=hist4d->GetZaxis()->GetBinCenter(iz);
 	      double u=hist4d->GetUaxis()->GetBinCenter(iu);
+	      if(plot.option.Contains("absX")) x=fabs(x);
+	      if(plot.option.Contains("absY")) y=fabs(y);
+	      if(plot.option.Contains("absZ")) z=fabs(z);
+	      if(plot.option.Contains("absU")) u=fabs(u);
 	      int ibin=hist4d_rebin->FindBin(x,y,z,u);
 	      hist4d_rebin->SetBinContent(ibin,hist4d_rebin->GetBinContent(ibin)+hist4d->GetBinContent(ix,iy,iz,iu));
 	      hist4d_rebin->SetBinError(ibin,sqrt(pow(hist4d_rebin->GetBinError(ibin),2)+pow(hist4d->GetBinError(ix,iy,iz,iu),2)));
@@ -283,9 +298,6 @@ void AFBPlotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot){
       }	
       delete hist4d;
       hist4d=hist4d_rebin;
-    }
-    if(plot.option.Contains("absY")){
-      
     }
     int ixmin=0,iymin=0,izmin=0,iumin=0;
     int ixmax=-1,iymax=-1,izmax=-1,iumax=-1;

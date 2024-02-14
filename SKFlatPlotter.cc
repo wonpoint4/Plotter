@@ -164,11 +164,12 @@ void SKFlatPlotter::SetupSystematics(){
   AddSystematic("btagl","b tagging (light)",Systematic::Type::ENVELOPE,"_btagSF_lup _btagSF_ldown","sim");
   AddSystematic("btag","b tagging",Systematic::Type::MULTI,"btagh btagl");
 
-  AddSystematic("bcharge","b charge determination",Systematic::Type::ENVELOPE,"_bchargeSF_up _bchargeSF_down","sim");
+  AddSystematic("bcharge","b charge determination",Systematic::Type::HESSIAN,"_bchargeSF_s0m0 _bchargeSF_s0m1","sim");
 
-  AddSystematic("JES","JES",Systematic::Type::ENVELOPE,"_jet_scale_up _jet_scale_down","sim");
+  AddSystematic("JES_data","JES (data)",Systematic::Type::ENVELOPE,"_jet_scale_up _jet_scale_down","data");
+  AddSystematic("JES_sim","JES (sim.)",Systematic::Type::ENVELOPE,"_jet_scale_up _jet_scale_down","sim");
   AddSystematic("JER","JER",Systematic::Type::ENVELOPE,"_jet_smear_up _jet_smear_down","sim");
-  AddSystematic("JEC","JEC",Systematic::Type::MULTI,"JES JER");
+  AddSystematic("JEC","JEC",Systematic::Type::MULTI,"JES_data JES_sim JER");
   
   int nreplica=20;
   AddSystematic("efficiencySF_stat","eff. stat.",Systematic::Type::GAUSSIAN,FormRange("_efficiencySF_stat%d",Range(nreplica)),"sim");
@@ -301,15 +302,17 @@ void SKFlatPlotter::SetupSystematics(){
   AddSystematic("muonmomentum_sys3","Roch. cor. sys3",Systematic::Type::ENVELOPE,"_muonmomentum_s3m0");
   AddSystematic("muonmomentum_sys4","Roch. cor. sys4",Systematic::Type::ENVELOPE,"_muonmomentum_s4m0");
   AddSystematic("muonmomentum_sys5","Roch. cor. sys5",Systematic::Type::ENVELOPE,"_muonmomentum_s5m0");
-  AddSystematic("muonmomentum","Roch. cor.",Systematic::Type::MULTI,"muonmomentum_stat muonmomentum_sys2 muonmomentum_sys3 muonmomentum_sys4 muonmomentum_sys5");
+  AddSystematic("muonmomentum_residual","Roch. cor. residual",Systematic::Type::ENVELOPE,"_muonmomentum_residual");
+  AddSystematic("muonmomentum","Roch. cor.",Systematic::Type::MULTI,"muonmomentum_stat muonmomentum_sys2 muonmomentum_sys3 muonmomentum_sys4 muonmomentum_sys5 muonmomentum_residual");
 
   for(TString era:{"2016preVFP","2016postVFP","2017","2018"}){
     AddSystematic("muonmomentum_sys2_"+era,"Roch. cor. sys2",Systematic::Type::ENVELOPE,"_muonmomentum_s2m0",era);
     AddSystematic("muonmomentum_sys3_"+era,"Roch. cor. sys3",Systematic::Type::ENVELOPE,"_muonmomentum_s3m0",era);
     AddSystematic("muonmomentum_sys4_"+era,"Roch. cor. sys4",Systematic::Type::ENVELOPE,"_muonmomentum_s4m0",era);
     AddSystematic("muonmomentum_sys5_"+era,"Roch. cor. sys5",Systematic::Type::ENVELOPE,"_muonmomentum_s5m0",era);
+    AddSystematic("muonmomentum_residual_"+era,"Roch. cor. residual",Systematic::Type::ENVELOPE,"_muonmomentum_residual",era);
   }
-  AddSystematic("muonmomentum_era","Roch. cor.",Systematic::Type::MULTI,"muonmomentum_stat muonmomentum_sys2_2016preVFP muonmomentum_sys3_2016preVFP muonmomentum_sys4_2016preVFP muonmomentum_sys5_2016preVFP muonmomentum_sys2_2016postVFP muonmomentum_sys3_2016postVFP muonmomentum_sys4_2016postVFP muonmomentum_sys5_2016postVFP muonmomentum_sys2_2017 muonmomentum_sys3_2017 muonmomentum_sys4_2017 muonmomentum_sys5_2017 muonmomentum_sys2_2018 muonmomentum_sys3_2018 muonmomentum_sys4_2018 muonmomentum_sys5_2018");  
+  AddSystematic("muonmomentum_era","Roch. cor.",Systematic::Type::MULTI,"muonmomentum_stat muonmomentum_sys2_2016preVFP muonmomentum_sys3_2016preVFP muonmomentum_sys4_2016preVFP muonmomentum_sys5_2016preVFP muonmomentum_residual_2016preVFP muonmomentum_sys2_2016postVFP muonmomentum_sys3_2016postVFP muonmomentum_sys4_2016postVFP muonmomentum_sys5_2016postVFP muonmomentum_residual_2016postVFP muonmomentum_sys2_2017 muonmomentum_sys3_2017 muonmomentum_sys4_2017 muonmomentum_sys5_2017 muonmomentum_residual_2017 muonmomentum_sys2_2018 muonmomentum_sys3_2018 muonmomentum_sys4_2018 muonmomentum_sys5_2018 muonmomentum_residual_2018");  
 
   AddSystematic("electronenergy_stat","Roch. cor. stat.",Systematic::Type::GAUSSIAN,FormRange("_electronenergy_s1m%d",Range(40)));
   AddSystematic("electronenergy_sys2","Roch. cor. sys2",Systematic::Type::ENVELOPE,"_electronenergy_s2m0");
@@ -319,7 +322,8 @@ void SKFlatPlotter::SetupSystematics(){
   AddSystematic("electronenergy_sys6","Roch. cor. sys6",Systematic::Type::ENVELOPE,"_electronenergy_s6m0");
   AddSystematic("electronenergy_sys7","Roch. cor. sys7",Systematic::Type::ENVELOPE,"_electronenergy_s7m0");
   AddSystematic("electronenergy_sys8","Roch. cor. sys8",Systematic::Type::ENVELOPE,"_electronenergy_s8m0");
-  AddSystematic("electronenergy","Roch. cor.",Systematic::Type::MULTI,"electronenergy_stat electronenergy_sys2 electronenergy_sys3 electronenergy_sys4 electronenergy_sys5 electronenergy_sys6 electronenergy_sys7 electronenergy_sys8");
+  AddSystematic("electronenergy_residual","Roch. cor. residual",Systematic::Type::ENVELOPE,"_electronenergy_residual");
+  AddSystematic("electronenergy","Roch. cor.",Systematic::Type::MULTI,"electronenergy_stat electronenergy_sys2 electronenergy_sys3 electronenergy_sys4 electronenergy_sys5 electronenergy_sys6 electronenergy_sys7 electronenergy_sys8 electronenergy_residual");
 
   for(TString era:{"2016preVFP","2016postVFP","2017","2018"}){
     AddSystematic("electronenergy_sys2_"+era,"Roch. cor. sys2",Systematic::Type::ENVELOPE,"_electronenergy_s2m0",era);
@@ -329,8 +333,9 @@ void SKFlatPlotter::SetupSystematics(){
     AddSystematic("electronenergy_sys6_"+era,"Roch. cor. sys6",Systematic::Type::ENVELOPE,"_electronenergy_s6m0",era);
     AddSystematic("electronenergy_sys7_"+era,"Roch. cor. sys7",Systematic::Type::ENVELOPE,"_electronenergy_s7m0",era);
     AddSystematic("electronenergy_sys8_"+era,"Roch. cor. sys8",Systematic::Type::ENVELOPE,"_electronenergy_s8m0",era);
+    AddSystematic("electronenergy_residual_"+era,"Roch. cor. residual",Systematic::Type::ENVELOPE,"_electronenergy_residual",era);
   }
-  AddSystematic("electronenergy_era","Roch. cor.",Systematic::Type::MULTI,"electronenergy_stat electronenergy_sys2_2016preVFP electronenergy_sys3_2016preVFP electronenergy_sys4_2016preVFP electronenergy_sys5_2016preVFP electronenergy_sys6_2016preVFP electronenergy_sys7_2016preVFP electronenergy_sys8_2016preVFP electronenergy_sys2_2016postVFP electronenergy_sys3_2016postVFP electronenergy_sys4_2016postVFP electronenergy_sys5_2016postVFP electronenergy_sys6_2016postVFP electronenergy_sys7_2016postVFP electronenergy_sys8_2016postVFP electronenergy_sys2_2017 electronenergy_sys3_2017 electronenergy_sys4_2017 electronenergy_sys5_2017 electronenergy_sys6_2017 electronenergy_sys7_2017 electronenergy_sys8_2017 electronenergy_sys2_2018 electronenergy_sys3_2018 electronenergy_sys4_2018 electronenergy_sys5_2018 electronenergy_sys6_2018 electronenergy_sys7_2018 electronenergy_sys8_2018");
+  AddSystematic("electronenergy_era","Roch. cor.",Systematic::Type::MULTI,"electronenergy_stat electronenergy_sys2_2016preVFP electronenergy_sys3_2016preVFP electronenergy_sys4_2016preVFP electronenergy_sys5_2016preVFP electronenergy_sys6_2016preVFP electronenergy_sys7_2016preVFP electronenergy_sys8_2016preVFP electronenergy_residual_2016preVFP electronenergy_sys2_2016postVFP electronenergy_sys3_2016postVFP electronenergy_sys4_2016postVFP electronenergy_sys5_2016postVFP electronenergy_sys6_2016postVFP electronenergy_sys7_2016postVFP electronenergy_sys8_2016postVFP electronenergy_residual_2016postVFP electronenergy_sys2_2017 electronenergy_sys3_2017 electronenergy_sys4_2017 electronenergy_sys5_2017 electronenergy_sys6_2017 electronenergy_sys7_2017 electronenergy_sys8_2017 electronenergy_residual_2017 electronenergy_sys2_2018 electronenergy_sys3_2018 electronenergy_sys4_2018 electronenergy_sys5_2018 electronenergy_sys6_2018 electronenergy_sys7_2018 electronenergy_sys8_2018 electronenergy_residual_2018");
 
   AddSystematic("qcdss_norm_ee","SS method norm.",Systematic::Type::ENVELOPE,"scale:1.032","qcdss_ee");
   AddSystematic("qcdss_norm_ee_0bjet","SS method norm.",Systematic::Type::ENVELOPE,"scale:1.031","qcdss_ee_0bjet");
