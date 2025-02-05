@@ -847,6 +847,7 @@ vector<Hists> Plotter::GetHists(Plot& p){
     if(h){
       TString integraloption="";
       if(p.option.Contains("widthweight")) integraloption="width";
+      if(p.option.Contains("normTo1")) h->Scale(1./h->Integral(integraloption));
       double val=h->Integral(integraloption);
       delete h;
       vector<vector<double>> scales=Normalize(hists,val,integraloption);
@@ -854,7 +855,8 @@ vector<Hists> Plotter::GetHists(Plot& p){
 	TString newytitle="'"+p.ytitle+Form(" (Norm. SF=%.3f",scales.at(1).at(0));
 	for(unsigned int i=2;i<scales.size();i++) newytitle+=Form(",%.3f",scales.at(i).at(0));
 	newytitle+=")'";
-	p.SetOption("1:ytitle:"+newytitle);
+	if(!p.option.Contains("normTo1")) p.SetOption("1:ytitle:"+newytitle);
+	else  p.SetOption("1:ytitle:A.U");
       }
     }
   }
@@ -1195,6 +1197,9 @@ void Plotter::DrawRatio(Plot p){
     if(p.ytitle=="") axisparent->GetYaxis()->SetTitle("Ratio");
     if(p.ymin||p.ymax){
       axisparent->GetYaxis()->SetRangeUser(p.ymin,p.ymax);
+    }else if(p.option.Contains("widewidewidey")){
+      axisparent->GetYaxis()->SetRangeUser(0.01,4.99);
+      axisparent->GetYaxis()->SetNdivisions(506);
     }else if(p.option.Contains("widewidey")){
       axisparent->GetYaxis()->SetRangeUser(0.01,1.99);
       axisparent->GetYaxis()->SetNdivisions(506);
