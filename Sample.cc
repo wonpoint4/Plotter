@@ -3,6 +3,7 @@
 #include <TPRegexp.h>
 #include <TObjString.h>
 #include <TSystem.h>
+#include <TFormula.h>
 #include"Global.h"
 #include"Utils.h"
 #include"Style.cc"
@@ -45,6 +46,7 @@ public:
   bool HasTag(TString tag,bool recursive=true) const;
   void AddTag(TString tag);
   void SetTags(TString tags_);
+  void RemoveTag(TString tag,bool recursive=true);
   bool IsCollection() const;
   bool IsStack() const;
   bool IsSum() const;
@@ -168,7 +170,7 @@ void Sample::ApplyStyle(TH1* hist,int index) const {
   PAll("[Sample::ApplyStyle(TH1* hist,int index=0)]");
   int i=index;
   if(i<0) i=0;
-  if(i>=styles.size()) i=styles.size()-1;
+  if(i>=(int)styles.size()) i=styles.size()-1;
   styles[i].Apply(hist);
 
   if(hist&&index==0){
@@ -211,20 +213,22 @@ bool Sample::HasTag(TString tag,bool recursive) const {
   if(IsCollection()&&recursive){
     if(HasTag(tag,false)) return true;
     for(const auto& sub:subs)
-      if(sub.HasTag(tag)) return true;
+      if(sub.HasTag(tag,true)) return true;
     return false;
   }else{
-    if(tag.Contains(",")||tag.Contains(" ")){
-      tag.ReplaceAll(","," ");
-      vector<TString> this_tags=Split(tag," ");
-      for(TString t:this_tags)
-	if(!HasTag(t,false)) return false;
-      return true;
-    }else{
-      if(find(tags.begin(),tags.end(),tag)!=tags.end()) 
-	return true;
-      return false;
+    TString tag_modified=tag;
+    TPRegexp("[)(|&!]").Substitute(tag_modified," ","g");
+    vector<TString> tags_tocheck=Split(tag_modified," ");
+    TString expr=tag;
+    for(auto this_tag:tags_tocheck){
+      int start=expr.Index(this_tag);
+      if(find(tags.begin(),tags.end(),this_tag)!=tags.end()) 
+	expr.Replace(start,this_tag.Length(),"true");
+      else
+	expr.Replace(start,this_tag.Length(),"false");
     }
+    TFormula test("test",expr,false);
+    return test.Eval(0);
   }
 }
 void Sample::AddTag(TString tag){
@@ -242,6 +246,20 @@ void Sample::SetTags(TString tags_){
   vector<TString> vtags=Split(tags_," ");
   for(auto tag:vtags){
     AddTag(tag);
+  }
+}
+void Sample::RemoveTag(TString tag,bool recursive){
+  if(IsCollection()&&recursive){
+    RemoveTag(tag,false);
+    for(auto& sub:subs)
+      sub.RemoveTag(tag,true);
+  }else{
+    vector<TString> newtags;
+    for(auto this_tag:tags){
+      if(this_tag==tag) continue;
+      newtags.push_back(this_tag);
+    }
+    tags=newtags;
   }
 }
 bool Sample::IsCollection() const {

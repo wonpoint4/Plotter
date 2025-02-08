@@ -22,9 +22,11 @@ public:
   vector<tuple<double,double,TString>> texts;
   Type type=Type::CompareAndRatio;
   TString rebin="";
+  TString rebinX="",rebinY="",rebinZ="",rebinU="";
   double xmin=0,xmax=0,ymin=0,ymax=0;
   double Xmin=0,Xmax=0,Ymin=0,Ymax=0,Zmin=0,Zmax=0,Umin=0,Umax=0;
   double blind_xmin=0,blind_xmax=0;
+  int xdivision=0;
   vector<pair<double,TString>> scales;
   TString option;
   vector<Plot> subplots;
@@ -147,6 +149,10 @@ void Plot::RemoveOption(TString option_){
   for(const auto& remove:options_remove){
     if(remove=="type") type=Type::UNDEF;
     else if(remove=="rebin") rebin="";
+    else if(remove=="rebinX") rebinX="";
+    else if(remove=="rebinY") rebinY="";
+    else if(remove=="rebinZ") rebinZ="";
+    else if(remove=="rebinU") rebinU="";
     else if(remove=="xmin") xmin=0;
     else if(remove=="xmax") xmax=0;
     else if(remove=="ymin") ymin=0;
@@ -159,6 +165,7 @@ void Plot::RemoveOption(TString option_){
     else if(remove=="Zmax") Zmax=0;
     else if(remove=="Umin") Umin=0;
     else if(remove=="Umax") Umax=0;
+    else if(remove=="xdivision") xdivision=0;
     else if(remove=="era") era="";
     else if(remove=="lumi") lumi="";
     else if(remove=="sysname") sysname="";
@@ -197,10 +204,15 @@ void Plot::SetOption(TString option_){
     else if(opt.Contains(TRegexp("^histname:"))) histname=Strip(opt(9,999),"'"); 
     else if(opt.Contains(TRegexp("^type:"))) type=(Type)TString(opt(5,999)).Atoi();
     else if(opt.Contains(TRegexp("^rebin:"))) rebin=TString(opt(6,999));
+    else if(opt.Contains(TRegexp("^rebinX:"))) rebinX=TString(opt(7,999));
+    else if(opt.Contains(TRegexp("^rebinY:"))) rebinY=TString(opt(7,999));
+    else if(opt.Contains(TRegexp("^rebinZ:"))) rebinZ=TString(opt(7,999));
+    else if(opt.Contains(TRegexp("^rebinU:"))) rebinU=TString(opt(7,999));
     else if(opt.Contains(TRegexp("^xmin:"))) xmin=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^xmax:"))) xmax=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^ymin:"))) ymin=TString(opt(5,999)).Atof();
     else if(opt.Contains(TRegexp("^ymax:"))) ymax=TString(opt(5,999)).Atof();
+    else if(opt.Contains(TRegexp("^xdivision:"))) xdivision=TString(opt(10,999)).Atoi();
     else if(opt.Contains(TRegexp("^sysname:"))) sysname=Strip(opt(8,999),"'");
     else if(opt.Contains(TRegexp("^save:"))) save=Strip(opt(5,999),"'");
     else if(opt.Contains(TRegexp("^text:"))){

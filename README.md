@@ -67,7 +67,10 @@ You can make your own plotter class inherited from `Plotter`. See 'EfficiencyPlo
 
 ## Draw and Save options
 You can pass a option to a specific pad using `PADINDEX:OPTION` syntax. ex) `1:logy`  
-* absy - projection to absolute y
+* absx - plot with absolute x-axis
+* absX - rebin N-D histogram with absolute x-axis
+* absY - rebin N-D histogram with absolute y-axis
+* absZ - rebin N-D histogram with absolute z-axis
 * blind[:FLOAT,FLOAT] - remove data points for blind analyses. Needs two floating numbers to define range.
 * chi2 - calculate chi2 and add text on the plot [WIP: only works for 2 entries]
 * chi2detail - make chi2 report plot in new canvas;
@@ -87,7 +90,10 @@ You can pass a option to a specific pad using `PADINDEX:OPTION` syntax. ex) `1:l
 * BMleg - bottom-middle legend
 * BRleg - bottom-right legend
 * rebin:INT - Rebinning by merging INT bins.
-* rebin:{bin0,bin1,...,binN} - Rebinning with new bin boundary.
+* rebin:{bin0,bin1,...,binN} - Rebinning plotting axis with new bin boundary.
+* rebinX:{bin0,bin1,...,binN} - Rebinning N-D histogram x-axis with new bin boundary.
+* rebinY:{bin0,bin1,...,binN} - Rebinning N-D histogram y-axis with new bin boundary.
+* rebinZ:{bin0,bin1,...,binN} - Rebinning N-D histogram z-axis with new bin boundary.
 * replace:STRING->STRING[:tag] - Modify the histogram name. You can specify sample tag. You can also use regular expression.
 * save:PATH - For *DrawPlot*, specify the path or file format (pdf or png)
 * scale:FLOAT[:tag] - scale histogram
@@ -108,6 +114,7 @@ You can pass a option to a specific pad using `PADINDEX:OPTION` syntax. ex) `1:l
     * 7:CompareAndSig - 'Compare' plot in the upper pannel and 'Sig' plot in the lower pannel 
     * 8:DoubleRatio (Developing)
     * 9:Collection (Developing)
+* xsquare: rebin with x^2 axis
 * xmin:FLOAT,xmax:FLOAT - x-axis range
 * ymin:FLOAT,ymax:FLOAT - y-axis range
 * Xmin:FLOAT,Xmax:FLOAT - x-axis projection range
@@ -126,7 +133,8 @@ You can pass a option to a specific pad using `PADINDEX:OPTION` syntax. ex) `1:l
 * widewidey - For ratio plot, set yaxis range from 0.0 to 2.0
 * widthweight - For variable bin size, divide bin contents by bin size to get proper shape
 * finey - For ratio plot, set yaxis range from 0.9 to 1.1
-  
+* finefiney - For ratio plot, set yaxis range from 0.95 to 1.05
+* movesys - Collect systematic uncertainty to one entity in ratio pane. Useful when there is correlation of systematic uncertainty between entities  
 ## Verbosity
 You can set verbosity using `Verbosity` variable (QUIET, ERROR, WARNING, INFO, DEBUG, ALL)
 ```c++

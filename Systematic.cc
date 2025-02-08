@@ -3,7 +3,7 @@
 #include "Utils.h"
 class Systematic{
 public:
-  enum Type{UNDEF,ENVELOPE,GAUSSIAN,HESSIAN,MULTI};
+  enum Type{UNDEF,ENVELOPE,GAUSSIAN,HESSIAN,CORRELATED,MULTI};
   TString title;
   Type type=Type::UNDEF;
   vector<TString> variations;
@@ -21,10 +21,25 @@ Systematic::Systematic(TString title_,Type type_,vector<TString> variations_,TSt
   tag=tag_;
   if(type==Systematic::Type::MULTI) keys=variations_;
   else{
-    for(const TString& variation:variations_){
-      if(variation.Contains(":")) variations.push_back(variation+":"+tag);
-      else if(Split(variation,"->").size()==2) variations.push_back(TString("replace:")+variation+":"+tag);
-      else variations.push_back(TString("replace:$->")+variation+":"+tag);
+    for(TString variation:variations_){
+      if(!variation.BeginsWith("replace:")&&!variation.BeginsWith("scale:")){
+	if(variation.Contains("->")){
+	  variation="replace:"+variation;
+	}else{
+	  variation="replace:$->"+variation;
+	}
+      }
+      vector<TString> words=Split(variation,":");
+      if(words.size()==3){
+	variations.push_back(variation);
+      }else if(words.size()==2){
+	if(tag!="")
+	  variations.push_back(variation+":"+tag);
+	else
+	  variations.push_back(variation);
+      }else{
+	cout<<"### ERROR ### [Systematic::Systematic] wrong variation "<<variation<<endl;
+      }
     }
   }
 }
@@ -36,6 +51,7 @@ TString Systematic::GetTypeString() const{
   case ENVELOPE: return "ENVELOPE";
   case GAUSSIAN: return "GAUSSIAN";
   case HESSIAN: return "HESSIAN";
+  case CORRELATED: return "CORRELATED";
   case MULTI: return "MULTI";
   default: return "###ERROR### Bad Systematic::Type";
   }
