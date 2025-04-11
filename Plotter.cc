@@ -2049,6 +2049,7 @@ TCanvas* Plotter::DrawPlot(vector<TH1*> hists,TString additional_option){
   for(auto h:hists){
     if(!h) continue;
     TH1* hist=(TH1*)h->Clone();
+    hist->SetDirectory(pdir);
     RebinXminXmax(hist,p);
     if(p.option.Contains("widthweight")) WidthWeight(hist);
     Hists hh;
