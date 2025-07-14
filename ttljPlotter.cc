@@ -1,5 +1,5 @@
-#ifndef __KINFITPLOTTER_CC__
-#define __KINFITPLOTTER_CC__
+#ifndef __TTLJPLOTTER_CC__
+#define __TTLJPLOTTER_CC__
 #include"SKFlatPlotter.cc"
 #if __has_include("TH4D.h")
 #include "TH4D.h"
@@ -7,7 +7,8 @@
 
 class ttljPlotter:public SKFlatPlotter{
 public:
-  ttljPlotter(TString mode_="data ^correct_ttlj+wrong_ttlj+unmatched_ttlj+ttlj_kin+ttll_kin+tw_kin+wjets_kin+mi_kin+vv_kin", float norm_=1., TString analyzer_="ttljAnalyzer");
+  //ttljPlotter(TString mode_="data ^correct_ttlj+wrong_ttlj+unmatched_ttlj+ttlj_2b+ttll_2b+tw_2b+qcd_2b+wjets_2b+mi_2b+vv_2b", float norm_=1., TString analyzer_="ttljAnalyzer");
+  ttljPlotter(TString mode_="data ^correct_ttlj+wrong_ttlj+unmatched_ttlj+ttlj_2b+ttll_2b+tw_2b+wjets_2b+mi_2b+vv_2b", float norm_=1., TString analyzer_="ttljAnalyzer");
   ~ttljPlotter();
   using Plotter::GetHist;
   virtual void SetupEntries(TString mode_);
@@ -122,8 +123,10 @@ ttljPlotter::~ttljPlotter(){}
 void ttljPlotter::SetupEntries(TString mode_){
   TString entrystring;
   if(mode_ == "ttlj") entrystring = "correct_ttlj wrong_ttlj unmatched_ttlj";
-  else if(mode_ == "data_sub ttlj") entrystring = Form("data-%f*unmatched_ttlj-%f*ttll_kin-%f*tw_kin-%f*wjets_kin-%f*mi_kin-%f*vv_kin correct_ttlj+wrong_ttlj", norm_, norm_, norm_, norm_, norm_, norm_);
-  else if(mode_ == "data mc") entrystring = "data correct_ttlj+wrong_ttlj+unmatched_ttlj+ttlj_kin+ttll_kin+tw_kin+wjets_kin+mi_kin+vv_kin";
+  //else if(mode_ == "data_sub ttlj") entrystring = Form("data-%f*unmatched_ttlj-%f*ttll_2b-%f*tw_2b-%f*qcd_2b-%f*wjets_2b-%f*mi_2b-%f*vv_2b correct_ttlj+wrong_ttlj", norm_, norm_, norm_, norm_, norm_, norm_, norm_);
+  //else if(mode_ == "data mc") entrystring = "data correct_ttlj+wrong_ttlj+unmatched_ttlj+ttlj_2b+ttll_2b+tw_2b+qcd_2b+wjets_2b+mi_2b+vv_2b";
+  else if(mode_ == "data_sub ttlj") entrystring = Form("data-%f*unmatched_ttlj-%f*ttll_2b-%f*tw_2b-%f*wjets_2b-%f*mi_2b-%f*vv_2b correct_ttlj+wrong_ttlj", norm_, norm_, norm_, norm_, norm_, norm_);
+  else if(mode_ == "data mc") entrystring = "data correct_ttlj+wrong_ttlj+unmatched_ttlj+ttlj_2b+ttll_2b+tw_2b+wjets_2b+mi_2b+vv_2b";
   else {
     entrystring=mode_;
   }
