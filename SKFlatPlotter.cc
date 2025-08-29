@@ -29,8 +29,8 @@ void SKFlatPlotter::SetAnalyzer(TString Analyzer_){
 void SKFlatPlotter::SetupSamples(){
 
   for(TString era:{"2016preVFP","2016postVFP","2017","2018"}){
-    samples["muon"+era]=Sample("data (#mu#mu)","SAMPLE data",kBlack,20)+TRegexp(era+"/DATA/"+Analyzer+SkimTree+"_DoubleMuon_[A-Z]")+TRegexp(era+"/DATA/"+Analyzer+SkimTree+"_SingleMuon_[A-Z]");
-    samples["electron"+era]=Sample("data (ee)","SAMPLE data",kBlack,20)+TRegexp(era+"/DATA/"+Analyzer+SkimTree+"_.*EG.*_[A-Z]")+TRegexp(era+"/DATA/"+Analyzer+SkimTree+"_SingleElectron_[A-Z]");
+    samples["muon"+era]=Sample("data (#mu#mu)","SAMPLE data",kBlack,20)+TRegexp(era+"/.*DATA/"+Analyzer+SkimTree+"_DoubleMuon_[A-Z]")+TRegexp(era+"/.*DATA/"+Analyzer+SkimTree+"_SingleMuon_[A-Z]");
+    samples["electron"+era]=Sample("data (ee)","SAMPLE data",kBlack,20)+TRegexp(era+"/.*DATA/"+Analyzer+SkimTree+"_.*EG.*_[A-Z]")+TRegexp(era+"/.*DATA/"+Analyzer+SkimTree+"_SingleElectron_[A-Z]");
     samples["ww"+era]=Sample("WW","SAMPLE sim ww "+era,kOrange)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_WW_pythia$");
     samples["wz"+era]=Sample("WZ","SAMPLE sim wz "+era,kOrange)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_WZ_pythia$");
     samples["zz"+era]=Sample("ZZ","SAMPLE sim zz "+era,kOrange)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_ZZ_pythia$");
@@ -116,7 +116,7 @@ void SKFlatPlotter::SetupSamples(){
   samples["unmatched_ttlj"]="UnMatched[01]_"%(Sample("TTLJ (b-pair not Matched)","SAMPLE sim tt ttlj",kRed)+"ttlj_2b");
   samples["ttll_2b"]=Sample("TTLL","SAMPLE sim tt ttll",kMagenta+1)+TRegexp("/"+Analyzer+SkimTree+"_TTLL_powheg$");
   samples["tw_2b"]=Sample("tW","SAMPLE sim",kRed-6)+TRegexp("/"+Analyzer+SkimTree+"_SingleTop_tW_.*top_NoFullyHad$");
-  samples["qcd_2b"]=Sample("QCD multi-jet","SAMPLE sim",kCyan)+TRegexp("/"+Analyzer+SkimTree+"_QCD_Pt_*");
+  samples["qcd_2b"]=Sample("QCD multi-jet","SAMPLE sim",kCyan)+TRegexp("/"+Analyzer+SkimTree+"_QCD_bEnriched_HT*");
   samples["wjets_2b"]=Sample("WJets","SAMPLE sim",kYellow)+TRegexp("/"+Analyzer+SkimTree+"_WJets_MG$");
   samples["mi_2b"]=Sample("DYJets","SAMPLE sim",kGreen+2)+TRegexp("/"+Analyzer+SkimTree+"_DYJetsTo.*MiNNLO$");
   samples["vv_2b"]=Sample("Diboson","SAMPLE sim",kOrange)+TRegexp("/"+Analyzer+SkimTree+"_[W-Z][W-Z]_pythia$");
