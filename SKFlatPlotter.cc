@@ -34,13 +34,15 @@ void SKFlatPlotter::SetupSamples(){
     samples["ww"+era]=Sample("WW","SAMPLE sim ww "+era,kOrange)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_WW_pythia$");
     samples["wz"+era]=Sample("WZ","SAMPLE sim wz "+era,kOrange)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_WZ_pythia$");
     samples["zz"+era]=Sample("ZZ","SAMPLE sim zz "+era,kOrange)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_ZZ_pythia$");
-    samples["wjets"+era]=Sample("W","SAMPLE sim wjets "+era,kYellow)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_WJets_MG$");
+    samples["wjets"+era]=Sample("W","SAMPLE sim wjets "+era,kYellow)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_WJets_Sherpa$");
+    samples["wjets_mg"+era]=Sample("W (Madgraph)","SAMPLE sim wjets "+era,kYellow)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_WJets_MG$");
     samples["ttll"+era]=Sample("t#bar{t}#rightarrowll","SAMPLE sim tt ttll "+era,kMagenta+1)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_TTLL_powheg$");
-    samples["ttlj"+era]=Sample("t#bar{t}#rightarrowlj","SAMPLE sim tt "+era,kMagenta+2)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_TTLJ_powheg$");
-    samples["ttjj"+era]=Sample("t#bar{t}#rightarrowjj","SAMPLE sim tt "+era,kMagenta+3)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_TTJJ_powheg$");
+    samples["ttlj"+era]=Sample("t#bar{t}#rightarrowlj","SAMPLE sim tt ttlj "+era,kMagenta+2)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_TTLJ_powheg$");
+    samples["ttjj"+era]=Sample("t#bar{t}#rightarrowjj","SAMPLE sim tt ttjj "+era,kMagenta+3)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_TTJJ_powheg$");
     samples["tw"+era]=Sample("tW","SAMPLE sim tw "+era,kMagenta+10)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_SingleTop_tW_.*top_NoFullyHad$");
-    samples["st"+era]=Sample("Single top","SAMPLE sim st "+era,kMagenta+10)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_SingleTop_.*$");
-    samples["aa"+era]=Sample("#gamma#gamma#rightarrowll","SAMPLE sim "+era,kYellow+1)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_GGToLL$");
+    samples["sts"+era]=Sample("Single top (s-ch)","SAMPLE sim st sts "+era,kMagenta+9)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_SingleTop_sch*");
+    samples["stt"+era]=Sample("Single top (t-ch)","SAMPLE sim st stt "+era,kMagenta+8)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_SingleTop_tch*");
+    samples["aa"+era]=Sample("#gamma#gamma#rightarrowll","SAMPLE sim aa "+era,kYellow+1)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_GGToLL$");
 
     samples["amc"+era]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy "+era,kRed)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_DYJets$");
     samples["mi"+era]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy "+era,kRed)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_DYJetsTo.*MiNNLO$");
@@ -60,11 +62,13 @@ void SKFlatPlotter::SetupSamples(){
   samples["wz"]=Sample("WZ","SUM",kOrange)+"wz2016preVFP"+"wz2016postVFP"+"wz2017"+"wz2018";
   samples["zz"]=Sample("ZZ","SUM",kOrange)+"zz2016preVFP"+"zz2016postVFP"+"zz2017"+"zz2018";
   samples["wjets"]=Sample("W","SUM",kYellow)+"wjets2016preVFP"+"wjets2016postVFP"+"wjets2017"+"wjets2018";
+  samples["wjets_mg"]=Sample("W (Madgraph)","SUM",kYellow)+"wjets_mg2016preVFP"+"wjets_mg2016postVFP"+"wjets_mg2017"+"wjets_mg2018";
   samples["ttll"]=Sample("t#bar{t}#rightarrowll","SUM",kMagenta+1)+"ttll2016preVFP"+"ttll2016postVFP"+"ttll2017"+"ttll2018";
   samples["ttlj"]=Sample("t#bar{t}#rightarrowlj","SUM",kMagenta+2)+"ttlj2016preVFP"+"ttlj2016postVFP"+"ttlj2017"+"ttlj2018";
   samples["ttjj"]=Sample("t#bar{t}#rightarrowjj","SUM",kMagenta+3)+"ttjj2016preVFP"+"ttjj2016postVFP"+"ttjj2017"+"ttjj2018";
   samples["tw"]=Sample("tW","SUM",kMagenta+10)+"tw2016preVFP"+"tw2016postVFP"+"tw2017"+"tw2018";
-  samples["st"]=Sample("Single top","SUM",kMagenta+10)+"st2016preVFP"+"st2016postVFP"+"st2017"+"st2018";
+  samples["sts"]=Sample("Single top (s-ch)","SUM",kMagenta+9)+"sts2016preVFP"+"sts2016postVFP"+"sts2017"+"sts2018";
+  samples["stt"]=Sample("Single top (t-ch)","SUM",kMagenta+8)+"stt2016preVFP"+"stt2016postVFP"+"stt2017"+"stt2018";
   samples["aa"]=Sample("#gamma#gamma#rightarrowll","SUM",kYellow+1)+"aa2016preVFP"+"aa2016postVFP"+"aa2017"+"aa2018";
   
   samples["amc"]=Sample("#gamma*/Z#rightarrowll","SUM",kRed)+"amc2016preVFP"+"amc2016postVFP"+"amc2017"+"amc2018";
@@ -79,8 +83,10 @@ void SKFlatPlotter::SetupSamples(){
   samples["amcM"]=Sample("#gamma*/Z#rightarrowll","SUM",kRed)+"amcM2016preVFP"+"amcM2016postVFP"+"amcM2017"+"amcM2018";
   samples["mg"]=Sample("#gamma*/Z#rightarrowll","SUM",kRed)+"mg2016preVFP"+"mg2016postVFP"+"mg2017"+"mg2018";
 
+  samples["st"]=Sample("Single top","SUM",kMagenta+3)+"sts"+"stt";
   samples["tt"]=Sample("t#bar{t}","SUM",kMagenta)+"ttll"+"ttlj"+"ttjj";
   samples["tttw"]=Sample("t#bar{t}, tW","SUM",kMagenta)+"tt"+"tw";
+  samples["ttstw"]=Sample("t#bar{t}, tW, single top","SUM",kMagenta)+"tt"+"st"+"tw";
   samples["ttst"]=Sample("t#bar{t}, single top","SUM",kMagenta)+"tt"+"st";
   samples["vv"]=Sample("Diboson","SUM",kOrange)+"ww"+"wz"+"zz";
 
@@ -110,16 +116,27 @@ void SKFlatPlotter::SetupSamples(){
   for(auto& sub:samples["amcM_stack"].subs) sub.title=sub.title(TRegexp("M-[0-9]*to[0-9Inf]*"));
 
   // For ttljPlotter
-  samples["ttlj_2b"]=Sample("TTLJ","SAMPLE sim tt ttlj",kBlue)+TRegexp("/"+Analyzer+SkimTree+"_TTLJ_powheg$");
-  samples["correct_ttlj"]="Correct[01]?_"%(Sample("TTLJ (Correct b-pair)","SAMPLE sim tt ttlj",kGreen)+"ttlj_2b");
-  samples["wrong_ttlj"]="Wrong[01]?_"%(Sample("TTLJ (Opposite b-pair)","SAMPLE sim tt ttlj",kBlue)+"ttlj_2b");
-  samples["unmatched_ttlj"]="UnMatched[01]_"%(Sample("TTLJ (b-pair not Matched)","SAMPLE sim tt ttlj",kRed)+"ttlj_2b");
-  samples["ttll_2b"]=Sample("TTLL","SAMPLE sim tt ttll",kMagenta+1)+TRegexp("/"+Analyzer+SkimTree+"_TTLL_powheg$");
-  samples["tw_2b"]=Sample("tW","SAMPLE sim",kRed-6)+TRegexp("/"+Analyzer+SkimTree+"_SingleTop_tW_.*top_NoFullyHad$");
-  samples["qcd_2b"]=Sample("QCD multi-jet","SAMPLE sim",kCyan)+TRegexp("/"+Analyzer+SkimTree+"_QCD_bEnriched_HT*");
-  samples["wjets_2b"]=Sample("WJets","SAMPLE sim",kYellow)+TRegexp("/"+Analyzer+SkimTree+"_WJets_MG$");
-  samples["mi_2b"]=Sample("DYJets","SAMPLE sim",kGreen+2)+TRegexp("/"+Analyzer+SkimTree+"_DYJetsTo.*MiNNLO$");
-  samples["vv_2b"]=Sample("Diboson","SAMPLE sim",kOrange)+TRegexp("/"+Analyzer+SkimTree+"_[W-Z][W-Z]_pythia$");
+  samples["ttlj_2b"]=Sample("TTLJ","SAMPLE sim tt ttlj",kBlue)+TRegexp("/.*"+Analyzer+SkimTree+"_TTLJ_powheg$");
+  samples["ttll_2b"]=Sample("TTLL","SAMPLE sim tt ttll",kMagenta+1)+TRegexp("/.*"+Analyzer+SkimTree+"_TTLL_powheg$");
+  samples["ttjj_2b"]=Sample("TTJJ","SAMPLE sim tt ttjj",kMagenta+3)+TRegexp("/.*"+Analyzer+SkimTree+"_TTJJ_powheg$");
+  samples["tw_2b"]=Sample("tW","SAMPLE sim tw",kRed-6)+TRegexp("/.*"+Analyzer+SkimTree+"_SingleTop_tW_.*top_NoFullyHad$");
+  samples["sts_2b"]=Sample("Single top (s-ch)","SAMPLE sim st sts",kMagenta+9)+TRegexp("/.*"+Analyzer+SkimTree+"_SingleTop_sch*");
+  samples["stt_2b"]=Sample("Single top (t-ch)","SAMPLE sim st stt",kMagenta+8)+TRegexp("/.*"+Analyzer+SkimTree+"_SingleTop_tch*");
+  samples["qcd_2b"]=Sample("QCD multi-jet","SAMPLE sim qcd",kCyan)+TRegexp("/.*"+Analyzer+SkimTree+"_QCD_bEnriched_HT*");
+  samples["wjets_2b"]=Sample("WJets","SAMPLE sim wjets",kYellow)+TRegexp("/.*"+Analyzer+SkimTree+"_WJets_Sherpa$");
+  samples["wjets_mg_2b"]=Sample("WJets (Madgraph)","SAMPLE sim wjets",kYellow)+TRegexp("/.*"+Analyzer+SkimTree+"_WJets_MG$");
+  samples["mi_2b"]=Sample("DYJets","SAMPLE sim dy",kGreen+2)+TRegexp("/.*"+Analyzer+SkimTree+"_DYJetsTo.*MiNNLO$");
+  samples["ww_2b"]=Sample("WW","SAMPLE sim ww",kOrange)+TRegexp("/.*"+Analyzer+SkimTree+"_WW_pythia$");
+  samples["wz_2b"]=Sample("WZ","SAMPLE sim wz",kOrange)+TRegexp("/.*"+Analyzer+SkimTree+"_WZ_pythia$");
+  samples["zz_2b"]=Sample("ZZ","SAMPLE sim zz",kOrange)+TRegexp("/.*"+Analyzer+SkimTree+"_ZZ_pythia$");
+  samples["aa_2b"]=Sample("#gamma#gamma#rightarrowll","SAMPLE sim aa",kYellow+1)+TRegexp("/.*"+Analyzer+SkimTree+"_GGToLL$");
+
+  samples["correct_ttlj"]="Correct_"%(Sample("TTLJ (Correct b-pair)","SAMPLE sim tt ttlj",kGreen)+"ttlj_2b");
+  samples["wrong_ttlj"]="Wrong_"%(Sample("TTLJ (Opposite b-pair)","SAMPLE sim tt ttlj",kBlue)+"ttlj_2b");
+  samples["unmatched_ttlj"]="UnMatched_"%(Sample("TTLJ (b-pair not Matched)","SAMPLE sim tt ttlj",kRed)+"ttlj_2b");
+  samples["st_2b"]=Sample("Single top","SUM",kMagenta)+"sts_2b"+"stt_2b";
+  samples["vv_2b"]=Sample("Diboson","SUM",kOrange)+"ww_2b"+"wz_2b"+"zz_2b";
+  samples["stqcd_2b"]=Sample("Single top, QCD multi-jet","SUM",kCyan)+"st_2b"+"qcd_2b";
 
   samples["correct0_ttlj"]="Correct0_"%(Sample("TTLJ (Correct b-pair) in A","SAMPLE sim tt ttlj",kGreen)+"ttlj_2b");
   samples["wrong0_ttlj"]="Wrong0_"%(Sample("TTLJ (Opposite b-pair) in A","SAMPLE sim tt ttlj",kBlue)+"ttlj_2b");

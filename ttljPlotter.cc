@@ -7,7 +7,7 @@
 
 class ttljPlotter:public SKFlatPlotter{
 public:
-  ttljPlotter(TString mode_="data ^correct_ttlj+wrong_ttlj+unmatched_ttlj+ttlj_2b+ttll_2b+tw_2b+qcd_2b+wjets_2b+mi_2b+vv_2b", float norm_=1., TString analyzer_="ttljAnalyzer");
+  ttljPlotter(TString mode_="data ^correct_ttlj+wrong_ttlj+unmatched_ttlj+ttlj_2b+ttll_2b+ttjj_2b+tw_2b+st_2b+qcd_2b+wjets_2b+mi_2b+vv_2b", float norm_=1., TString analyzer_="ttljAnalyzer");
   ~ttljPlotter();
   using Plotter::GetHist;
   virtual void SetupEntries(TString mode_);
@@ -122,8 +122,8 @@ ttljPlotter::~ttljPlotter(){}
 void ttljPlotter::SetupEntries(TString mode_){
   TString entrystring;
   if(mode_ == "ttlj") entrystring = "correct_ttlj wrong_ttlj unmatched_ttlj";
-  else if(mode_ == "data_sub ttlj") entrystring = Form("data-%f*unmatched_ttlj-%f*ttll_2b-%f*tw_2b-%f*qcd_2b-%f*wjets_2b-%f*mi_2b-%f*vv_2b correct_ttlj+wrong_ttlj", norm_, norm_, norm_, norm_, norm_, norm_, norm_);
-  else if(mode_ == "data mc") entrystring = "data correct_ttlj+wrong_ttlj+unmatched_ttlj+ttlj_2b+ttll_2b+tw_2b+qcd_2b+wjets_2b+mi_2b+vv_2b";
+  else if(mode_ == "data_sub ttlj") entrystring = Form("data-%f*unmatched_ttlj-%f*ttll_2b-%f*ttjj_2b-%f*tw_2b-%f*st_2b-%f*qcd_2b-%f*wjets_2b-%f*mi_2b-%f*vv_2b correct_ttlj+wrong_ttlj", norm_, norm_, norm_, norm_, norm_, norm_, norm_, norm_, norm_);
+  else if(mode_ == "data mc") entrystring = "data correct_ttlj+wrong_ttlj+unmatched_ttlj+ttlj_2b+ttll_2b+ttjj_2b+tw_2b+st_2b+qcd_2b+wjets_2b+mi_2b+vv_2b";
   else {
     entrystring=mode_;
   }

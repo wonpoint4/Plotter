@@ -10,7 +10,7 @@
 class dybPlotter:public SKFlatPlotter{
 public:
   //dybPlotter(TString mode_="data",TString analyzer_="dybAnalyzer");
-  dybPlotter(TString mode_="data ^dyb_mi+dybbar_mi+mi+dyc_mi+dycbar_mi+dyudsg_mi+tau_mi+vv+tttw+ss_mi+aa",TString analyzer_="dybAnalyzer");
+  dybPlotter(TString mode_="data ^dyb_mi+dybbar_mi+mi+dyc_mi+dycbar_mi+dyudsg_mi+tau_mi+vv+tt+tw+st+wjets+ss_mi+aa",TString analyzer_="dybAnalyzer");
   ~dybPlotter();
   virtual void SetupEntries(TString mode_);
   virtual void SetupTH4D();
