@@ -86,7 +86,6 @@ void SKFlatPlotter::SetupSamples(){
   samples["st"]=Sample("Single top","SUM",kMagenta+3)+"sts"+"stt";
   samples["tt"]=Sample("t#bar{t}","SUM",kMagenta)+"ttll"+"ttlj"+"ttjj";
   samples["tttw"]=Sample("t#bar{t}, tW","SUM",kMagenta)+"tt"+"tw";
-  samples["ttstw"]=Sample("t#bar{t}, tW, single top","SUM",kMagenta)+"tt"+"st"+"tw";
   samples["ttst"]=Sample("t#bar{t}, single top","SUM",kMagenta)+"tt"+"st";
   samples["vv"]=Sample("Diboson","SUM",kOrange)+"ww"+"wz"+"zz";
 
@@ -96,54 +95,62 @@ void SKFlatPlotter::SetupSamples(){
     samples["tau_"+dysample]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau","SUM dytau",kGreen)+dysample);
     samples["tau_"+dysample].RemoveTag("dy");
 
-    samples["dyb_"+dysample]="dyb_"%(Sample("DYJets+b","SUM sim dy",kGreen)+dysample);
-    samples["dybbar_"+dysample]="dybbar_"%(Sample("DYJets+#bar{b}","SUM sim dy",kBlue)+dysample);
-    samples["dyc_"+dysample]="dyc_"%(Sample("DYJets+c","SUM sim dy",kYellow)+dysample);
-    samples["dycbar_"+dysample]="dycbar_"%(Sample("DYJets+#bar{c}","SUM sim dy",kRed-5)+dysample);
-    samples["dyudsg_"+dysample]="dyudsg_"%(Sample("DYJets+uds","SUM sim dy",kRed-10)+dysample);
+    samples["dyb_"+dysample] = "dyb_" %(Sample("DY+b", "SUM sim dy", TColor::GetColor("#5790fc")) + dysample);
+    samples["dybbar_"+dysample]= "dybbar_" %(Sample("DY+#bar{b}", "SUM sim dy", TColor::GetColor("#f89c20")) + dysample);
+    samples["dyc_"+dysample] = "dyc_" %(Sample("DY+c", "SUM sim dy", kYellow) + dysample);
+    samples["dycbar_"+dysample] = "dycbar_" %(Sample("DY+#bar{c}", "SUM sim dy", kRed-5) + dysample);
+    samples["dyudsg_"+dysample] = "dyudsg_" %(Sample("DY+udsg", "SUM sim dy", kRed-10) + dysample);
 
     samples["lhe_"+dysample]="lhe_"%(Sample("#gamma*/Z#rightarrowll (LHE)","SUM",kBlue)+dysample);
     samples["gen_"+dysample]="gen_"%(Sample("#gamma*/Z#rightarrowll (GEN)","SUM",kGreen)+dysample);
     samples["genfid_"+dysample]="genfid_"%(Sample("#gamma*/Z#rightarrowll (GEN fiducial)","SUM",kMagenta)+dysample);
     samples["truth_"+dysample]="truth_"%(Sample("#gamma*/Z#rightarrowll (truth)","SUM",kCyan)+dysample);
-    samples["ss_"+dysample]="ss_"%(Sample("QCD multi-jet","SUM qcd",kCyan)+"data"-dysample-("tau_"+dysample)-"vv"-"wjets"-"tt"-"st"-"aa");
-    samples["fake_"+dysample]="fake_"%(Sample("QCD multi-jet","SUM",kOrange)+"data"-dysample-("tau_"+dysample)-"vv"-"wjets"-"tt"-"st"-"aa");
+    samples["ss_"+dysample]="ss_"%(Sample("QCD multi-jets","SUM qcd",kCyan)+"data"-dysample-("tau_"+dysample)-"vv"-"wjets"-"tt"-"st"-"aa");
+    samples["fake_"+dysample]="fake_"%(Sample("QCD multi-jets","SUM",kOrange)+"data"-dysample-("tau_"+dysample)-"vv"-"wjets"-"tt"-"st"-"aa");
   }
-  samples["ss"]=samples["ss_mi"];
+  samples["ss"] = samples["ss_mi"];
   samples["amcPt_stack"]=Sample("DY Pt-binned","STACK",kBlue)+TRegexp("/"+Analyzer+SkimTree+"_.*DYJets_Pt-[0-9]*To[0-9Inf]*$");
   for(auto& sub:samples["amcPt_stack"].subs) sub.title=sub.title(TRegexp("Pt-[0-9]*To[0-9Inf]*"));
   samples["amcM_stack"]=Sample("DY M-binned","STACK",kBlue)+TRegexp("/"+Analyzer+SkimTree+"_.*DYJets_M-[0-9]*to[0-9Inf]*$");
   for(auto& sub:samples["amcM_stack"].subs) sub.title=sub.title(TRegexp("M-[0-9]*to[0-9Inf]*"));
 
+  samples["dyall"] = Sample("DY bkgs", "SUM", TColor::GetColor("#e42536")) + "mi" + "dyc_mi" + "dycbar_mi";
+  samples["ttall"] = Sample("top bkgs", "SUM", TColor::GetColor("#964a8b")) + "tt" + "st" + "tw";
+  samples["ewkall"] = Sample("Others", "SUM", TColor::GetColor("#9c9ca1")) + "wjets" + "vv" + "ss_mi" + "aa";
+
   // For ttljPlotter
-  samples["ttlj_2b"]=Sample("TTLJ","SAMPLE sim tt ttlj",kBlue)+TRegexp("/.*"+Analyzer+SkimTree+"_TTLJ_powheg$");
-  samples["ttll_2b"]=Sample("TTLL","SAMPLE sim tt ttll",kMagenta+1)+TRegexp("/.*"+Analyzer+SkimTree+"_TTLL_powheg$");
-  samples["ttjj_2b"]=Sample("TTJJ","SAMPLE sim tt ttjj",kMagenta+3)+TRegexp("/.*"+Analyzer+SkimTree+"_TTJJ_powheg$");
-  samples["tw_2b"]=Sample("tW","SAMPLE sim tw",kRed-6)+TRegexp("/.*"+Analyzer+SkimTree+"_SingleTop_tW_.*top_NoFullyHad$");
-  samples["sts_2b"]=Sample("Single top (s-ch)","SAMPLE sim st sts",kMagenta+9)+TRegexp("/.*"+Analyzer+SkimTree+"_SingleTop_sch*");
-  samples["stt_2b"]=Sample("Single top (t-ch)","SAMPLE sim st stt",kMagenta+8)+TRegexp("/.*"+Analyzer+SkimTree+"_SingleTop_tch*");
-  samples["qcd_2b"]=Sample("QCD multi-jet","SAMPLE sim qcd",kCyan)+TRegexp("/.*"+Analyzer+SkimTree+"_QCD_bEnriched_HT*");
-  samples["wjets_2b"]=Sample("WJets","SAMPLE sim wjets",kYellow)+TRegexp("/.*"+Analyzer+SkimTree+"_WJets_Sherpa$");
-  samples["wjets_mg_2b"]=Sample("WJets (Madgraph)","SAMPLE sim wjets",kYellow)+TRegexp("/.*"+Analyzer+SkimTree+"_WJets_MG$");
-  samples["mi_2b"]=Sample("DYJets","SAMPLE sim dy",kGreen+2)+TRegexp("/.*"+Analyzer+SkimTree+"_DYJetsTo.*MiNNLO$");
-  samples["ww_2b"]=Sample("WW","SAMPLE sim ww",kOrange)+TRegexp("/.*"+Analyzer+SkimTree+"_WW_pythia$");
-  samples["wz_2b"]=Sample("WZ","SAMPLE sim wz",kOrange)+TRegexp("/.*"+Analyzer+SkimTree+"_WZ_pythia$");
-  samples["zz_2b"]=Sample("ZZ","SAMPLE sim zz",kOrange)+TRegexp("/.*"+Analyzer+SkimTree+"_ZZ_pythia$");
-  samples["aa_2b"]=Sample("#gamma#gamma#rightarrowll","SAMPLE sim aa",kYellow+1)+TRegexp("/.*"+Analyzer+SkimTree+"_GGToLL$");
+  samples["ttlj_2b"] = Sample("TTLJ", "SAMPLE sim tt ttlj", kBlue) + TRegexp("/.*" + Analyzer + SkimTree + "_TTLJ_powheg$");
+  samples["ttll_2b"] = Sample("TTLL", "SAMPLE sim tt ttll", kMagenta+1) + TRegexp("/.*" + Analyzer + SkimTree + "_TTLL_powheg$");
+  samples["ttjj_2b"] = Sample("TTJJ", "SAMPLE sim tt ttjj", kMagenta+3) + TRegexp("/.*" + Analyzer + SkimTree + "_TTJJ_powheg$");
+  samples["tw_2b"] = Sample("tW", "SAMPLE sim tw", kRed-6) + TRegexp("/.*" + Analyzer + SkimTree + "_SingleTop_tW_.*top_NoFullyHad$");
+  samples["sts_2b"] = Sample("Single top (s-ch)", "SAMPLE sim st sts", kMagenta+9) + TRegexp("/.*" + Analyzer + SkimTree + "_SingleTop_sch*");
+  samples["stt_2b"] = Sample("Single top (t-ch)", "SAMPLE sim st stt", kMagenta+8) + TRegexp("/.*" + Analyzer + SkimTree + "_SingleTop_tch*");
+  samples["qcd_2b"] = Sample("QCD multi-jets", "SAMPLE sim qcd", TColor::GetColor("#92dadd")) + TRegexp("/.*" + Analyzer + SkimTree + "_QCD_bEnriched_HT*");
+  samples["wjets_2b"] = Sample("WJets", "SAMPLE sim wjets", kYellow) + TRegexp("/.*" + Analyzer + SkimTree + "_WJets_Sherpa$");
+  samples["wjets_mg_2b"] = Sample("WJets (Madgraph)", "SAMPLE sim wjets", kYellow) + TRegexp("/.*" + Analyzer + SkimTree + "_WJets_MG$");
+  samples["mi_2b"] = Sample("DYJets", "SAMPLE sim dy", kGreen + 2) + TRegexp("/.*" + Analyzer + SkimTree + "_DYJetsTo.*MiNNLO$");
+  samples["ww_2b"] = Sample("WW", "SAMPLE sim ww", kOrange) + TRegexp("/.*" + Analyzer + SkimTree + "_WW_pythia$");
+  samples["wz_2b"] = Sample("WZ", "SAMPLE sim wz", kOrange) + TRegexp("/.*" + Analyzer + SkimTree + "_WZ_pythia$");
+  samples["zz_2b"] = Sample("ZZ", "SAMPLE sim zz", kOrange) + TRegexp("/.*" + Analyzer + SkimTree + "_ZZ_pythia$");
+  samples["aa_2b"] = Sample("#gamma#gamma#rightarrowll", "SAMPLE sim aa", kYellow + 1) + TRegexp("/.*" + Analyzer + SkimTree + "_GGToLL$");
 
-  samples["correct_ttlj"]="Correct_"%(Sample("TTLJ (Correct b-pair)","SAMPLE sim tt ttlj",kGreen)+"ttlj_2b");
-  samples["wrong_ttlj"]="Wrong_"%(Sample("TTLJ (Opposite b-pair)","SAMPLE sim tt ttlj",kBlue)+"ttlj_2b");
-  samples["unmatched_ttlj"]="UnMatched_"%(Sample("TTLJ (b-pair not Matched)","SAMPLE sim tt ttlj",kRed)+"ttlj_2b");
-  samples["st_2b"]=Sample("Single top","SUM",kMagenta)+"sts_2b"+"stt_2b";
-  samples["vv_2b"]=Sample("Diboson","SUM",kOrange)+"ww_2b"+"wz_2b"+"zz_2b";
-  samples["stqcd_2b"]=Sample("Single top, QCD multi-jet","SUM",kCyan)+"st_2b"+"qcd_2b";
+  samples["correct_ttlj"] = "Correct_" %(Sample("TTLJ (Correct b-pair)", "SAMPLE sim tt ttlj", TColor::GetColor("#3f90da")) + "ttlj_2b");
+  samples["wrong_ttlj"] = "Wrong_" %(Sample("TTLJ (Opposite b-pair)", "SAMPLE sim tt ttlj", TColor::GetColor("#ffa90e")) + "ttlj_2b");
+  samples["unmatched_ttlj"] = "UnMatched_" %(Sample("TTLJ (b-pair not Matched)", "SAMPLE sim tt ttlj", TColor::GetColor("#bd1f01")) + "ttlj_2b");
+  samples["st_2b"] = Sample("Single top", "SUM", kMagenta) + "sts_2b" + "stt_2b";
+  samples["vv_2b"] = Sample("Diboson", "SUM", kOrange) + "ww_2b" + "wz_2b" + "zz_2b";
+  samples["stqcd_2b"] = Sample("Single top,  QCD multi-jets", "SUM", kCyan) + "st_2b" + "qcd_2b";
 
-  samples["correct0_ttlj"]="Correct0_"%(Sample("TTLJ (Correct b-pair) in A","SAMPLE sim tt ttlj",kGreen)+"ttlj_2b");
-  samples["wrong0_ttlj"]="Wrong0_"%(Sample("TTLJ (Opposite b-pair) in A","SAMPLE sim tt ttlj",kBlue)+"ttlj_2b");
-  samples["unmatched0_ttlj"]="UnMatched0_"%(Sample("TTLJ (b-pair not Matched) in A","SAMPLE sim tt ttlj",kRed)+"ttlj_2b");
-  samples["correct1_ttlj"]="Correct1_"%(Sample("TTLJ (Correct b-pair) not in A","SAMPLE sim tt ttlj",kGreen+2)+"ttlj_2b");
-  samples["wrong1_ttlj"]="Wrong1_"%(Sample("TTLJ (Opposite b-pair) not in A","SAMPLE sim tt ttlj",kBlue+2)+"ttlj_2b");
-  samples["unmatched1_ttlj"]="UnMatched1_"%(Sample("TTLJ (b-pair not Matched) not in A","SAMPLE sim tt ttlj",kRed+2)+"ttlj_2b");
+  samples["ttall_2b"] = Sample("TT bkgs", "SUM", TColor::GetColor("#94a4a2")) + "ttll_2b" + "ttjj_2b";
+  samples["stall_2b"] = Sample("single top bkgs", "SUM", TColor::GetColor("#832db6")) + "tw_2b" + "st_2b";
+  samples["ewkall_2b"] = Sample("EWK bkgs", "SUM", TColor::GetColor("#e76300")) + "wjets_2b" + "mi_2b" + "vv_2b" + "aa_2b";
+
+  samples["correct0_ttlj"] = "Correct0_" %(Sample("TTLJ (Correct b-pair) in A", "SAMPLE sim tt ttlj", kGreen) + "ttlj_2b");
+  samples["wrong0_ttlj"] = "Wrong0_" %(Sample("TTLJ (Opposite b-pair) in A", "SAMPLE sim tt ttlj", kBlue) + "ttlj_2b");
+  samples["unmatched0_ttlj"] = "UnMatched0_" %(Sample("TTLJ (b-pair not Matched) in A", "SAMPLE sim tt ttlj", kRed) + "ttlj_2b");
+  samples["correct1_ttlj"] = "Correct1_" %(Sample("TTLJ (Correct b-pair) not in A", "SAMPLE sim tt ttlj", kGreen + 2) + "ttlj_2b");
+  samples["wrong1_ttlj"] = "Wrong1_" %(Sample("TTLJ (Opposite b-pair) not in A", "SAMPLE sim tt ttlj", kBlue + 2) + "ttlj_2b");
+  samples["unmatched1_ttlj"] = "UnMatched1_" %(Sample("TTLJ (b-pair not Matched) not in A", "SAMPLE sim tt ttlj", kRed + 2) + "ttlj_2b");
 
   samples["qcdss_ee"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][eEl]&&!0bjet&&!nbjet qcdss_ee",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.043;
   samples["qcdss_ee_0bjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][eEl]&&0bjet qcdss_ee_0bjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.044;
