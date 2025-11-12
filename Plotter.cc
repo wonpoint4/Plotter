@@ -2506,9 +2506,23 @@ TLegend* Plotter::DrawLegend(const Plot& p){
   
   vector<double> coordinates;
   double width=(maxwidth+0.03)/pad->GetWNDC();
+  if(p.option.Contains("legwwwww")) width *= 0.5;
+  else if(p.option.Contains("legwwww")) width *= 0.6;
+  else if(p.option.Contains("legwww")) width *= 0.7;
+  else if(p.option.Contains("legww")) width *= 0.8;
+  else if(p.option.Contains("legw")) width *= 0.9;
   double height=(maxheight*entry_size)/pad->GetHNDC();
+  if(p.option.Contains("leghhhhh")) height *= 0.5;
+  else if(p.option.Contains("leghhhh")) height *= 0.6;
+  else if(p.option.Contains("leghhh")) height *= 0.7;
+  else if(p.option.Contains("leghh")) height *= 0.8;
+  else if(p.option.Contains("legh")) height *= 0.9;
+
   if(p.option.Contains("topleftleg")||p.option.Contains("TLleg")) coordinates={pad->GetLeftMargin()+0.01,1-pad->GetTopMargin()-0.01,pad->GetLeftMargin()+0.01+width,1-pad->GetTopMargin()-0.01-height};
   else if(p.option.Contains("topmiddleleg")||p.option.Contains("TMleg")) coordinates={0.5-0.5*width,1-pad->GetTopMargin()-0.01,0.5+0.5*width,1-pad->GetTopMargin()-0.01-height};
+  else if(p.option.Contains("middleleftleg")||p.option.Contains("MLleg")) coordinates={pad->GetLeftMargin()+0.01, 0.5-0.5*height, pad->GetLeftMargin()+0.01+width, 0.5+0.5*height};
+  else if(p.option.Contains("middlemiddleleg")||p.option.Contains("MMleg")) coordinates={0.5-0.5*width, 0.5-0.5*height, 0.5+0.5*width, 0.5+0.5*height};
+  else if(p.option.Contains("middlerightleg")||p.option.Contains("MRleg")) coordinates={1-pad->GetRightMargin()-0.01, 0.5-0.5*height, 1-pad->GetRightMargin()-width, 0.5+0.5*height};
   else if(p.option.Contains("bottomleftleg")||p.option.Contains("BLleg")) coordinates={pad->GetLeftMargin()+0.01,pad->GetBottomMargin()+0.01,pad->GetLeftMargin()+0.01+width,pad->GetBottomMargin()+0.01+height};
   else if(p.option.Contains("bottommiddleleg")||p.option.Contains("BMleg")) coordinates={0.5-0.5*width,pad->GetBottomMargin()+0.01,0.5+0.5*width,pad->GetBottomMargin()+0.01+height};
   else if(p.option.Contains("bottomrightleg")||p.option.Contains("BRleg")) coordinates={1-pad->GetRightMargin()-0.01,pad->GetBottomMargin()+0.01,1-pad->GetRightMargin()-width,pad->GetBottomMargin()+0.01+height};
