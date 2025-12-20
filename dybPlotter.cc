@@ -298,10 +298,10 @@ void dybPlotter::SetupEntries(TString mode_){
   else if(mode_=="miel") entrystring="data ^mi+tau_mi+vv+wjets+tttw+ss_mi+aa";
   else if(mode_=="mimu") entrystring="data ^mi+tau_mi+vv+wjets+tttw+1.8*ss_mi+aa";
   else if(mode_=="doublediff") entrystring="mi+tau_mi+vv+wjets+tttw+ss_mi+aa";
-  else if(mode_ == "mc") entrystring = "^dyb_mi+dybbar_mi+mi+dyc_mi+dycbar_mi+vv+tttw+ss_mi+aa";
+  else if(mode_ == "mc") entrystring = "^dyb_mi+dybbar_mi+dyall+ttall+ewkall";
   else if(mode_ == "dyb") entrystring = "dyb_mi dybbar_mi";
   else if(mode_ == "dy") entrystring = "dyb_mi dybbar_mi mi+dyc_mi+dycbar_mi";
-  else if(mode_ == "sigbkg") entrystring = "dyb_mi+dybbar_mi mi+dyc_mi+dycbar_mi+vv+tttw+ss_mi+aa";
+  else if(mode_ == "sigbkg") entrystring = "dyb_mi+dybbar_mi mi+dyc_mi+dycbar_mi+ttall+ewkall";
   else if(mode_ == "sigbkg2") entrystring = "dyb_mi+dybbar_mi mi tttw";
   else {
     entrystring=mode_;

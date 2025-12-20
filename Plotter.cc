@@ -1562,6 +1562,9 @@ void Plotter::DrawRatio(Plot p){
     }else if(p.option.Contains("widewidey")){
       axisparent->GetYaxis()->SetRangeUser(0.01,1.99);
       axisparent->GetYaxis()->SetNdivisions(506);
+    }else if(p.option.Contains("bitwidey")){
+      axisparent->GetYaxis()->SetRangeUser(0.701,1.299);
+      axisparent->GetYaxis()->SetNdivisions(506);
     }else if(p.option.Contains("widey")){
       axisparent->GetYaxis()->SetRangeUser(0.501,1.499);
       axisparent->GetYaxis()->SetNdivisions(506);
