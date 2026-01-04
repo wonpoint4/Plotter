@@ -17,6 +17,7 @@ public:
   TString filter="";
   double weight=1.;
   vector<Sample> subs;
+  map<TString,Sample> alts;
 
   Sample(TString title_="",TString tag="",Style style0=Style(),Style style1=Style(),Style style2=Style(),Style style3=Style(),Style style4=Style(),Style style5=Style());
   Sample(TString title_,TString tag,int color,int marker=-1,int fill=-1,TString drawoption="");
@@ -40,6 +41,7 @@ public:
   void Add(TRegexp sampleregexp,double weight=1.,TString hprefix="",TString suffix="");
   void ApplyStyle(TH1* hist,int index=0) const;
   static bool CheckAttributes(const Sample& sam1, const Sample& sam2);
+  Sample GetAltSample(TString key) const;
   TString GetHistPrefix() const;
   TString GetPrefix() const;
   TString GetSuffix() const;
@@ -207,6 +209,9 @@ TString Sample::GetSuffix() const {
   auto it=replace.find("$");
   if(it!=replace.end()) return it->second;
   else return "";
+}
+Sample Sample::GetAltSample(TString key) const {
+  return alts.find(key)->second;
 }
 bool Sample::HasTag(TString tag,bool recursive) const {
   if(tag=="") return true;

@@ -31,6 +31,37 @@ public:
     }
     return hists;
   }
+  void Add(const Hists& hists,double c=1.){
+    TH1* base=GetTH1(hists.at(0));
+    if(base){
+      at(0)->Add(base,c);
+      delete base;
+    }
+    set<TString> suffixes;
+    for(const auto& [suffix,h]:variations) suffixes.insert(suffix);
+    for(const auto& [suffix,h]:hists.variations) suffixes.insert(suffix);
+    for(const TString& suffix:suffixes){
+      TH1* h=variations[suffix];
+      if(!h){
+	h=(TH1*)at(0)->Clone();
+      }
+      h->Add(hists[suffix],c);
+      variations[suffix]=h;
+    }
+  }
+  void Add(const TH1* hist,double c=1.){
+    at(0)->Add(hist,c);
+    set<TString> suffixes;
+    for(const auto& [suffix,h]:variations) suffixes.insert(suffix);
+    for(const TString& suffix:suffixes){
+      TH1* h=variations[suffix];
+      if(!h){
+	h=(TH1*)at(0)->Clone();
+      }
+      h->Add(hist,c);
+      variations[suffix]=h;
+    }
+  }
   void Divide(const Hists& hists){
     TH1* base=GetTH1(hists.at(0));
     if(base){

@@ -6,7 +6,7 @@
 #include "Hists.cc"
 class Plot{
 public:
-  enum Type{UNDEF,Compare,Ratio,Diff,Sig,CompareAndRatio,CompareAndDiff,CompareAndSig,DoubleRatio,DoubleDiffAFB,Multi};
+  enum Type{UNDEF,Compare,Ratio,Diff,Sig,CompareAndRatio,CompareAndDiff,CompareAndSig,DoubleRatio,DoubleDiffAFB,Multi,Error};
   TString name,title;
   TString histname;
   TString sysname;
@@ -33,6 +33,8 @@ public:
   bool root=false;
   TPad* pad=NULL;
   vector<Hists> hists;
+  double chi2=-1.;
+  double ndf=0;
 
   Plot(vector<TString> words);
   Plot(TString line=""):Plot(SplitOptions(line)){};

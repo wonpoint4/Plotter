@@ -53,11 +53,11 @@ void SKFlatPlotter::SetupSamples(){
     //   if(sub.title.Contains("DYJetsToEE")&&sub.title.Contains("2017"))
     //     sub.weight=0.99;
     // }
-    samples["mg"+era]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy "+era,kRed)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_DYJets_MG$");
+    samples["mg"+era]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy "+era,kRed)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_.*DYJets_MG$");
+    samples["mg10"+era]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy "+era,kRed)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_.*DYJets10to50_MG$");
     samples["amcJet"+era]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy "+era,kRed)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_.*DY[0-9]Jets$");
     samples["amcPt"+era]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy "+era,kRed)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_.*DYJets_Pt-[0-9]*To[0-9Inf]*$");
     samples["amcM"+era]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy "+era,kRed)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_.*DYJets_M-[0-9]*to[0-9Inf]*$");
-    samples["mg"+era]=Sample("#gamma*/Z#rightarrowll","SAMPLE sim dy "+era,kRed)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_.*DYJets_MG$");
   }
 
   samples["data"]=Sample("data","SUM data",kBlack,20)+"muon2016preVFP"+"muon2016postVFP"+"muon2017"+"muon2018"+"electron2016preVFP"+"electron2016postVFP"+"electron2017"+"electron2018";
@@ -84,10 +84,10 @@ void SKFlatPlotter::SetupSamples(){
   //     sub.weight=0.99;
   // }
   samples["mg"]=Sample("#gamma*/Z#rightarrowll","SUM",kRed)+"mg2016preVFP"+"mg2016postVFP"+"mg2017"+"mg2018";
+  samples["mg10"]=Sample("#gamma*/Z#rightarrowll","SUM",kRed)+"mg102016preVFP"+"mg102016postVFP"+"mg102017"+"mg102018";
   samples["amcJet"]=Sample("#gamma*/Z#rightarrowll","SUM",kRed)+"amcJet2016preVFP"+"amcJet2016postVFP"+"amcJet2017"+"amcJet2018";
   samples["amcPt"]=Sample("#gamma*/Z#rightarrowll","SUM",kRed)+"amcPt2016preVFP"+"amcPt2016postVFP"+"amcPt2017"+"amcPt2018";
   samples["amcM"]=Sample("#gamma*/Z#rightarrowll","SUM",kRed)+"amcM2016preVFP"+"amcM2016postVFP"+"amcM2017"+"amcM2018";
-  samples["mg"]=Sample("#gamma*/Z#rightarrowll","SUM",kRed)+"mg2016preVFP"+"mg2016postVFP"+"mg2017"+"mg2018";
 
   samples["st"]=Sample("Single top","SUM",kMagenta+3)+"sts"+"stt";
   samples["tt"]=Sample("t#bar{t}","SUM",kMagenta)+"ttll"+"ttlj"+"ttjj";
@@ -95,7 +95,7 @@ void SKFlatPlotter::SetupSamples(){
   samples["ttst"]=Sample("t#bar{t}, single top","SUM",kMagenta)+"tt"+"st";
   samples["vv"]=Sample("Diboson","SUM",kOrange)+"ww"+"wz"+"zz";
 
-  TString dysamples[]={"amc","amcJet","amcPt","amcM","mg","mi", "miBug", "miFix"};
+  TString dysamples[]={"amc","amcJet","amcPt","amcM","mg","mg10","mi", "miBug", "miFix"};
   for(auto dysample:dysamples){
     samples["bx_"+dysample]="bx_"%(Sample("#gamma*/Z#rightarrowll (b init)","SUM",kRed-5)+dysample); //temp
     samples["tau_"+dysample]="tau_"%(Sample("#gamma*/Z#rightarrow#tau#tau","SUM dytau",kGreen)+dysample);
@@ -169,12 +169,12 @@ void SKFlatPlotter::SetupSamples(){
   samples["wrong1_ttlj"] = "Wrong1_" %(Sample("TTLJ (Opposite b-pair) not in A", "SAMPLE sim tt ttlj", kBlue + 2) + "ttlj_2b");
   samples["unmatched1_ttlj"] = "UnMatched1_" %(Sample("TTLJ (b-pair not Matched) not in A", "SAMPLE sim tt ttlj", kRed + 2) + "ttlj_2b");
 
-  samples["qcdss_ee"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][eEl]&&!0bjet&&!nbjet qcdss_ee",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.043;
-  samples["qcdss_ee_0bjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][eEl]&&0bjet qcdss_ee_0bjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.044;
-  samples["qcdss_ee_nbjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][eEl]&&nbjet qcdss_ee_nbjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.007;
-  samples["qcdss_mm"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[mM][mMu]&&!0bjet&&!nbjet qcdss_mm",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*2.252;
-  samples["qcdss_mm_0bjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[mM][mMu]&&0bjet qcdss_mm_0bjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*2.284;
-  samples["qcdss_mm_nbjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[mM][mMu]&&nbjet qcdss_mm_nbjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.192;
+  samples["qcdss_ee"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][eEl]&&!0bjet&&!nbjet qcdss_ee",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa"-"mg10")*1.011;
+  samples["qcdss_ee_0bjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][eEl]&&0bjet qcdss_ee_0bjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa"-"mg10")*1.010;
+  samples["qcdss_ee_nbjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][eEl]&&nbjet qcdss_ee_nbjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa"-"mg10")*1.018;
+  samples["qcdss_mm"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[mM][mMu]&&!0bjet&&!nbjet qcdss_mm",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*2.276;
+  samples["qcdss_mm_0bjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[mM][mMu]&&0bjet qcdss_mm_0bjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*2.304;
+  samples["qcdss_mm_nbjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[mM][mMu]&&nbjet qcdss_mm_nbjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.158;
   samples["qcdss_em"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][mM]&&!0bjet&&!nbjet qcdss_em",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.000;
   samples["qcdss_em_0bjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][mM]&&0bjet qcdss_em_0bjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.000;
   samples["qcdss_em_nbjet"]="ss_"%(Sample("QCD multi-jet (SS-method)","SUM filter:[eE][mM]&&nbjet qcdss_em_nbjet",kCyan)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa")*1.000;
@@ -190,8 +190,11 @@ void SKFlatPlotter::SetupSamples(){
 
   samples["qcdss"]=Sample("QCD multi-jet","SUM",Style(kCyan),Style(kCyan,-1,3004,"e2"))+"qcdss_ee"+"qcdss_ee_0bjet"+"qcdss_ee_nbjet"+"qcdss_mm"+"qcdss_mm_0bjet"+"qcdss_mm_nbjet"+"qcdss_em"+"qcdss_em_0bjet"+"qcdss_em_nbjet"+"qcdss_me"+"qcdss_me_0bjet"+"qcdss_me_nbjet";
 
-  samples["fake_mi"]="fake_"%(Sample("QCD multi-jet (TF method)","SUM",Style(kRed),Style(kRed,-1,3005,"e2"))+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa");
+  samples["fake_mi"]="fake_"%(Sample("QCD multi-jet (TF method)","SUM qcdtf",Style(kOrange),Style(kOrange,-1,3005,"e2"))+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa");
   samples["qcdtf"]=samples["fake_mi"];
+  samples["qcdtf"].title="QCD multi-jet";
+  samples["qcd"]=samples["qcdtf"];
+  samples["qcd"].alts["qcdss"]=samples["qcdss"];
   samples["fakecpt_mi"]="fakecpt_"%(Sample("QCD multi-jet (TF, cone pT)","SUM",kBlue)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa");
   samples["fakempt_mi"]="fakempt_"%(Sample("QCD multi-jet (TF, modified pT)","SUM",kGreen)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa");
   samples["fakelj_mi"]="fakelj_"%(Sample("QCD multi-jet (TF, lj)","SUM",kMagenta)+"data"-"mi"-"tau_mi"-"vv"-"wjets"-"ttst"-"aa");

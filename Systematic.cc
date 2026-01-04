@@ -22,7 +22,7 @@ Systematic::Systematic(TString title_,Type type_,vector<TString> variations_,TSt
   if(type==Systematic::Type::MULTI) keys=variations_;
   else{
     for(TString variation:variations_){
-      if(!variation.BeginsWith("replace:")&&!variation.BeginsWith("scale:")){
+      if(!variation.BeginsWith("replace:")&&!variation.BeginsWith("scale:")&&!variation.BeginsWith("altsample:")){
 	if(variation.Contains("->")){
 	  variation="replace:"+variation;
 	}else{
