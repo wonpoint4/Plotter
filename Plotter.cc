@@ -1651,6 +1651,22 @@ void Plotter::DrawCompare(Plot p){
     if(p.option.Contains("title++")) pt->SetTextSize(pt->GetTextSize()*1.4);
     else if(p.option.Contains("title+")) pt->SetTextSize(pt->GetTextSize()*1.2);
   }
+
+  // From HS's BBPlotter.cc
+  if(p.histname.Contains("bChargeRaw")){
+    TH1* axisparent = GetAxisParent();
+    axisparent->GetXaxis()->SetLabelSize(0);
+    TLatex latex;
+    latex.SetNDC();
+    latex.DrawLatex(0.19, 0.24, "#bf{e}^{-}");
+    latex.DrawLatex(0.33, 0.24, "#mu^{-}");
+    latex.DrawLatex(0.45, 0.04, "#bf{jet charge}");
+    latex.DrawLatex(0.69, 0.24, "#mu^{+}");
+    latex.DrawLatex(0.84, 0.24, "#bf{e}^{+}");
+    TGaxis *axis = new TGaxis(-1,0,1, 0,-1,1, 502);
+    axis->Draw();
+    //axis->SetBinLabel
+  }
   _depth--;
 }
 vector<Hists> Plotter::GetRatioHists(Plot p){

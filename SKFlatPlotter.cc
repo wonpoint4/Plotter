@@ -29,8 +29,8 @@ void SKFlatPlotter::SetAnalyzer(TString Analyzer_){
 void SKFlatPlotter::SetupSamples(){
 
   for(TString era:{"2016preVFP","2016postVFP","2017","2018"}){
-    samples["muon"+era]=Sample("data (#mu#mu)","SAMPLE data",kBlack,20)+TRegexp(era+"/.*DATA/"+Analyzer+SkimTree+"_DoubleMuon_[A-Z]")+TRegexp(era+"/.*DATA/"+Analyzer+SkimTree+"_SingleMuon_[A-Z]");
-    samples["electron"+era]=Sample("data (ee)","SAMPLE data",kBlack,20)+TRegexp(era+"/.*DATA/"+Analyzer+SkimTree+"_.*EG.*_[A-Z]")+TRegexp(era+"/.*DATA/"+Analyzer+SkimTree+"_SingleElectron_[A-Z]");
+    samples["muon"+era]=Sample("data (#mu#mu)","SAMPLE data "+era,kBlack,20)+TRegexp(era+"/.*DATA/"+Analyzer+SkimTree+"_DoubleMuon_[A-Z]")+TRegexp(era+"/.*DATA/"+Analyzer+SkimTree+"_SingleMuon_[A-Z]");
+    samples["electron"+era]=Sample("data (ee)","SAMPLE data "+era,kBlack,20)+TRegexp(era+"/.*DATA/"+Analyzer+SkimTree+"_.*EG.*_[A-Z]")+TRegexp(era+"/.*DATA/"+Analyzer+SkimTree+"_SingleElectron_[A-Z]");
     samples["ww"+era]=Sample("WW","SAMPLE sim ww "+era,kOrange)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_WW_pythia$");
     samples["wz"+era]=Sample("WZ","SAMPLE sim wz "+era,kOrange)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_WZ_pythia$");
     samples["zz"+era]=Sample("ZZ","SAMPLE sim zz "+era,kOrange)+TRegexp(era+"/.*"+Analyzer+SkimTree+"_ZZ_pythia$");
@@ -102,16 +102,16 @@ void SKFlatPlotter::SetupSamples(){
     samples["tau_"+dysample].RemoveTag("dy");
 
     samples["dyb_"+dysample] = "dyb_" %(Sample("DY+b", "SUM sim dy", TColor::GetColor("#5790fc")) + dysample);
-    samples["dybbar_"+dysample]= "dybbar_" %(Sample("DY+#bar{b}", "SUM sim dy", TColor::GetColor("#f89c20")) + dysample);
+    samples["dyB_"+dysample]= "dyB_" %(Sample("DY+#bar{b}", "SUM sim dy", TColor::GetColor("#f89c20")) + dysample);
     samples["dyc_"+dysample] = "dyc_" %(Sample("DY+c", "SUM sim dy", kYellow) + dysample);
-    samples["dycbar_"+dysample] = "dycbar_" %(Sample("DY+#bar{c}", "SUM sim dy", kRed-5) + dysample);
+    samples["dyC_"+dysample] = "dyC_" %(Sample("DY+#bar{c}", "SUM sim dy", kRed-5) + dysample);
     samples["dyudsg_"+dysample] = "dyudsg_" %(Sample("DY+udsg", "SUM sim dy", kRed-10) + dysample);
 
-    samples["bG_"+dysample] = "[bB]G_" %(Sample("bg#rightarrowZb", "SUM sim dy", TColor::GetColor("#5790fc")) + dysample);
-    samples["cG_"+dysample] = "[cC]G_" %(Sample("cg#rightarrowZc", "SUM sim dy", TColor::GetColor("#f89c20")) + dysample);
-    samples["sG_"+dysample] = "[sS]G_" %(Sample("sg#rightarrowZs", "SUM sim dy", kGreen+2) + dysample);
-    samples["uG_"+dysample] = "[uU]G_" %(Sample("ug#rightarrowZu", "SUM sim dy", kBlue) + dysample);
-    samples["dG_"+dysample] = "[dD]G_" %(Sample("dg#rightarrowZd", "SUM sim dy", kRed) + dysample);
+    samples["bg_"+dysample] = "[bB]g_" %(Sample("bg#rightarrowZb", "SUM sim dy", TColor::GetColor("#5790fc")) + dysample);
+    samples["cg_"+dysample] = "[cC]g_" %(Sample("cg#rightarrowZc", "SUM sim dy", TColor::GetColor("#f89c20")) + dysample);
+    samples["sg_"+dysample] = "[sS]g_" %(Sample("sg#rightarrowZs", "SUM sim dy", kGreen+2) + dysample);
+    samples["ug_"+dysample] = "[uU]g_" %(Sample("ug#rightarrowZu", "SUM sim dy", kBlue) + dysample);
+    samples["dg_"+dysample] = "[dD]g_" %(Sample("dg#rightarrowZd", "SUM sim dy", kRed) + dysample);
 
     samples["lhe_"+dysample]="lhe_"%(Sample("#gamma*/Z#rightarrowll (LHE)","SUM",kBlue)+dysample);
     samples["gen_"+dysample]="gen_"%(Sample("#gamma*/Z#rightarrowll (GEN)","SUM",kGreen)+dysample);
@@ -121,8 +121,8 @@ void SKFlatPlotter::SetupSamples(){
     samples["fake_"+dysample]="fake_"%(Sample("QCD multi-jets","SUM",kOrange)+"data"-dysample-("tau_"+dysample)-"vv"-"wjets"-"tt"-"st"-"aa");
   }
 
-  samples["bG_miold"] = "[bB]G_" %(Sample("bg#rightarrowZb (Default)", "SUM sim dy", TColor::GetColor("#5790fc")) + "miBug2018");
-  samples["bG_minew"] = "[bB]G_" %(Sample("bg#rightarrowZb (H2Fix)", "SUM sim dy", TColor::GetColor("#f89c20")) + "miFix2018");
+  samples["bg_miold"] = "[bB]g_" %(Sample("bg#rightarrowZb (Default)", "SUM sim dy", TColor::GetColor("#5790fc")) + "miBug2018");
+  samples["bg_minew"] = "[bB]g_" %(Sample("bg#rightarrowZb (H2Fix)", "SUM sim dy", TColor::GetColor("#f89c20")) + "miFix2018");
 
   samples["ss"] = samples["ss_mi"];
   samples["amcPt_stack"]=Sample("DY Pt-binned","STACK",kBlue)+TRegexp("/"+Analyzer+SkimTree+"_.*DYJets_Pt-[0-9]*To[0-9Inf]*$");
@@ -130,9 +130,9 @@ void SKFlatPlotter::SetupSamples(){
   samples["amcM_stack"]=Sample("DY M-binned","STACK",kBlue)+TRegexp("/"+Analyzer+SkimTree+"_.*DYJets_M-[0-9]*to[0-9Inf]*$");
   for(auto& sub:samples["amcM_stack"].subs) sub.title=sub.title(TRegexp("M-[0-9]*to[0-9Inf]*"));
 
-  samples["dyall"] = Sample("DY bkgs", "SUM", TColor::GetColor("#e42536")) + "mi" + "dyc_mi" + "dycbar_mi";
+  samples["dyall"] = Sample("DY bkgs", "SUM", TColor::GetColor("#e42536")) + "mi";// + "dyc_mi" + "dyC_mi";
   samples["ttall"] = Sample("top bkgs", "SUM", TColor::GetColor("#964a8b")) + "tt" + "st" + "tw";
-  samples["ss_won"] = "ss_"%(Sample("QCD multi-jets","SUM qcd",kCyan)+"data"-"dyb_mi"-"dybbar_mi"-"dyall"-"ttall"-"wjets"-"vv"-"aa");
+  samples["ss_won"] = "ss_"%(Sample("QCD multi-jets","SUM qcd",kCyan)+"data"-"dyb_mi"-"dyB_mi"-"dyall"-"ttall"-"wjets"-"vv"-"aa");
   samples["ewkall"] = Sample("Others", "SUM", TColor::GetColor("#9c9ca1")) + "wjets" + "vv" + "ss_won" + "aa";
 
   // For ttljPlotter
