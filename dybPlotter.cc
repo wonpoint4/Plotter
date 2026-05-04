@@ -9,7 +9,7 @@
 #endif
 class dybPlotter:public SKFlatPlotter{
 public:
-  dybPlotter(TString mode_="data ^dyb_mi+dybbar_mi+dyall+ttall+ewkall",TString analyzer_="dybAnalyzer");
+  dybPlotter(TString mode_="data ^dyb_mi+dyB_mi+dyall+ttall+ewkall",TString analyzer_="dybAnalyzer");
   ~dybPlotter();
   virtual void SetupEntries(TString mode_);
   virtual void SetupTH4D();
@@ -59,9 +59,35 @@ TH1* dybPlotter::GetHist(const Sample& sample,Plot plot,TString additional_optio
     TH1* hist_backward_num=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_num")+" Umin:-1 Umax:0");
     TH1* hist_backward_den=GetHist(sample,plot,"histname:"+Replace(plot.histname,"weightedAFB","costhetaCS_den")+" Umin:-1 Umax:0");
     hist=GetHistWeightedAFB(hist_forward_num,hist_forward_den,hist_backward_num,hist_backward_den);
+  }else if(plot.histname.Contains("AFBrecoil4D")){
+    TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil4D","costhetaRecoil")+" Umin:0 Umax:1");
+    TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil4D","costhetaRecoil")+" Umin:-1 Umax:0");
+    hist=GetHistAFB(hist_forward,hist_backward);
+  }else if(plot.histname.Contains("AFBrecoil0")){
+    TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil0","costhetaRecoil")+" Zmin:0 Zmax:0.2");
+    TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil0","costhetaRecoil")+" Zmin:-0.2 Zmax:0");
+    hist=GetHistAFB(hist_forward,hist_backward);
+  }else if(plot.histname.Contains("AFBrecoil1")){
+    TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil1","costhetaRecoil")+" Zmin:0.2 Zmax:0.4");
+    TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil1","costhetaRecoil")+" Zmin:-0.4 Zmax:-0.2");
+    hist=GetHistAFB(hist_forward,hist_backward);
+  }else if(plot.histname.Contains("AFBrecoil2")){
+    TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil2","costhetaRecoil")+" Zmin:0.4 Zmax:0.6");
+    TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil2","costhetaRecoil")+" Zmin:-0.6 Zmax:-0.4");
+    hist=GetHistAFB(hist_forward,hist_backward);
+  }else if(plot.histname.Contains("AFBrecoil3")){
+    TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil3","costhetaRecoil")+" Zmin:0.6 Zmax:0.8");
+    TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil3","costhetaRecoil")+" Zmin:-0.8 Zmax:-0.6");
+    hist=GetHistAFB(hist_forward,hist_backward);
+  }else if(plot.histname.Contains("AFBrecoil4")){
+    TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil4","costhetaRecoil")+" Zmin:0.8 Zmax:1");
+    TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil4","costhetaRecoil")+" Zmin:-1 Zmax:-0.8");
+    hist=GetHistAFB(hist_forward,hist_backward);
   }else if(plot.histname.Contains("AFBrecoil")){
-    TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil","costhetaRecoil")+" Umin:0 Umax:1");
-    TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil","costhetaRecoil")+" Umin:-1 Umax:0");
+    TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil","costhetaRecoil")+" Zmin:0 Zmax:1");
+    TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil","costhetaRecoil")+" Zmin:-1 Zmax:0");
+    //TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil","costhetaRecoil")+" Zmin:0 Zmax:0.8");
+    //TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil","costhetaRecoil")+" Zmin:-0.8 Zmax:0");
     hist=GetHistAFB(hist_forward,hist_backward);
   }else if(plot.histname.Contains("AFBR")){
     TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBR","costhetaR")+" Umin:0 Umax:1");
@@ -109,7 +135,8 @@ void dybPlotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot){
 	PWarning(Form("[Plotter::GetHistFromSample] Ymax=%f is not exact edge... use %f",plot.Ymax,hist4d->GetYaxis()->GetBinUpEdge(iymax)));
     }
     if(plot.Zmin||plot.Zmax){
-      izmin=hist4d->GetZaxis()->FindBin(plot.Zmin);
+      //izmin=hist4d->GetZaxis()->FindBin(plot.Zmin);
+      izmin=hist4d->GetZaxis()->FindBin(plot.Zmin+0.00001);
       izmax=hist4d->GetZaxis()->FindBin(plot.Zmax-0.00001);
       if(fabs(plot.Zmin-hist4d->GetZaxis()->GetBinLowEdge(izmin))>0.00001)
 	PWarning(Form("[Plotter::GetHistFromSample] Zmin=%f is not exact edge... use %f",plot.Zmin,hist4d->GetZaxis()->GetBinLowEdge(izmin)));
@@ -298,11 +325,12 @@ void dybPlotter::SetupEntries(TString mode_){
   else if(mode_=="miel") entrystring="data ^mi+tau_mi+vv+wjets+tttw+ss_mi+aa";
   else if(mode_=="mimu") entrystring="data ^mi+tau_mi+vv+wjets+tttw+1.8*ss_mi+aa";
   else if(mode_=="doublediff") entrystring="mi+tau_mi+vv+wjets+tttw+ss_mi+aa";
-  else if(mode_ == "mc") entrystring = "^dyb_mi+dybbar_mi+dyall+ttall+ewkall";
-  else if(mode_ == "dyb") entrystring = "dyb_mi dybbar_mi";
-  else if(mode_ == "dy") entrystring = "dyb_mi dybbar_mi mi+dyc_mi+dycbar_mi";
-  else if(mode_ == "sigbkg") entrystring = "dyb_mi+dybbar_mi mi+dyc_mi+dycbar_mi+ttall+ewkall";
-  else if(mode_ == "sigbkg2") entrystring = "dyb_mi+dybbar_mi mi tttw";
+  else if(mode_ == "mc") entrystring = "^dyb_mi+dyB_mi+dyall+ttall+ewkall";
+  else if(mode_ == "dyb") entrystring = "dyb_mi dyB_mi";
+  else if(mode_ == "dy") entrystring = "dyb_mi dyB_mi mi+dyc_mi+dyC_mi";
+  else if(mode_ == "sigbkg") entrystring = "dyb_mi+dyB_mi mi+dyc_mi+dyC_mi+ttall+ewkall";
+  else if(mode_ == "sigbkg2") entrystring = "dyb_mi+dyB_mi mi tttw";
+  else if(mode_ == "ANv6") entrystring = "data ^dyb_mi+dybbar_mi+dyall2+ttall+ewkall2";
   else {
     entrystring=mode_;
   }

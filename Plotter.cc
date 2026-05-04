@@ -617,7 +617,8 @@ TH1* Plotter::GetHistFromSample(const Sample& sample,const Plot& pp,TString addi
 	      PWarning(Form("[Plotter::GetHistFromSample] Ymax=%f is not exact edge... use %f",p.Ymax,hist3d->GetYaxis()->GetBinUpEdge(iymax)));
 	  }
 	  if(p.Zmin||p.Zmax){
-	    izmin=hist3d->GetZaxis()->FindBin(p.Zmin);
+            //izmin=hist3d->GetZaxis()->FindBin(p.Zmin);
+            izmin=hist3d->GetZaxis()->FindBin(p.Zmin+0.00001);
 	    izmax=hist3d->GetZaxis()->FindBin(p.Zmax-0.00001);
 	    if(fabs(p.Zmin-hist3d->GetZaxis()->GetBinLowEdge(izmin))>0.00001)
 	      PWarning(Form("[Plotter::GetHistFromSample] Zmin=%f is not exact edge... use %f",p.Zmin,hist3d->GetZaxis()->GetBinLowEdge(izmin)));
