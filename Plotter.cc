@@ -2983,6 +2983,7 @@ set<TString> Plotter::GetHistKeys(const Sample& sample,TString regexp){
   return histkeys;
 }
 Plot Plotter::MakePlot(TString name,TString option){
+  PInfo("[Plotter::MakePlot] "+name+" "+option);//_depth++;
   Plot p;
   p.name=name;
   p.title=name;

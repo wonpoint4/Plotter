@@ -25,6 +25,7 @@ public:
 
   virtual TH1* GetHistWeightedAFB(TH1* hist_forward_num,TH1* hist_forward_den,TH1* hist_backward_num,TH1* hist_backward_den);
   virtual TH1* GetHistAFB(TH1* hist_forward,TH1* hist_backward);
+  virtual TH1* GetHistAFBbyFit(TH1* hist_forward_backward, TH1* hist_1D);
 
   //TCanvas* DrawPlot(TString plotkey,TString option="");
 
@@ -39,6 +40,7 @@ pair<double,double> dybPlotter::GetRange(TString histname,TString axisname){
 }  
 
 TH1* dybPlotter::GetHist(const Sample& sample,Plot plot,TString additional_option){
+  PInfo("[dybPlotter::GetHist] "+sample.title+" "+plot.histname+" "+plot.option+" "+additional_option);
   TH1* hist=NULL;
   plot.SetOption(additional_option);
   for(auto [reg,newstr]:sample.replace)
@@ -83,6 +85,11 @@ TH1* dybPlotter::GetHist(const Sample& sample,Plot plot,TString additional_optio
     TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil4","costhetaRecoil")+" Zmin:0.8 Zmax:1");
     TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil4","costhetaRecoil")+" Zmin:-1 Zmax:-0.8");
     hist=GetHistAFB(hist_forward,hist_backward);
+  }else if(plot.histname.Contains("AFBrecoil") && plot.option.Contains("fit")){
+    TH1* hist_forward_backward = GetHist(sample, plot, "histname:"+Replace(plot.histname, "AFBrecoil", "costhetaRecoil")+" Zmin:-1 Zmax:1");
+    plot.SetOption("project:x");
+    TH1* hist_1D = GetHist(sample, plot, "histname:"+Replace(plot.histname, "AFBrecoil", "costhetaRecoil")+" Zmin:-1 Zmax:1");
+    hist = GetHistAFBbyFit(hist_forward_backward, hist_1D);
   }else if(plot.histname.Contains("AFBrecoil")){
     TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil","costhetaRecoil")+" Zmin:0 Zmax:1");
     TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil","costhetaRecoil")+" Zmin:-1 Zmax:0");
@@ -166,6 +173,7 @@ void dybPlotter::GetHistActionForAdditionalClass(TObject*& obj,Plot plot){
   }
 }
 Plot dybPlotter::MakePlot(TString plotkey,TString option){
+  PInfo("[dybPlotter::MakePlot] "+plotkey+" "+option);
   Plot plot=Plotter::MakePlot(plotkey,option);
   if(plot.histname.Contains(TRegexp("m[[-+0-9.]*,[-+0-9.]*]/"))){
     auto range=GetRange(plot.histname,"m");
@@ -185,11 +193,12 @@ Plot dybPlotter::MakePlot(TString plotkey,TString option){
   if(plot.histname.Contains(TRegexp("(m)$"))) plot.histname=Replace(plot.histname,"(m)$","(x)");
   if(plot.histname.Contains(TRegexp("(pt)$"))) plot.histname=Replace(plot.histname,"(pt)$","(z)");
 
-  if(plot.histname.Contains(TRegexp("(x)$"))){plot.histname=Replace(plot.histname,"(x)$","");plot.SetOption("project:x");}
+  if(plot.histname.Contains(TRegexp("(x)$")) && option.Contains("fit")){plot.histname=Replace(plot.histname,"(x)$","");plot.SetOption("project:zx");}
+  else if(plot.histname.Contains(TRegexp("(x)$"))){plot.histname=Replace(plot.histname,"(x)$","");plot.SetOption("project:x");}
   if(plot.histname.Contains(TRegexp("(y)$"))){plot.histname=Replace(plot.histname,"(y)$","");plot.SetOption("project:y");}
   if(plot.histname.Contains(TRegexp("(z)$"))){plot.histname=Replace(plot.histname,"(z)$","");plot.SetOption("project:z");}
   if(plot.histname.Contains(TRegexp("(u)$"))){plot.histname=Replace(plot.histname,"(u)$","");plot.SetOption("project:u");}
-  if(plot.histname.Contains(TRegexp("(x,z)$"))){plot.histname=Replace(plot.histname,"(x,z)$","");plot.SetOption("project:xz");}
+  if(plot.histname.Contains(TRegexp("(x,z)$"))){plot.histname=Replace(plot.histname,"(x,z)$","");plot.SetOption("project:zx");}
 
   if(plot.histname.Contains("dimass")){plot.histname=Replace(plot.histname,"dimass","costhetaCS");plot.SetOption("project:x");}
   else if(plot.histname.Contains("mass")){plot.histname=Replace(plot.histname,"mass","costhetaRecoil");plot.SetOption("project:x");}
@@ -309,6 +318,57 @@ TH1* dybPlotter::GetHistAFB(TH1* hist_forward,TH1* hist_backward){
   hist->SetTitle(this_title.ReplaceAll("forward","AFB"));
   return hist;
 }  
+
+TH1* dybPlotter::GetHistAFBbyFit(TH1* hist_forward_backward, TH1* hist_1D){
+  PInfo("[dybPlotter::GetHistAFBbyFit(TH1* hist_forward_backward, TH1* hist_1D)]");
+  if(!hist_forward_backward||!hist_1D){
+    PError("[dybPlotter::GetHistAFBbyFit] It is null TH1*");
+    return NULL;
+  }
+  hist_forward_backward = GetTH1(hist_forward_backward, true);
+  hist_1D = GetTH1(hist_1D, true);
+  TH1* hist = (TH1*)hist_1D->Clone();
+  hist->SetDirectory(pdir);
+  hist->Reset();
+  gStyle->SetOptStat(0);
+  for(int i=1; i<hist->GetNbinsX()+1; i++){
+    TString binname = Form("%.0f_%.0f", hist->GetXaxis()->GetBinLowEdge(i), hist->GetXaxis()->GetBinUpEdge(i));
+    TH1D* hist_costheta = new TH1D(TString(hist->GetName())+"_"+binname, TString(hist->GetTitle())+"_"+binname, 20,-1,1);
+    //hist_costheta->SetDirectory(0);
+    for(int j=1; j<hist_costheta->GetNbinsX()+1; j++){
+      hist_costheta->SetBinContent(j, hist_forward_backward->GetBinContent(20 * (i - 1) + j));
+      hist_costheta->SetBinError(j, hist_forward_backward->GetBinError(20 * (i - 1) + j));
+      //cout<<"bin("<<j<<") = "<<hist_forward_backward->GetBinContent(20 * (i - 1) + j)<<endl;
+    }
+    TF1* f_costheta = new TF1("fcostheta", "[0] * (1 + x^2 + 8/3 * [1] * x)", -0.9, 0.9);
+    TF1* f_costheta_withA0 = new TF1("fcostheta", "[0] * (1 + x^2 + 8/3 * [1] * x + 0.5 * [2] * (1 - 3 * x^2))", -0.9, 0.9);
+    f_costheta->SetParameters(hist_costheta->GetBinContent(10), 0.);
+    f_costheta->SetParLimits(0, hist_costheta->GetBinContent(10) * 0.0, hist_costheta->GetBinContent(10) * 2.0);
+    f_costheta->SetParLimits(1, -1., 1.);
+    f_costheta_withA0->SetParameters(hist_costheta->GetBinContent(10), 0.);
+    f_costheta_withA0->SetParLimits(0, hist_costheta->GetBinContent(10) * 0.0, hist_costheta->GetBinContent(10) * 2.0);
+    f_costheta_withA0->SetParLimits(1, -1., 1.);
+
+    TCanvas *c1 = new TCanvas("c1", "Fit Canvas", 800, 600);
+    TFitResultPtr r = hist_costheta->Fit(f_costheta, "L R S 0");
+    TFitResultPtr r2 = hist_costheta->Fit(f_costheta_withA0, "L R S 0");
+    double AFB = r->Parameter(1);
+    double eAFB = r->ParError(1);
+    hist->SetBinContent(i, AFB);
+    hist->SetBinError(i, eAFB);
+
+    hist_costheta->Draw();
+    f_costheta->SetLineColor(kRed);
+    f_costheta->Draw("same");
+    f_costheta_withA0->SetLineColor(kBlue);
+    f_costheta_withA0->Draw("same");
+    c1->SaveAs(TString(hist->GetName())+"_"+binname+".pdf");
+    delete hist_costheta, c1;
+  }
+  TString this_title = hist_forward_backward->GetTitle();
+  hist->SetTitle(this_title.ReplaceAll("forward", "AFB"));
+  return hist;
+}
 
 dybPlotter::dybPlotter(TString mode_,TString Analyzer_){
   SetupTH4D();
