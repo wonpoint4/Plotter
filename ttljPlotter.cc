@@ -123,6 +123,7 @@ void ttljPlotter::SetupEntries(TString mode_){
   TString entrystring;
   if(mode_ == "ttlj") entrystring = "correct_ttlj wrong_ttlj unmatched_ttlj";
   else if(mode_ == "data_sub ttlj") entrystring = Form("data-%f*unmatched_ttlj-%f*ttall_2b-%f*stall_2b-%f*qcd_2b-%f*ewkall_2b correct_ttlj+wrong_ttlj", norm_, norm_, norm_, norm_, norm_);
+  else if(mode_ == "data_sub marko") entrystring = Form("data-%f*simo_2b simb_2b+simB_2b", norm_);
   else if(mode_ == "data mc") entrystring = "data correct_ttlj+wrong_ttlj+unmatched_ttlj+ttlj_2b+ttall_2b+stall_2b+qcd_2b+ewkall_2b";
   else {
     entrystring=mode_;

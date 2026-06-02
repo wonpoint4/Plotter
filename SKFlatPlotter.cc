@@ -115,6 +115,9 @@ void SKFlatPlotter::SetupSamples(){
     samples["ug_"+dysample] = "[uU]g_" %(Sample("ug#rightarrowZu", "SUM sim dy", kBlue) + dysample);
     samples["dg_"+dysample] = "[dD]g_" %(Sample("dg#rightarrowZd", "SUM sim dy", kRed) + dysample);
 
+    samples["sig_"+dysample] = "sig_" %(Sample("DY Signal", "SUM sim dy", kBlue) + dysample);
+    samples["bkg_"+dysample] = "bkg_" %(Sample("DY Background", "SUM sim dy", kRed) + dysample);
+
     samples["lhe_"+dysample]="lhe_"%(Sample("#gamma*/Z#rightarrowll (LHE)","SUM",kBlue)+dysample);
     samples["gen_"+dysample]="gen_"%(Sample("#gamma*/Z#rightarrowll (GEN)","SUM",kGreen)+dysample);
     samples["genfid_"+dysample]="genfid_"%(Sample("#gamma*/Z#rightarrowll (GEN fiducial)","SUM",kMagenta)+dysample);
@@ -183,6 +186,11 @@ void SKFlatPlotter::SetupSamples(){
   samples["ttall_2b"] = Sample("TT bkgs", "SUM", TColor::GetColor("#94a4a2")) + "ttll_2b" + "ttjj_2b";
   samples["stall_2b"] = Sample("single top bkgs", "SUM", TColor::GetColor("#832db6")) + "tw_2b" + "st_2b";
   samples["ewkall_2b"] = Sample("EWK bkgs", "SUM", TColor::GetColor("#e76300")) + "wjets_2b" + "mi_2b" + "vv_2b" + "aa_2b";
+
+  samples["sim_2b"] = Sample("simulations", "SUM", TColor::GetColor("#bd1f01")) + "ttlj_2b" + "ttll_2b" + "ttjj_2b" + "stall_2b" + "qcd_2b" + "ewkall_2b";
+  samples["simb_2b"] = "b_" %Sample("b", "SUM", TColor::GetColor("#3f90da")) + "sim_2b";
+  samples["simB_2b"] = "B_" %Sample("#bar{b}", "SUM", TColor::GetColor("#ffa90e")) + "sim_2b";
+  samples["simo_2b"] = "other_" %Sample("Others", "SUM", TColor::GetColor("#bd1f01")) + "sim_2b";
 
   samples["correct0_ttlj"] = "Correct0_" %(Sample("TTLJ (Correct b-pair) in A", "SUM", kGreen) + "ttlj_2b");
   samples["wrong0_ttlj"] = "Wrong0_" %(Sample("TTLJ (Opposite b-pair) in A", "SUM", kBlue) + "ttlj_2b");

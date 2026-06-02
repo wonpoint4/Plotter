@@ -26,6 +26,7 @@ public:
   virtual TH1* GetHistWeightedAFB(TH1* hist_forward_num,TH1* hist_forward_den,TH1* hist_backward_num,TH1* hist_backward_den);
   virtual TH1* GetHistAFB(TH1* hist_forward,TH1* hist_backward);
   virtual TH1* GetHistAFBbyFit(TH1* hist_forward_backward, TH1* hist_1D);
+  virtual TH1* GetHistAFBwithBins(TH1* hist_forward_backward);
 
   //TCanvas* DrawPlot(TString plotkey,TString option="");
 
@@ -82,19 +83,22 @@ TH1* dybPlotter::GetHist(const Sample& sample,Plot plot,TString additional_optio
     TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil3","costhetaRecoil")+" Zmin:-0.8 Zmax:-0.6");
     hist=GetHistAFB(hist_forward,hist_backward);
   }else if(plot.histname.Contains("AFBrecoil4")){
-    TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil4","costhetaRecoil")+" Zmin:0.8 Zmax:1");
-    TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil4","costhetaRecoil")+" Zmin:-1 Zmax:-0.8");
+    TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil4","costhetaRecoil")+" Zmin:0.8 Zmax:0.9");
+    TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil4","costhetaRecoil")+" Zmin:-0.9 Zmax:-0.8");
+    //TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil4","costhetaRecoil")+" Zmin:0.8 Zmax:1");
+    //TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil4","costhetaRecoil")+" Zmin:-1 Zmax:-0.8");
     hist=GetHistAFB(hist_forward,hist_backward);
   }else if(plot.histname.Contains("AFBrecoil") && plot.option.Contains("fit")){
     TH1* hist_forward_backward = GetHist(sample, plot, "histname:"+Replace(plot.histname, "AFBrecoil", "costhetaRecoil")+" Zmin:-1 Zmax:1");
     plot.SetOption("project:x");
     TH1* hist_1D = GetHist(sample, plot, "histname:"+Replace(plot.histname, "AFBrecoil", "costhetaRecoil")+" Zmin:-1 Zmax:1");
     hist = GetHistAFBbyFit(hist_forward_backward, hist_1D);
+  }else if(plot.histname.Contains("AFBrecoil") && plot.option.Contains("cosbins")){
+    TH1* hist_forward_backward = GetHist(sample, plot, "histname:"+Replace(plot.histname, "AFBrecoil", "costhetaRecoil")+" Zmin:-1 Zmax:1");
+    hist = GetHistAFBwithBins(hist_forward_backward);
   }else if(plot.histname.Contains("AFBrecoil")){
     TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil","costhetaRecoil")+" Zmin:0 Zmax:1");
     TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil","costhetaRecoil")+" Zmin:-1 Zmax:0");
-    //TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil","costhetaRecoil")+" Zmin:0 Zmax:0.8");
-    //TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil","costhetaRecoil")+" Zmin:-0.8 Zmax:0");
     hist=GetHistAFB(hist_forward,hist_backward);
   }else if(plot.histname.Contains("AFBR")){
     TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBR","costhetaR")+" Umin:0 Umax:1");
@@ -193,7 +197,7 @@ Plot dybPlotter::MakePlot(TString plotkey,TString option){
   if(plot.histname.Contains(TRegexp("(m)$"))) plot.histname=Replace(plot.histname,"(m)$","(x)");
   if(plot.histname.Contains(TRegexp("(pt)$"))) plot.histname=Replace(plot.histname,"(pt)$","(z)");
 
-  if(plot.histname.Contains(TRegexp("(x)$")) && option.Contains("fit")){plot.histname=Replace(plot.histname,"(x)$","");plot.SetOption("project:zx");}
+  if(plot.histname.Contains(TRegexp("(x)$")) && (option.Contains("fit") || option.Contains("cosbins"))){plot.histname = Replace(plot.histname, "(x)$", ""); plot.SetOption("project:zx");}
   else if(plot.histname.Contains(TRegexp("(x)$"))){plot.histname=Replace(plot.histname,"(x)$","");plot.SetOption("project:x");}
   if(plot.histname.Contains(TRegexp("(y)$"))){plot.histname=Replace(plot.histname,"(y)$","");plot.SetOption("project:y");}
   if(plot.histname.Contains(TRegexp("(z)$"))){plot.histname=Replace(plot.histname,"(z)$","");plot.SetOption("project:z");}
@@ -312,6 +316,7 @@ TH1* dybPlotter::GetHistAFB(TH1* hist_forward,TH1* hist_backward){
     if(valf+valb){
       hist->SetBinContent(i,(valf-valb)/(valf+valb));
       hist->SetBinError(i,2*sqrt(ef*ef*valb*valb+eb*eb*valf*valf)/pow(valf+valb,2));
+      //cout<<i<<"-th AFB bin : "<<(valf-valb)/(valf+valb)<<" +- "<<2*sqrt(ef*ef*valb*valb+eb*eb*valf*valf)/pow(valf+valb,2)<<endl;
     }
   }
   TString this_title=hist_forward->GetTitle();
@@ -370,6 +375,39 @@ TH1* dybPlotter::GetHistAFBbyFit(TH1* hist_forward_backward, TH1* hist_1D){
   return hist;
 }
 
+TH1* dybPlotter::GetHistAFBwithBins(TH1* hist_forward_backward){
+  PInfo("[dybPlotter::GetHistAFBwithBins(TH1* hist_forward_backward)]");
+  if(!hist_forward_backward){
+    PError("[dybPlotter::GetHistAFBwithBins] It is null TH1*");
+    return NULL;
+  }
+  hist_forward_backward = GetTH1(hist_forward_backward, true);
+  double binnum = hist_forward_backward->GetNbinsX() / 4; // hist_forward_backward : 240 bins (12 mass bins, 20 costheta bins) -> 60 bins (12 mass bins, 5 |costheta| bins)
+  int massbinnum = 12;
+  TH1D* hist = new TH1D(hist_forward_backward->GetName(), hist_forward_backward->GetTitle(), int(binnum),0,binnum);
+  hist->SetDirectory(pdir);
+  hist->Reset();
+  gStyle->SetOptStat(0);
+  for(unsigned int i=1; i<massbinnum+1; i++){
+    unsigned int bin = 20 * (i - 1);
+    //for(unsigned int l=1; l<21; l++) cout<<l<<"-th cos bin : "<<hist_forward_backward->GetBinContent(bin + l)<<" +- "<<hist_forward_backward->GetBinError(bin + l)<<endl;
+    for(unsigned int j=1; j<5+1; j++){
+      double forward_e = 0;
+      double backward_e = 0;
+      double forward = hist_forward_backward->IntegralAndError(bin + 9 + (2 * j), bin + 10 + (2 * j), forward_e);
+      double backward = hist_forward_backward->IntegralAndError(bin + 11 - (2 * j), bin + 12 - (2 * j),  backward_e);
+
+      hist->SetBinContent(bin / 4 + j, (forward - backward) / (forward + backward));
+      hist->SetBinError(bin / 4 + j, 2 * sqrt(forward_e * forward_e * backward * backward + backward_e * backward_e * forward * forward) / pow(forward + backward, 2));
+      //cout<<bin / 4 + j<<"-th AFB bin : "<<(forward - backward) / (forward + backward)<<" +- "<<2 * sqrt(forward_e * forward_e * backward * backward + backward_e * backward_e * forward * forward) / pow(forward + backward, 2)<<endl;
+    }
+  }
+
+  TString this_title = hist_forward_backward->GetTitle();
+  hist->SetTitle(this_title.ReplaceAll("forward", "AFB"));
+  return hist;
+}
+
 dybPlotter::dybPlotter(TString mode_,TString Analyzer_){
   SetupTH4D();
   Setup(mode_,Analyzer_);
@@ -388,6 +426,7 @@ void dybPlotter::SetupEntries(TString mode_){
   else if(mode_ == "mc") entrystring = "^dyb_mi+dyB_mi+dyall+ttall+ewkall";
   else if(mode_ == "dyb") entrystring = "dyb_mi dyB_mi";
   else if(mode_ == "dy") entrystring = "dyb_mi dyB_mi mi+dyc_mi+dyC_mi";
+  else if(mode_ == "lhedy") entrystring = "sig_mi bkg_mi";
   else if(mode_ == "sigbkg") entrystring = "dyb_mi+dyB_mi mi+dyc_mi+dyC_mi+ttall+ewkall";
   else if(mode_ == "sigbkg2") entrystring = "dyb_mi+dyB_mi mi tttw";
   else if(mode_ == "ANv6") entrystring = "data ^dyb_mi+dybbar_mi+dyall2+ttall+ewkall2";
