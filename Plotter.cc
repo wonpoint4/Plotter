@@ -1659,11 +1659,11 @@ void Plotter::DrawCompare(Plot p){
     axisparent->GetXaxis()->SetLabelSize(0);
     TLatex latex;
     latex.SetNDC();
-    latex.DrawLatex(0.19, 0.24, "#bf{e}^{-}");
-    latex.DrawLatex(0.33, 0.24, "#mu^{-}");
-    latex.DrawLatex(0.45, 0.04, "#bf{jet charge}");
-    latex.DrawLatex(0.69, 0.24, "#mu^{+}");
-    latex.DrawLatex(0.84, 0.24, "#bf{e}^{+}");
+    latex.DrawLatex(0.22, 0.30, "#bf{e}^{-}");     //0.19, 0.24
+    latex.DrawLatex(0.37, 0.34, "#mu^{-}");        //0.33, 0.24
+    latex.DrawLatex(0.44, 0.04, "#bf{jet charge}");//0.45, 0.04
+    latex.DrawLatex(0.66, 0.34, "#mu^{+}");        //0.69, 0.24
+    latex.DrawLatex(0.81, 0.30, "#bf{e}^{+}");     //0.84, 0.24
     TGaxis *axis = new TGaxis(-1,0,1, 0,-1,1, 502);
     axis->Draw();
     //axis->SetBinLabel

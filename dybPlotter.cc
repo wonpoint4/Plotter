@@ -97,6 +97,8 @@ TH1* dybPlotter::GetHist(const Sample& sample,Plot plot,TString additional_optio
     TH1* hist_forward_backward = GetHist(sample, plot, "histname:"+Replace(plot.histname, "AFBrecoil", "costhetaRecoil")+" Zmin:-1 Zmax:1");
     hist = GetHistAFBwithBins(hist_forward_backward);
   }else if(plot.histname.Contains("AFBrecoil")){
+    //TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil","costhetaRecoil")+" Zmin:0 Zmax:0.9");
+    //TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil","costhetaRecoil")+" Zmin:-0.9 Zmax:0");
     TH1* hist_forward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil","costhetaRecoil")+" Zmin:0 Zmax:1");
     TH1* hist_backward=GetHist(sample,plot,"histname:"+Replace(plot.histname,"AFBrecoil","costhetaRecoil")+" Zmin:-1 Zmax:0");
     hist=GetHistAFB(hist_forward,hist_backward);
@@ -207,7 +209,7 @@ Plot dybPlotter::MakePlot(TString plotkey,TString option){
   if(plot.histname.Contains("dimass")){plot.histname=Replace(plot.histname,"dimass","costhetaCS");plot.SetOption("project:x");}
   else if(plot.histname.Contains("mass")){plot.histname=Replace(plot.histname,"mass","costhetaRecoil");plot.SetOption("project:x");}
   if(plot.histname.Contains("dirap")){plot.histname=Replace(plot.histname,"dirap","costhetaCS");plot.SetOption("project:y");}
-  if(plot.histname.Contains("cha")){plot.histname=Replace(plot.histname,"cha","costhetaRecoil");plot.SetOption("project:y");}
+  //if(plot.histname.Contains("cha")){plot.histname=Replace(plot.histname,"cha","costhetaRecoil");plot.SetOption("project:y");}
   if(plot.histname.Contains("dipt")){plot.histname=Replace(plot.histname,"dipt","costhetaCS");plot.SetOption("project:z");}
   //if(plot.histname.Contains("bpt")){plot.histname=Replace(plot.histname,"bpt","costhetaRecoil");plot.SetOption("project:z");}
 
@@ -354,19 +356,37 @@ TH1* dybPlotter::GetHistAFBbyFit(TH1* hist_forward_backward, TH1* hist_1D){
     f_costheta_withA0->SetParLimits(0, hist_costheta->GetBinContent(10) * 0.0, hist_costheta->GetBinContent(10) * 2.0);
     f_costheta_withA0->SetParLimits(1, -1., 1.);
 
+    // Indirect Fit like LEP using 5 AFB(|costheta)) -> Extract "bare-like" AFB
+    TF1* f_AFB = new TF1("fAFB", "0.375 * [1] * x / (1 + x^2 + 0.5 * [0] * (1 - 3 * x^2))", 0, 1);
+    f_AFB->SetParLimits(0, -1., 1.);
+    f_AFB->SetParLimits(1, -1., 1.);
+    TH1D* hist_AFB = new TH1D("AFB_"+TString(hist->GetName())+"_"+binname, "AFB_"+TString(hist->GetTitle())+"_"+binname, 10,0,1);
+    for(int j=1; j<hist_AFB->GetNbinsX()+1; j++){
+      double forward = hist_costheta->GetBinContent(10 + j);
+      double backward = hist_costheta->GetBinContent(11 - j);
+      double forward_e = hist_costheta->GetBinError(10 + j);
+      double backward_e = hist_costheta->GetBinError(11 - j);
+      hist_AFB->SetBinContent(j, (forward - backward) / (forward + backward));
+      hist_AFB->SetBinError(j, 2 * sqrt(forward_e * forward_e * backward * backward + backward_e * backward_e * forward * forward) / pow(forward + backward, 2));
+      //cout<<"bin("<<j<<") = "<<hist_forward_backward->GetBinContent(20 * (i - 1) + j)<<endl;
+    }
+
     TCanvas *c1 = new TCanvas("c1", "Fit Canvas", 800, 600);
-    TFitResultPtr r = hist_costheta->Fit(f_costheta, "L R S 0");
-    TFitResultPtr r2 = hist_costheta->Fit(f_costheta_withA0, "L R S 0");
+    //TFitResultPtr r = hist_costheta->Fit(f_costheta, "L R S 0");
+    //TFitResultPtr r2 = hist_costheta->Fit(f_costheta_withA0, "L R S 0");
+    TFitResultPtr r = hist_AFB->Fit(f_AFB, "L R S 0");
     double AFB = r->Parameter(1);
     double eAFB = r->ParError(1);
     hist->SetBinContent(i, AFB);
     hist->SetBinError(i, eAFB);
 
-    hist_costheta->Draw();
-    f_costheta->SetLineColor(kRed);
-    f_costheta->Draw("same");
-    f_costheta_withA0->SetLineColor(kBlue);
-    f_costheta_withA0->Draw("same");
+    //hist_costheta->Draw();
+    //f_costheta->SetLineColor(kRed);
+    //f_costheta->Draw("same");
+    //f_costheta_withA0->SetLineColor(kBlue);
+    //f_costheta_withA0->Draw("same");
+    hist_AFB->Draw();
+    f_AFB->Draw("same");
     c1->SaveAs(TString(hist->GetName())+"_"+binname+".pdf");
     delete hist_costheta, c1;
   }
@@ -382,6 +402,7 @@ TH1* dybPlotter::GetHistAFBwithBins(TH1* hist_forward_backward){
     return NULL;
   }
   hist_forward_backward = GetTH1(hist_forward_backward, true);
+  //double binnum = hist_forward_backward->GetNbinsX() / 2;
   double binnum = hist_forward_backward->GetNbinsX() / 4; // hist_forward_backward : 240 bins (12 mass bins, 20 costheta bins) -> 60 bins (12 mass bins, 5 |costheta| bins)
   int massbinnum = 12;
   TH1D* hist = new TH1D(hist_forward_backward->GetName(), hist_forward_backward->GetTitle(), int(binnum),0,binnum);
@@ -391,14 +412,19 @@ TH1* dybPlotter::GetHistAFBwithBins(TH1* hist_forward_backward){
   for(unsigned int i=1; i<massbinnum+1; i++){
     unsigned int bin = 20 * (i - 1);
     //for(unsigned int l=1; l<21; l++) cout<<l<<"-th cos bin : "<<hist_forward_backward->GetBinContent(bin + l)<<" +- "<<hist_forward_backward->GetBinError(bin + l)<<endl;
+    //for(unsigned int j=1; j<11+1; j++){
     for(unsigned int j=1; j<5+1; j++){
       double forward_e = 0;
       double backward_e = 0;
       double forward = hist_forward_backward->IntegralAndError(bin + 9 + (2 * j), bin + 10 + (2 * j), forward_e);
-      double backward = hist_forward_backward->IntegralAndError(bin + 11 - (2 * j), bin + 12 - (2 * j),  backward_e);
+      double backward = hist_forward_backward->IntegralAndError(bin + 11 - (2 * j), bin + 12 - (2 * j), backward_e);
+      //double forward = hist_forward_backward->IntegralAndError(bin + 10 + j, bin + 10 + j, forward_e);
+      //double backward = hist_forward_backward->IntegralAndError(bin + 11 - j, bin + 11 - j, backward_e);
 
       hist->SetBinContent(bin / 4 + j, (forward - backward) / (forward + backward));
       hist->SetBinError(bin / 4 + j, 2 * sqrt(forward_e * forward_e * backward * backward + backward_e * backward_e * forward * forward) / pow(forward + backward, 2));
+      //hist->SetBinContent(bin / 2 + j, (forward - backward) / (forward + backward));
+      //hist->SetBinError(bin / 2 + j, 2 * sqrt(forward_e * forward_e * backward * backward + backward_e * backward_e * forward * forward) / pow(forward + backward, 2));
       //cout<<bin / 4 + j<<"-th AFB bin : "<<(forward - backward) / (forward + backward)<<" +- "<<2 * sqrt(forward_e * forward_e * backward * backward + backward_e * backward_e * forward * forward) / pow(forward + backward, 2)<<endl;
     }
   }
